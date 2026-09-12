@@ -436,6 +436,7 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
   const handlerStats = new Map<string, PluginHandlerStats>();
   let boundSdk: BbSdk | undefined;
   let boundLoopbackBaseUrl: string | undefined;
+  let boundLoopbackApiToken: string | undefined;
   const rpcCallers = createPluginRpcCallerRegistry();
   let loadHold: PluginLoadHold | null = null;
 
@@ -1628,6 +1629,7 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
       },
       getAppUrl: deps.getAppUrl ?? (() => null),
       getLoopbackBaseUrl: () => boundLoopbackBaseUrl,
+      getLoopbackApiToken: () => boundLoopbackApiToken,
       rpcCaller: rpcCallers.issue(row.id),
       invalidateRpc: (tags) => deps.hub.notifyPluginChanged(row.id, tags),
       whileRpcWatched: (method, handler) => {
@@ -2075,9 +2077,13 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
     return { outcome: "found", value };
   }
 
-  function bindSdk(args: { baseUrl: string }): void {
-    boundSdk = createNodeBbSdk({ baseUrl: args.baseUrl });
+  function bindSdk(args: { apiToken?: string; baseUrl: string }): void {
+    boundSdk = createNodeBbSdk({
+      ...(args.apiToken === undefined ? {} : { apiToken: args.apiToken }),
+      baseUrl: args.baseUrl,
+    });
     boundLoopbackBaseUrl = args.baseUrl;
+    boundLoopbackApiToken = args.apiToken;
   }
 
   return {
