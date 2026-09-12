@@ -55,3 +55,60 @@
 - Use [.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md): root cause, change, verification that demonstrates the fix, and `Fixes #N` when applicable.
 - End every agent-created issue and PR body with `> AGENT GENERATED`.
 - Ground debugging in observed state: logs, database queries, server APIs, or CLI output. For dev ports, data directories, entity IDs, and the local QA launcher, see [docs/debugging-and-qa.md](docs/debugging-and-qa.md).
+
+## Fork Branching Strategy
+
+This checkout is a long-term personal fork of upstream `get-bb/bb`, carrying local features while tracking upstream.
+
+### Remotes And Branches
+
+- all code changes (or changes to any file tracked in this repo) MUST happen in a worktree
+- `upstream` is `get-bb/bb`. Read-only; never push to it.
+- `origin` is `benwaffle/bb`, the fork on GitHub. Everything is pushed here.
+- `main` mirrors `upstream/main` exactly. Never commit to it; only fast-forward it.
+- `fork/main` is the integration branch: `main` plus every fork feature, rebased on top. This is what gets built and run. Force-pushes to it are expected.
+- Feature work happens on `bi/<name>` branches cut from `fork/main`, then lands on `fork/main` as small, self-contained commits.
+
+### Working On A Feature
+
+These rules are absolute for agents working in this checkout:
+
+- Before editing anything, create and check out `bi/<name>` from `fork/main`. Never edit or commit while `fork/main` or `main` is checked out, even for a one-line change, even when asked to "just commit". If you notice you are on `fork/main` with uncommitted work, stop, create the branch, and continue there.
+- Commit as you go. Every time a coherent step typechecks and its tests pass, commit it on the branch. Never end a turn with uncommitted or untracked files you created; either commit them or say exactly which files are uncommitted and why.
+- Landing on `fork/main` is a separate, explicit step the user asks for: squash the branch into one self-contained commit, fast-forward `fork/main` to it, and delete the branch.
+- Never touch files the task did not change. Unrelated modified files in the tree belong to someone else; do not stage, stash, or revert them.
+
+### Syncing With Upstream
+
+Sync weekly or per upstream release, not on every upstream push.
+
+```sh
+git fetch upstream main:main
+git tag fork/pre-sync-$(date +%Y-%m-%d) fork/main
+git rebase main fork/main
+git push --force-with-lease origin fork/main
+git push origin main
+```
+
+If a rebase goes badly, reset `fork/main` to the pre-sync tag.
+
+### Keeping Rebases Survivable
+
+- `rerere` is enabled repo-locally so resolved conflicts replay automatically on later syncs.
+- Keep each commit on `fork/main` a coherent, single-purpose change. Squash fixups into the commit they fix rather than adding "fix" commits on top.
+- Order commits by churn: removals of upstream code first, additive features last.
+- Prefer additive changes (plugins, config layers, new files) over edits to upstream files.
+- When a fork feature is something upstream would accept, upstream it. Every merged feature is one fewer commit to carry.
+- Avoid merging `main` into `fork/main`; that hides the fork's diff behind merge commits. `git log main..fork/main` should always show exactly what the fork changes.
+
+### Running The Fork
+
+The fork is used through the packaged desktop app at `apps/desktop/release/mac-arm64/bb.app`. That bundle embeds its own copy of the server and host daemon, so source changes do nothing until the app is rebuilt and relaunched. After landing any feature on `fork/main`, or after an upstream sync:
+
+```sh
+pnpm --filter @bb/desktop package
+pkill -f 'bb.app/Contents/MacOS/bb'
+open apps/desktop/release/mac-arm64/bb.app
+```
+
+`package` builds the bb-app runtime through Turbo, compiles the desktop shell, and writes an unsigned `.app` directory. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
