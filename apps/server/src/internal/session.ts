@@ -226,6 +226,7 @@ export function registerInternalSessionRoutes(
         machineEnvironment: await machineEnvironment.snapshot(daemon.hostId),
         idleProviderSessionTimeoutMinutes: getAppSettings(deps.db)
           .idleProviderSessionTimeoutMinutes,
+        apiToken: deps.config.apiToken,
       },
       201,
     );

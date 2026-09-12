@@ -60,6 +60,7 @@ function createSession(args: CreateSessionArgs): HostDaemonSessionOpenResponse {
     idleProviderSessionTimeoutMinutes: 30,
     leaseTimeoutMs: args.leaseTimeoutMs,
     retiredEnvironmentIds: [],
+    apiToken: null,
     connectShares: { generation: 0, ports: [] },
     pluginHostGenerations: [],
     sessionId: args.sessionId,
