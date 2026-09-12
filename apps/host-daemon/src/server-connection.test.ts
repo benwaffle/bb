@@ -56,6 +56,7 @@ function createSession(args: CreateSessionArgs): HostDaemonSessionOpenResponse {
     machineEnvironment: { revision: 0, entries: [] },
     leaseTimeoutMs: args.leaseTimeoutMs,
     retiredEnvironmentIds: [],
+    apiToken: null,
     connectShares: { generation: 0, ports: [] },
     pluginHostGenerations: [],
     sessionId: args.sessionId,
