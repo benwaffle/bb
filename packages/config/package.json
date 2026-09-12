@@ -152,6 +152,11 @@
       "source": "./src/desktop-app-update.ts",
       "types": "./src/desktop-app-update.ts",
       "default": "./src/desktop-app-update.ts"
+    },
+    "./api-auth": {
+      "source": "./src/api-auth.ts",
+      "types": "./src/api-auth.ts",
+      "default": "./src/api-auth.ts"
     }
   },
   "scripts": {
