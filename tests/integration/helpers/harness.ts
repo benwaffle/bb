@@ -185,6 +185,7 @@ async function startIntegrationServer(
   const watchInterests = new WatchInterestCoordinator({ db, hub });
   const workspaceReadCaches = new WorkspaceReadCaches({ hub });
   const config: ServerRuntimeConfig = {
+    apiToken: null,
     appVersion: "0.0.0-dev",
     builtinSkillsRootPath,
     customModels: [],
@@ -193,6 +194,7 @@ async function startIntegrationServer(
     hostDaemonPort: 3001,
     inheritedSkillsRootPaths: [],
     marketplaceUrl: "https://marketplace.invalid/marketplace.json",
+    restrictHostHeaderToLoopback: false,
     appUrl: "https://bb.example.test",
     serverPort: 0,
     sharedSkillRoots: { user: [], project: [] },
