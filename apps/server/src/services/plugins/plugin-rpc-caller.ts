@@ -52,6 +52,7 @@ export function createPluginRpcCallerRegistry(): PluginRpcCallerRegistry {
 }
 
 export function createPluginRpcCallerSdk(args: {
+  apiToken?: string;
   baseUrl: string;
   token: string;
 }): BbSdk {
@@ -59,6 +60,7 @@ export function createPluginRpcCallerSdk(args: {
     timeoutMs: DEFAULT_BB_REQUEST_TIMEOUT_MS,
   });
   return createNodeBbSdk({
+    ...(args.apiToken === undefined ? {} : { apiToken: args.apiToken }),
     baseUrl: args.baseUrl,
     fetch: (input, init) => {
       const headers = new Headers(init?.headers);
