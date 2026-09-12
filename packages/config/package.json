@@ -157,6 +157,11 @@
       "source": "./src/desktop-runtime-ready.ts",
       "types": "./src/desktop-runtime-ready.ts",
       "default": "./src/desktop-runtime-ready.ts"
+    },
+    "./api-auth": {
+      "source": "./src/api-auth.ts",
+      "types": "./src/api-auth.ts",
+      "default": "./src/api-auth.ts"
     }
   },
   "scripts": {

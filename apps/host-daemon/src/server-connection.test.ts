@@ -64,6 +64,7 @@ function createSession(args: CreateSessionArgs): HostDaemonSessionOpenResponse {
     leaseTimeoutMs: args.leaseTimeoutMs,
     retiredEnvironmentIds: [],
     endedInteractiveRequests: [],
+    apiToken: null,
     connectShares: { generation: 0, ports: [] },
     connectNext: { generation: 0, config: null },
     pluginHostGenerations: [],
