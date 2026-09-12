@@ -18,7 +18,9 @@ describe("app shell serving", () => {
     await writeFile(join(dir, "index.html"), shellHtml);
     await writeFile(join(dir, "index.html.br"), shellBrotli);
     app = new Hono();
-    registerStaticAppRoutes(app, dir);
+    registerStaticAppRoutes(app, dir, {
+      config: { apiToken: null, restrictHostHeaderToLoopback: false },
+    });
   });
 
   it("serves the brotli sidecar with the shell headers, directly and on the SPA fallback", async () => {
