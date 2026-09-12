@@ -58,3 +58,158 @@
 - End every agent-created issue and PR body with `> AGENT GENERATED`.
 - Ground debugging in observed state: logs, database queries, server APIs, or CLI output. For dev ports, data directories, entity IDs, and the local QA launcher, see [docs/debugging-and-qa.md](docs/debugging-and-qa.md).
 - Never tail the production bb connect gate (`bb-connect`) with `wrangler tail` or the dashboard's live logs. Attaching or detaching a tail resets its Durable Objects and drops every connected tunnel. Instead, query stored Workers Logs or the Cloudflare GraphQL Analytics API (`httpRequestsAdaptiveGroups`, `durableObjectsInvocationsAdaptiveGroups`), and reproduce with `wrangler tail --env staging` against `bb-connect-staging`.
+
+## Fork Branching Strategy
+
+This checkout is a long-term personal fork of upstream `get-bb/bb`, carrying local features while tracking upstream.
+
+### Remotes And Branches
+
+- all code changes (or changes to any file tracked in this repo) MUST happen in a worktree
+- `upstream` is `get-bb/bb`. Read-only; never push to it.
+- `origin` is `benwaffle/bb`, the fork on GitHub. Everything is pushed here.
+- `main` mirrors `upstream/main` exactly. Never commit to it; only fast-forward it.
+- `fork/main` is the integration branch: `main` plus every fork feature, rebased on top. This is what gets built and run. Force-pushes to it are expected.
+- Feature work happens on `bi/<name>` branches cut from `fork/main`, then lands on `fork/main` as small, self-contained commits.
+
+### Working On A Feature
+
+These rules are absolute for agents working in this checkout:
+
+- Before editing anything, create and check out `bi/<name>` from `fork/main`. Never edit or commit while `fork/main` or `main` is checked out, even for a one-line change, even when asked to "just commit". If you notice you are on `fork/main` with uncommitted work, stop, create the branch, and continue there.
+- Commit as you go. Every time a coherent step typechecks and its tests pass, commit it on the branch. Never end a turn with uncommitted or untracked files you created; either commit them or say exactly which files are uncommitted and why.
+- Landing on `fork/main` is a separate, explicit step the user asks for: squash the branch into one self-contained commit, fast-forward `fork/main` to it, and delete the branch.
+- Never touch files the task did not change. Unrelated modified files in the tree belong to someone else; do not stage, stash, or revert them.
+
+### Syncing With Upstream
+
+A bb automation ("Daily upstream sync of fork/main", 11:00 America/New_York) rebases `fork/main` onto upstream each day. It runs as a bb thread on the enrolled machine `ben-bigbox` in `/home/ubuntu/dev/bb` (environment `env_4spc6ygatm`) and pushes to `origin`. It lands the rebase only when verification is green and every conflict was replayed mechanically, and it reports redundancy findings — fork features upstream has since absorbed — to the orchestrator thread. Otherwise it leaves a dated `bi/upstream-sync-YYYYMMDD` branch for a human decision. Afterwards the orchestrator updates the Mac's local `main` and `fork/main` from `origin`.
+
+```sh
+git fetch upstream main:main
+git tag fork/pre-sync-$(date +%Y-%m-%d) fork/main
+git rebase main fork/main
+git push --force-with-lease origin fork/main
+git push origin main
+```
+
+If a rebase goes badly, reset `fork/main` to the pre-sync tag.
+
+### Keeping Rebases Survivable
+
+- `rerere` is enabled repo-locally so resolved conflicts replay automatically on later syncs.
+- Keep each commit on `fork/main` a coherent, single-purpose change. Squash fixups into the commit they fix rather than adding "fix" commits on top.
+- Order commits by churn: removals of upstream code first, additive features last.
+- Prefer additive changes (plugins, config layers, new files) over edits to upstream files.
+- Fork features must not add Drizzle migrations. Drizzle's SQLite migrator compares each journal entry's timestamp only against the last applied row, so a fork migration renumbered behind new upstream migrations by a sync re-runs itself and skips the upstream ones forever. Keep fork state in a JSON file under the server data dir or in an existing upstream table.
+- When a fork feature is something upstream would accept, upstream it. Every merged feature is one fewer commit to carry.
+- Avoid merging `main` into `fork/main`; that hides the fork's diff behind merge commits. `git log main..fork/main` should always show exactly what the fork changes.
+
+### Plugins And Extensions Kept Outside The Fork
+
+Features that a third-party plugin or a browser extension can deliver live in
+[benwaffle/bb-plugins](https://github.com/benwaffle/bb-plugins) rather than
+here, so they cost the fork no commits to rebase.
+
+- `voice-whisper-local` installs with
+  `bb plugin install git:https://github.com/benwaffle/bb-plugins.git@main --plugin voice-whisper-local`.
+- `chrome-github-bb-button` loads unpacked from that repository's
+  `extensions/` directory.
+
+Prefer that repository for a new plugin. A plugin belongs here only when it
+needs a bb change that is not released in `@get-bb/plugin-sdk` on npm, because
+an external plugin builds against the published SDK.
+
+`claude-code-session-import` stays here for that reason. It reuses the Claude
+provider's stream translator and `@bb/shared-ui`, which are the right shape
+beside the provider plugin, and it calls
+`sdk.threads.experimental_providerSessions`, a fork-only route that upstream
+does not have; an external copy would work on no other bb.
+
+bb installs a git-sourced plugin's dependencies with
+`npm install --omit=dev --omit=optional --ignore-scripts` in the clone. It
+deletes the plugin's own `.npmrc`, `.yarnrc`, and `.yarnrc.yml` first, so npm
+uses the global `~/.npmrc` and pulls every dependency from whatever registry
+that file points at. On this Mac that is a CodeArtifact registry whose token
+expires, so run `~/dev/scripts/npm/npm-login` before `bb plugin install` or
+`bb plugin update` of a git plugin.
+
+Two limits shape what an external plugin can do. bb aliases only the bare
+`@get-bb/plugin-sdk` specifier when it loads a server entry. A server entry
+that imports an SDK subpath bundles it from the plugin's own installed copy of
+the SDK, which is the published npm release and must be a runtime dependency,
+not a devDependency; a subpath or export that exists only in the fork fails to
+build on install, so mirror it in the plugin instead. Keep type-only imports on
+the SDK, because `import type` is erased before bundling. A bundled plugin id
+is also reserved, so a builtin has to leave the registry here before the
+external copy of the same plugin can install. Upstream bb frees the id itself: on the next startup it removes a
+builtin it no longer bundles, together with that plugin's settings, secrets,
+and schedules, so the external copy installs fresh and starts without the old
+settings.
+
+### Running The Fork
+
+The fork is used through the packaged desktop app at `apps/desktop/release/mac-arm64/bb.app`. That bundle embeds its own copy of the server and host daemon, so source changes do nothing until the app is rebuilt and relaunched. After landing any feature on `fork/main`, or after an upstream sync, rebuild it on `ben-bigbox` and install it on the Mac.
+
+The Mac never runs `pnpm`, `turbo`, tests, or `electron-builder` for bb. Every install, build, typecheck, test, and package step runs on `ben-bigbox`, an enrolled Linux bb machine reachable over the tailnet.
+
+#### Building On ben-bigbox
+
+`ben-bigbox` cross-builds the app for mac-arm64:
+
+```sh
+/home/ubuntu/bbx-cross-build.sh <fork/main sha>
+```
+
+The script checks out the sha, installs dependencies, builds the bb-app runtime and desktop shell through Turbo, and runs `electron-builder --mac --arm64 --dir` unsigned with `npmRebuild: false`. Native modules are copied, not compiled: `better-sqlite3`, `node-pty`, and `fs-native-extensions` ship darwin-arm64 prebuilds, and `@parcel/watcher-darwin-arm64` is fetched with `npm pack` and linked into `node_modules/.pnpm`. The Electron load and smoke test in `scripts/prepare-native-modules.cjs` cannot run on Linux, so an afterPack hook (`/home/ubuntu/bbx-cross-afterpack.cjs`) runs that script in standalone mode. The script writes the app tarball and `entitlements.mac.plist`, each with a sha256, to `/tmp/bbx-artifact`.
+
+#### Installing On The Mac
+
+Serve the artifact from the box on its tailnet address:
+
+```sh
+cd /tmp/bbx-artifact && timeout 1200 python3 -m http.server --bind 100.105.97.28 8765
+```
+
+On the Mac, from `apps/desktop/release`, fetch both files, check them against the box's sha256 values, and ad-hoc sign the bundle. An unsigned bundle can stall launches system-wide, so signing is required.
+
+```sh
+mkdir -p staging && cd staging
+curl -fO http://100.105.97.28:8765/<tarball>
+curl -fO http://100.105.97.28:8765/entitlements.mac.plist
+shasum -a 256 <tarball> entitlements.mac.plist
+tar -xf <tarball>
+codesign --force --deep --options runtime --entitlements entitlements.mac.plist --sign - bb.app
+codesign --verify --deep --strict bb.app
+```
+
+Relaunch only when bb is quiet, because quitting the app stops its server, and the server runs work besides threads: a provider CLI update started from Settings -> Updates on any machine, plugin install and update jobs, automation runs including script-mode runs, background commands and background agents in idle threads, environment provisioning and teardown, machine lifecycle changes, a server move, and an in-app update. `scripts/bb-quiet.sh` checks all of them across every project, including Personal. It takes the thread ids allowed to stay active, prints one `busy:` line per blocker, and exits 0 only when nothing is running. It exits 1 when something is busy and 2 when a check cannot be read, which also counts as busy. Provider CLI updates have no API: the server tracks them only in memory, so the script runs `ps` on each connected machine through a short-lived `bb terminal` and looks for the installer processes.
+
+Poll until two consecutive readings 30 seconds apart are quiet. Pass the relaunching thread's id, plus the parent thread when the relaunch is delegated:
+
+```sh
+quiet="$(git rev-parse --show-toplevel)/scripts/bb-quiet.sh"
+until "$quiet" "$BB_THREAD_ID" && sleep 30 && "$quiet" "$BB_THREAD_ID"; do
+  sleep 30
+done
+```
+
+Keep the previous bundle as `bb.app.prev`, swap the signed bundle in, and relaunch. Killing the app kills its host daemon and every agent shell under it, so schedule the reopen from a detached process before the kill. `pkill` alone leaves the main Electron process running; kill its pid explicitly (the `ps -axo pid,command | rg 'bb.app/Contents/MacOS/bb'` row with no arguments).
+
+```sh
+rm -rf mac-arm64/bb.app.prev
+mv mac-arm64/bb.app mac-arm64/bb.app.prev
+mv staging/bb.app mac-arm64/bb.app
+(nohup sh -c 'sleep 8; pkill -9 -f "bb.app/Contents/MacOS/bb"; sleep 2; open /Users/beniofel/dev/bb/apps/desktop/release/mac-arm64/bb.app' >/dev/null 2>&1 &)
+kill <main-pid>
+```
+
+The first launch on the Mac is the smoke test the box skips: confirm the server starts and a terminal works. If it fails, swap `bb.app.prev` back.
+
+After a successful swap, move the build artifacts out of `~/Downloads` to the Trash: the tarball, its `.sha256`, and the `entitlements.mac.plist` copy that were used, plus every older `bb-mac-arm64-*` artifact and numbered `entitlements.mac N.plist` duplicate. Keep none of them; `bb.app.prev` is the rollback, not the tarball.
+
+```sh
+cd ~/Downloads && trash bb-mac-arm64-* entitlements.mac*.plist
+```
+
+The packaged fork app does not self-update: the desktop updater pulls upstream `get-bb/bb` releases, so it stays off unless the app is launched with `BB_DESKTOP_AUTO_UPDATE=1`. Update the fork by rebuilding it. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
