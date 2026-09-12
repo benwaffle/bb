@@ -56,3 +56,93 @@
 - End every agent-created issue and PR body with `> AGENT GENERATED`.
 - Ground debugging in observed state: logs, database queries, server APIs, or CLI output. For dev ports, data directories, entity IDs, and the local QA launcher, see [docs/debugging-and-qa.md](docs/debugging-and-qa.md).
 - Never tail the production bb connect gate (`bb-connect`) with `wrangler tail` or the dashboard's live logs. Attaching or detaching a tail resets its Durable Objects and drops every connected tunnel. Instead, query stored Workers Logs or the Cloudflare GraphQL Analytics API (`httpRequestsAdaptiveGroups`, `durableObjectsInvocationsAdaptiveGroups`), and reproduce with `wrangler tail --env staging` against `bb-connect-staging`.
+
+## Fork Branching Strategy
+
+This checkout is a long-term personal fork of upstream `get-bb/bb`, carrying local features while tracking upstream.
+
+### Remotes And Branches
+
+- all code changes (or changes to any file tracked in this repo) MUST happen in a worktree
+- `upstream` is `get-bb/bb`. Read-only; never push to it.
+- `origin` is `benwaffle/bb`, the fork on GitHub. Everything is pushed here.
+- `main` mirrors `upstream/main` exactly. Never commit to it; only fast-forward it.
+- `fork/main` is the integration branch: `main` plus every fork feature, rebased on top. This is what gets built and run. Force-pushes to it are expected.
+- Feature work happens on `bi/<name>` branches cut from `fork/main`, then lands on `fork/main` as small, self-contained commits.
+
+### Working On A Feature
+
+These rules are absolute for agents working in this checkout:
+
+- Before editing anything, create and check out `bi/<name>` from `fork/main`. Never edit or commit while `fork/main` or `main` is checked out, even for a one-line change, even when asked to "just commit". If you notice you are on `fork/main` with uncommitted work, stop, create the branch, and continue there.
+- Commit as you go. Every time a coherent step typechecks and its tests pass, commit it on the branch. Never end a turn with uncommitted or untracked files you created; either commit them or say exactly which files are uncommitted and why.
+- Landing on `fork/main` is a separate, explicit step the user asks for: squash the branch into one self-contained commit, fast-forward `fork/main` to it, and delete the branch.
+- Never touch files the task did not change. Unrelated modified files in the tree belong to someone else; do not stage, stash, or revert them.
+
+### Syncing With Upstream
+
+A bb automation ("Daily upstream sync of fork/main", 6:00 America/New_York) rebases `fork/main` onto upstream each day. It lands the rebase only when verification is green and every conflict was replayed mechanically, and it reports redundancy findings — fork features upstream has since absorbed — to the orchestrator thread. Otherwise it leaves a dated `bi/upstream-sync-YYYYMMDD` branch for a human decision.
+
+```sh
+git fetch upstream main:main
+git tag fork/pre-sync-$(date +%Y-%m-%d) fork/main
+git rebase main fork/main
+git push --force-with-lease origin fork/main
+git push origin main
+```
+
+If a rebase goes badly, reset `fork/main` to the pre-sync tag.
+
+### Keeping Rebases Survivable
+
+- `rerere` is enabled repo-locally so resolved conflicts replay automatically on later syncs.
+- Keep each commit on `fork/main` a coherent, single-purpose change. Squash fixups into the commit they fix rather than adding "fix" commits on top.
+- Order commits by churn: removals of upstream code first, additive features last.
+- Prefer additive changes (plugins, config layers, new files) over edits to upstream files.
+- When a fork feature is something upstream would accept, upstream it. Every merged feature is one fewer commit to carry.
+- Avoid merging `main` into `fork/main`; that hides the fork's diff behind merge commits. `git log main..fork/main` should always show exactly what the fork changes.
+
+### Plugins And Extensions Kept Outside The Fork
+
+Features that a third-party plugin or a browser extension can deliver live in
+[benwaffle/bb-plugins](https://github.com/benwaffle/bb-plugins) rather than
+here, so they cost the fork no commits to rebase.
+
+- `voice-whisper-local` installs with
+  `bb plugin install git:https://github.com/benwaffle/bb-plugins.git@main --plugin voice-whisper-local`.
+- `chrome-github-bb-button` loads unpacked from that repository's
+  `extensions/` directory.
+
+Prefer that repository for a new plugin. A plugin belongs here only when it
+needs a bb change that is not released in `@get-bb/plugin-sdk` on npm, because
+an external plugin builds against the published SDK.
+
+`claude-code-session-import` stays here for that reason. It reuses the Claude
+provider's stream translator and `@bb/shared-ui`, which are the right shape
+beside the provider plugin, and it calls
+`sdk.threads.experimental_providerSessions`, a fork-only route that upstream
+does not have; an external copy would work on no other bb.
+
+Two limits shape what an external plugin can do. bb aliases only the bare
+`@get-bb/plugin-sdk` specifier when it loads a server entry, and it never
+installs a git-sourced plugin's dependencies, so a server entry that imports an
+SDK subpath fails to build on install; mirror the subpath's exports in the
+plugin instead, and keep type-only imports on the SDK because `import type` is
+erased before bundling. A bundled plugin id is also reserved, so a builtin has
+to leave the registry here before the external copy of the same plugin can
+install. Upstream bb frees the id itself: on the next startup it removes a
+builtin it no longer bundles, together with that plugin's settings, secrets,
+and schedules, so the external copy installs fresh and starts without the old
+settings.
+
+### Running The Fork
+
+The fork is used through the packaged desktop app at `apps/desktop/release/mac-arm64/bb.app`. That bundle embeds its own copy of the server and host daemon, so source changes do nothing until the app is rebuilt and relaunched. After landing any feature on `fork/main`, or after an upstream sync:
+
+```sh
+pnpm --filter @bb/desktop package
+pkill -f 'bb.app/Contents/MacOS/bb'
+open apps/desktop/release/mac-arm64/bb.app
+```
+
+`package` builds the bb-app runtime through Turbo, compiles the desktop shell, and writes an unsigned `.app` directory. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
