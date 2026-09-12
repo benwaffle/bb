@@ -220,7 +220,7 @@ const VIEW_FIXTURE_ANCHORS: Record<string, readonly FixtureAnchor[]> = {
     {
       file: "apps/app/src/components/settings/settings-sections.ts",
       mustContain: [
-        '{ icon: "Palette", id: "appearance", label: "Appearance" }',
+        'icon: "Palette",\n    id: "appearance",\n    label: "Appearance",',
       ],
       because:
         "The settings navigation keeps Appearance as a first-class BB settings destination.",
