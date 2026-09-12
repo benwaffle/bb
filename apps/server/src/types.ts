@@ -25,6 +25,9 @@ import type { ProviderLiveCommandsCache } from "./services/providers/provider-li
 export type ServerLogger = Pick<Logger, "debug" | "error" | "info" | "warn">;
 
 export interface ServerRuntimeConfig {
+  // Shared secret every /api/v1 request must present. `null` disables the
+  // check and exists only for in-process test harnesses.
+  apiToken: string | null;
   appVersion: string;
   builtinSkillsRootPath: string;
   customModels: CustomProviderModel[];
@@ -36,6 +39,9 @@ export interface ServerRuntimeConfig {
   performanceDiagnosticsAvailable: boolean;
   marketplaceUrl: string;
   connectGateKeysUrl: string;
+  // Reject requests whose Host header names anything other than a loopback
+  // address; set when the listener itself is bound to loopback.
+  restrictHostHeaderToLoopback: boolean;
   serverPort: number;
   sharedSkillRoots: ProviderNativeSkillRoots;
   appUrl?: string;
