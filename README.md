@@ -52,7 +52,12 @@ yellow icon, and auto-update feed.
 npx bb-app@latest
 ```
 
-Then open `http://localhost:38886`.
+Then open the `app` link that `bb-app` prints once it is ready. The link
+points at `http://localhost:38886/auth/session?token=…` and sets a browser
+cookie; every `/api/v1` request and realtime socket must carry that token, so
+a bare `http://localhost:38886` shows a "session required" page until you have
+opened the link once. The token lives in `~/.bb/api-token` (mode 0600) and the
+`bb` CLI reads it from there automatically, or from `BB_API_TOKEN` when set.
 
 To run the newest automated build instead:
 
