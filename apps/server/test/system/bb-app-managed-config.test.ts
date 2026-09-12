@@ -57,6 +57,7 @@ function createCountingLogger(): CountingLogger {
 
 function createRuntimeConfig(): ServerRuntimeConfig {
   return {
+    apiToken: null,
     appUrl: "https://ambient-app.example.test",
     appVersion: "0.0.0-test",
     builtinSkillsRootPath: "/tmp/bb-test/builtin-skills",
@@ -67,6 +68,7 @@ function createRuntimeConfig(): ServerRuntimeConfig {
     hostDaemonPort: 38887,
     inheritedSkillsRootPaths: [],
     isDevelopment: false,
+    restrictHostHeaderToLoopback: false,
     serverPort: 38886,
     sharedSkillRoots: { user: [], project: [] },
   };
