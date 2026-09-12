@@ -60,6 +60,7 @@ function createCountingLogger(): CountingLogger {
 
 function createRuntimeConfig(): ServerRuntimeConfig {
   return {
+    apiToken: null,
     appUrl: "https://ambient-app.example.test",
     appVersion: "0.0.0-test",
     builtinSkillsRootPath: "/tmp/bb-test/builtin-skills",
@@ -73,6 +74,7 @@ function createRuntimeConfig(): ServerRuntimeConfig {
     inferenceModel: "openai/gpt-4o-mini",
     isDevelopment: false,
     openAiApiKey: "ambient-openai-key",
+    restrictHostHeaderToLoopback: false,
     serverPort: 38886,
     sharedSkillRoots: { user: [], project: [] },
     transcriptionModel: "openai/gpt-4o-transcribe",

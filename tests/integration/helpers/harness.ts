@@ -184,6 +184,7 @@ async function startIntegrationServer(
   const watchInterests = new WatchInterestCoordinator({ db, hub });
   const workspaceReadCaches = new WorkspaceReadCaches({ hub });
   const config: ServerRuntimeConfig = {
+    apiToken: null,
     appVersion: "0.0.0-dev",
     builtinSkillsRootPath,
     customModels: [],
@@ -195,6 +196,7 @@ async function startIntegrationServer(
     inheritedSkillsRootPaths: [],
     marketplaceUrl: "https://marketplace.invalid/marketplace.json",
     openAiApiKey: process.env.OPENAI_API_KEY ?? "test-openai-key",
+    restrictHostHeaderToLoopback: false,
     appUrl: "https://bb.example.test",
     serverPort: 0,
     sharedSkillRoots: { user: [], project: [] },

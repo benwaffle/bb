@@ -18,8 +18,15 @@ function decodeWsMessageData(data: RawData): string {
   return Buffer.from(new Uint8Array(data)).toString("utf8");
 }
 
-export function wrapNodeWsWebsocket(url: string): BbRealtimeSocket {
-  const socket = new NodeWsWebSocket(url);
+interface NodeWebsocketFactoryOptions {
+  headers?: Record<string, string>;
+}
+
+export function wrapNodeWsWebsocket(
+  url: string,
+  options: NodeWebsocketFactoryOptions = {},
+): BbRealtimeSocket {
+  const socket = new NodeWsWebSocket(url, { headers: options.headers ?? {} });
   const adapter = createRealtimeSocketAdapter(socket);
   socket.on("open", () => adapter.onopen?.());
   socket.on("message", (data) =>
@@ -30,11 +37,15 @@ export function wrapNodeWsWebsocket(url: string): BbRealtimeSocket {
   return adapter;
 }
 
-export function createNodeWebsocketFactory(): BbRealtimeSocketFactory {
+// The global WebSocket cannot attach request headers, so any factory that
+// needs them always goes through the `ws` implementation.
+export function createNodeWebsocketFactory(
+  options: NodeWebsocketFactoryOptions = {},
+): BbRealtimeSocketFactory {
   return (url) => {
-    if (typeof WebSocket !== "undefined") {
+    if (options.headers === undefined && typeof WebSocket !== "undefined") {
       return wrapStandardWebsocket(new WebSocket(url));
     }
-    return wrapNodeWsWebsocket(url);
+    return wrapNodeWsWebsocket(url, options);
   };
 }
