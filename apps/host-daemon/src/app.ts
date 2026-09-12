@@ -56,6 +56,7 @@ import { runtimeErrorLogFields, summarizeError } from "./error-utils.js";
 import { ensureThreadStorageRoot } from "./thread-storage-root.js";
 import {
   createRuntimeShellEnvCache,
+  type RuntimeShellEnv,
   type RuntimeShellEnvRefreshArgs,
 } from "./runtime-shell-env-cache.js";
 import type {
@@ -772,8 +773,14 @@ export async function createHostDaemonApp(
     threadStorageRootPath,
   });
   const nowMs = options.nowMs ?? Date.now;
+  let sessionApiToken: string | null = null;
+  const withSessionApiToken = (shellEnv: RuntimeShellEnv): RuntimeShellEnv =>
+    sessionApiToken === null
+      ? shellEnv
+      : { ...shellEnv, BB_API_TOKEN: sessionApiToken };
   const runtimeShellEnvCache = createRuntimeShellEnvCache({
-    applyShellEnv: (shellEnv) => runtimeManager.replaceBaseShellEnv(shellEnv),
+    applyShellEnv: (shellEnv) =>
+      runtimeManager.replaceBaseShellEnv(withSessionApiToken(shellEnv)),
     now: nowMs,
     onRefreshError: (error) => {
       options.logger.warn(
@@ -790,6 +797,16 @@ export async function createHostDaemonApp(
       ? {}
       : { resolvedAtMs: options.runtimeShellEnvResolvedAtMs }),
   });
+  const applySessionApiToken = async (apiToken: string | null) => {
+    if (apiToken === null || apiToken === sessionApiToken) {
+      return;
+    }
+    sessionApiToken = apiToken;
+    runtimeShellEnvCache.invalidate();
+    await runtimeManager.replaceBaseShellEnv(
+      withSessionApiToken(runtimeManager.getShellEnv()),
+    );
+  };
   const withMaintenanceRuntime = async <TResult>(
     shellEnv: RuntimeShellEnvRefreshArgs,
     request: (runtime: AgentRuntime) => Promise<TResult>,
@@ -1019,6 +1036,7 @@ export async function createHostDaemonApp(
         );
       }
       connectTunnel.replaceAuthoritativeShareSet(session.connectShares);
+      await applySessionApiToken(session.apiToken);
       await pluginHostManager.reconcileGenerations(
         session.pluginHostGenerations,
       );

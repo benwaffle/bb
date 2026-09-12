@@ -69,6 +69,7 @@ function createSession(args: CreateSessionArgs): HostDaemonSessionOpenResponse {
     reconnectGraceMs: args.reconnectGraceMs,
     retiredEnvironmentIds: [],
     endedInteractiveRequests: [],
+    apiToken: null,
     connectShares: { generation: 0, ports: [] },
     pluginHostGenerations: [],
     sessionId: args.sessionId,
