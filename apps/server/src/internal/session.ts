@@ -254,6 +254,7 @@ export function registerInternalSessionRoutes(
         idleProviderSessionTimeoutMinutes: getAppSettings(deps.db)
           .idleProviderSessionTimeoutMinutes,
         agentCpuPriority: getExperiments(deps.db).agentCpuPriority,
+        apiToken: deps.config.apiToken,
       },
       201,
     );
