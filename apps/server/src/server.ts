@@ -41,6 +41,19 @@ import { compress } from "hono/compress";
 import { cors } from "hono/cors";
 import type { ServerAppDeps } from "./types.js";
 import { ApiError, createServerErrorHandler } from "./errors.js";
+import {
+  apiAuthProblem,
+  buildSessionCookie,
+  fileReadCookieAuthenticated,
+  fileReadCookiesForResponse,
+  hostHeaderProblem,
+  isSafeRedirectPath,
+  sessionTokenFromQuery,
+} from "./api-auth.js";
+import {
+  API_SESSION_NEXT_QUERY_PARAM,
+  API_SESSION_PATH,
+} from "@bb/config/api-auth";
 import { registerEnvironmentRoutes } from "./routes/environments.js";
 import { registerFileRoutes } from "./routes/files.js";
 import { registerHostRoutes } from "./routes/hosts.js";
@@ -185,6 +198,24 @@ interface CloseWebSocketServerArgs {
   server: NodeWebSocketServer;
 }
 
+function unauthenticatedShellResponse(): Response {
+  const body = `<!doctype html>
+<meta charset="utf-8">
+<title>bb: session required</title>
+<style>body{font:15px/1.5 system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#222}code{background:#eee;padding:.1em .3em;border-radius:3px}</style>
+<h1>This bb server needs a session</h1>
+<p>Open the session link that <code>bb-app</code> printed when it started, or restart the bb desktop app. The link looks like <code>${API_SESSION_PATH}?token=…</code> and sets a cookie for this browser.</p>
+<p>The token is stored in <code>api-token</code> inside the bb data directory.</p>
+`;
+  return new Response(body, {
+    status: 401,
+    headers: {
+      "cache-control": "no-store",
+      "content-type": "text/html; charset=utf-8",
+    },
+  });
+}
+
 function unauthorizedResponse(): Response {
   return new Response(
     JSON.stringify({ code: "unauthorized", message: "Unauthorized" }),
@@ -303,6 +334,7 @@ export function registerStaticAppRoutes(
   app: Hono,
   staticDir: string,
   renderShellHead: () => string,
+  deps: Parameters<typeof apiAuthProblem>[1],
 ): void {
   const root = resolve(staticDir);
   const shellPath = join(root, "index.html");
@@ -367,6 +399,9 @@ export function registerStaticAppRoutes(
       return context.notFound();
     }
     if (filePath === shellPath) {
+      if (apiAuthProblem(context, deps) !== null) {
+        return unauthenticatedShellResponse();
+      }
       return serveAppShell(ifNoneMatchHeader);
     }
     try {
@@ -383,6 +418,9 @@ export function registerStaticAppRoutes(
     } catch {}
     if (urlPath.startsWith("/assets/")) {
       return context.notFound();
+    }
+    if (apiAuthProblem(context, deps) !== null) {
+      return unauthenticatedShellResponse();
     }
     return serveAppShell(ifNoneMatchHeader);
   });
@@ -503,6 +541,10 @@ export function createApp(
   });
   app.use("*", async (context, next) => {
     captureTrustedRemoteAddress(context);
+    const problem = hostHeaderProblem(context, deps);
+    if (problem !== null) {
+      throw new ApiError(problem.status, problem.code, problem.error, false);
+    }
     return runWithTelemetryRequest(
       {
         appSurface: resolveRequestAppSurface(context),
@@ -510,6 +552,33 @@ export function createApp(
       },
       next,
     );
+  });
+  app.get(API_SESSION_PATH, (context) => {
+    if (!sessionTokenFromQuery(context, deps)) {
+      throw new ApiError(
+        403,
+        "invalid_session_token",
+        "The session token is missing or does not match this bb server",
+        false,
+      );
+    }
+    const requestedNext = context.req.query(API_SESSION_NEXT_QUERY_PARAM);
+    const nextPath =
+      requestedNext !== undefined && isSafeRedirectPath(requestedNext)
+        ? requestedNext
+        : "/";
+    const secure = new URL(context.req.url).protocol === "https:";
+    return new Response(null, {
+      status: 303,
+      headers: {
+        "cache-control": "no-store",
+        location: nextPath,
+        "set-cookie": buildSessionCookie({
+          secure,
+          token: deps.config.apiToken ?? "",
+        }),
+      },
+    });
   });
   app.use("*", async (context, next) => {
     const path = context.req.path;
@@ -889,11 +958,29 @@ export function createApp(
     if (PLUGIN_WIRE_HTTP_PATH.test(context.req.path)) {
       return next();
     }
+    const authProblem = apiAuthProblem(context, deps);
+    if (authProblem !== null && !fileReadCookieAuthenticated(context, deps)) {
+      throw new ApiError(
+        authProblem.status,
+        authProblem.code,
+        authProblem.error,
+        false,
+      );
+    }
     const problem = browserRequestProblem(context, deps);
     if (problem !== null) {
       throw new ApiError(problem.status, problem.code, problem.error);
     }
-    return next();
+    await next();
+    if (authProblem === null) {
+      for (const cookie of fileReadCookiesForResponse(
+        context,
+        context.res,
+        deps,
+      )) {
+        context.res.headers.append("set-cookie", cookie);
+      }
+    }
   });
   const pluginCatalogService = createPluginCatalogService({
     db: deps.db,
@@ -967,8 +1054,18 @@ export function createApp(
   app.route("/internal", internalApi);
 
   const assertBrowserWebSocketAllowed = (
-    context: Parameters<typeof browserRequestProblem>[0],
+    context: Parameters<typeof browserRequestProblem>[0] &
+      Parameters<typeof apiAuthProblem>[0],
   ): void => {
+    const authProblem = apiAuthProblem(context, deps);
+    if (authProblem !== null) {
+      throw new ApiError(
+        authProblem.status,
+        authProblem.code,
+        authProblem.error,
+        false,
+      );
+    }
     const problem = browserRequestProblem(context, deps);
     if (problem !== null) {
       throw new ApiError(problem.status, problem.code, problem.error, false);
@@ -1057,10 +1154,14 @@ export function createApp(
   );
 
   if (options?.staticDir) {
-    registerStaticAppRoutes(app, options.staticDir, () =>
-      renderJsonScriptElement(APP_SHELL_PLUGIN_LIST_ELEMENT_ID, {
-        plugins: pluginService.list(),
-      } satisfies PluginListResponse),
+    registerStaticAppRoutes(
+      app,
+      options.staticDir,
+      () =>
+        renderJsonScriptElement(APP_SHELL_PLUGIN_LIST_ELEMENT_ID, {
+          plugins: pluginService.list(),
+        } satisfies PluginListResponse),
+      deps,
     );
   } else {
     app.get("/", (context) => context.text("bb server"));

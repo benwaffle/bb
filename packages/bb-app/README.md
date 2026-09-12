@@ -58,7 +58,10 @@ checkout, but it is slower and less reliable for file watching.
 npx bb-app@latest
 ```
 
-Then open: `http://localhost:38886`
+Then open the `app` link printed in the ready banner. It carries the local API
+token (`~/.bb/api-token`) as a one-time query parameter and sets the session
+cookie; a bare `http://localhost:38886` is refused until that link has been
+opened once in the browser.
 
 To opt into the automated nightly channel:
 

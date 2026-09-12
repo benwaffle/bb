@@ -23,7 +23,9 @@ describe("app shell serving", () => {
     await writeFile(join(dir, "index.html"), shellHtml);
     shellHead = '<meta name="bb-test" content="one">';
     app = new Hono();
-    registerStaticAppRoutes(app, dir, () => shellHead);
+    registerStaticAppRoutes(app, dir, () => shellHead, {
+      config: { apiToken: null, restrictHostHeaderToLoopback: false },
+    });
   });
 
   it("serves the shell with the rendered head, directly and on the SPA fallback", async () => {

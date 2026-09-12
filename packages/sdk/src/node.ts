@@ -1,3 +1,7 @@
+import {
+  bearerAuthorizationHeader,
+  createBearerFetch,
+} from "@bb/config/api-auth";
 import { loadCliConfig, type CliConfig } from "@bb/config/cli";
 import {
   createHostDaemonLocalClient,
@@ -19,6 +23,9 @@ import type {
 } from "./transport.js";
 
 export interface CreateNodeTransportArgs {
+  // Local API token sent as a bearer header on every request and realtime
+  // socket. Omit only for servers that run without one (test harnesses).
+  apiToken?: string;
   baseUrl?: string;
   cliConfig?: CliConfig;
   fetch?: FetchImplementation;
@@ -48,16 +55,30 @@ function resolveHostDaemonUrl(cliConfig?: CliConfig): string {
 export function createNodeTransport(
   args: CreateNodeTransportArgs = {},
 ): BbSdkTransport {
+  const baseFetch =
+    args.fetch ??
+    createRequestTimeoutFetch({
+      timeoutMs: args.timeoutMs ?? DEFAULT_BB_REQUEST_TIMEOUT_MS,
+    });
   return createHttpTransport({
     baseUrl: args.baseUrl ?? resolveCliConfig(args.cliConfig).BB_SERVER_URL,
     fetch:
-      args.fetch ??
-      createRequestTimeoutFetch({
-        timeoutMs: args.timeoutMs ?? DEFAULT_BB_REQUEST_TIMEOUT_MS,
-      }),
+      args.apiToken === undefined
+        ? baseFetch
+        : createBearerFetch(args.apiToken, baseFetch),
     realtimeUrl: args.realtimeUrl,
     runtime: "node",
-    websocket: args.websocket ?? createNodeWebsocketFactory(),
+    websocket:
+      args.websocket ??
+      createNodeWebsocketFactory(
+        args.apiToken === undefined
+          ? {}
+          : {
+              headers: {
+                authorization: bearerAuthorizationHeader(args.apiToken),
+              },
+            },
+      ),
   });
 }
 
