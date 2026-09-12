@@ -1084,6 +1084,54 @@ describe("plugin bb.sdk against a running server", () => {
     }
   });
 
+  it("authenticates plugin-to-plugin rpc calls when the server requires an API token", async () => {
+    const apiToken = "0123456789abcdef0123456789abcdef";
+    const server = await startTestServer({ apiToken });
+    const workDir = await mkdtemp(join(tmpdir(), "bb-plugin-rpc-token-"));
+    try {
+      server.pluginService.bindSdk({ apiToken, baseUrl: server.baseUrl });
+      for (const name of ["callee", "caller"]) {
+        const rootDir = await writePlugin(workDir, {
+          name: `bb-plugin-${name}`,
+          serverSource: `export default function plugin() {}`,
+        });
+        expect((await server.pluginService.installPath(rootDir)).status).toBe(
+          "running",
+        );
+      }
+      const pingSchema = z.object({ pong: z.literal(true) });
+      requireApi(server.pluginService, "callee").rpc.register(
+        defineRpcContract({
+          ping: { input: z.null(), output: pingSchema },
+        }),
+        { ping: () => ({ pong: true as const }) },
+      );
+
+      const unauthenticated = await fetch(
+        `${server.baseUrl}/api/v1/plugins/callee/rpc/ping`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: "null",
+        },
+      );
+      expect(unauthenticated.status).toBe(401);
+
+      await expect(
+        requireApi(server.pluginService, "caller").sdk.plugins.callRpc({
+          pluginId: "callee",
+          method: "ping",
+          input: null,
+          outputSchema: pingSchema,
+        }),
+      ).resolves.toEqual({ pong: true });
+    } finally {
+      await server.pluginService.stop();
+      await rm(workDir, { recursive: true, force: true });
+      await server.close();
+    }
+  });
+
   it("keeps hidden plugin threads attributed and directly operable by id", async () => {
     const server = await startTestServer();
     const workDir = await mkdtemp(join(tmpdir(), "bb-plugin-sdk-live-"));
