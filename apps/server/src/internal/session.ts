@@ -205,6 +205,7 @@ export function registerInternalSessionRoutes(
         pluginHostGenerations: plugins.listHostArtifactGenerations(),
         retiredEnvironmentIds,
         machineEnvironment: await machineEnvironment.snapshot(daemon.hostId),
+        apiToken: deps.config.apiToken,
       },
       201,
     );
