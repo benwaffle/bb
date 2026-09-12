@@ -486,6 +486,7 @@ export function createPluginApi(options: {
   getMachineEnrollments: () => MachineEnrollments;
   getAppUrl: () => string | null;
   getLoopbackBaseUrl: () => string | undefined;
+  getLoopbackApiToken: () => string | undefined;
   /**
    * This load's rpc caller token, attached to the plugin's
    * `bb.sdk.plugins.callRpc` requests so handlers see it as the caller.
@@ -556,6 +557,7 @@ export function createPluginApi(options: {
     getSdk,
     getAppUrl,
     getLoopbackBaseUrl,
+    getLoopbackApiToken,
     rpcCaller,
     publishSignal,
     settingsChanged,
@@ -1354,10 +1356,14 @@ export function createPluginApi(options: {
             "use it inside handlers, services, or timers, not at factory load time",
         );
       }
+      const loopbackApiToken = getLoopbackApiToken();
       wrappedSdk ??= wrapSdkForPlugin(
         sdk,
         pluginId,
         createPluginRpcCallerSdk({
+          ...(loopbackApiToken === undefined
+            ? {}
+            : { apiToken: loopbackApiToken }),
           baseUrl: loopbackBaseUrl,
           token: rpcCaller.token,
         }),
