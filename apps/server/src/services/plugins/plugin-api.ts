@@ -496,6 +496,7 @@ export function createPluginApi(options: {
   getAppUrl: () => string | null;
   getLoopbackBaseUrl: () => string | undefined;
   openTunnelIngress: (audience: string) => Promise<TunnelIngressLease>;
+  getLoopbackApiToken: () => string | undefined;
   /**
    * This load's rpc caller token, attached to the plugin's
    * `bb.sdk.plugins.callRpc` requests so handlers see it as the caller.
@@ -575,6 +576,7 @@ export function createPluginApi(options: {
     getAppUrl,
     getLoopbackBaseUrl,
     openTunnelIngress,
+    getLoopbackApiToken,
     rpcCaller,
     publishSignal,
     invalidateRpc: optionsInvalidate,
@@ -1441,10 +1443,14 @@ export function createPluginApi(options: {
             "use it inside handlers, services, or timers, not at factory load time",
         );
       }
+      const loopbackApiToken = getLoopbackApiToken();
       wrappedSdk ??= wrapSdkForPlugin(
         sdk,
         pluginId,
         createPluginRpcCallerSdk({
+          ...(loopbackApiToken === undefined
+            ? {}
+            : { apiToken: loopbackApiToken }),
           baseUrl: loopbackBaseUrl,
           token: rpcCaller.token,
         }),
