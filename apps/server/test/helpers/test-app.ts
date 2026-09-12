@@ -221,6 +221,7 @@ export async function createTestAppHarness(
     },
   };
   const config: ServerRuntimeConfig = {
+    apiToken: null,
     appVersion: "0.0.0-test",
     builtinSkillsRootPath: join(dataDir, "builtin-skills"),
     customModels: [],
@@ -230,6 +231,7 @@ export async function createTestAppHarness(
     marketplaceUrl: "https://marketplace.invalid/marketplace.json",
     inheritedSkillsRootPaths: [],
     isDevelopment: true,
+    restrictHostHeaderToLoopback: false,
     serverPort: 3334,
     sharedSkillRoots: { user: [], project: [] },
     appUrl: "https://bb.example.test",

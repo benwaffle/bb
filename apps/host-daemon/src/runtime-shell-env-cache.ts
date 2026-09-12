@@ -17,6 +17,7 @@ export interface RuntimeShellEnvRefreshArgs {
 }
 
 export interface RuntimeShellEnvCache {
+  invalidate(): void;
   refresh(args: RuntimeShellEnvRefreshArgs): Promise<RuntimeShellEnv>;
 }
 
@@ -39,6 +40,9 @@ export function createRuntimeShellEnvCache(
         };
 
   return {
+    invalidate() {
+      entry = null;
+    },
     async refresh({ allowStale }) {
       if (!resolveShellEnv) {
         return options.readShellEnv();

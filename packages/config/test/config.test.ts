@@ -1,3 +1,4 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
@@ -516,6 +517,36 @@ describe("consumer-specific config", () => {
         }),
       }),
     ).toThrow("BB_SERVER_URL must not be empty");
+  });
+
+  it("resolves the CLI API token from the environment or the data dir", () => {
+    const dataDir = mkdtempSync(path.join(os.tmpdir(), "bb-config-api-token-"));
+    writeFileSync(path.join(dataDir, "api-token"), "file-token\n", {
+      mode: 0o600,
+    });
+    const base = {
+      BB_DATA_DIR: dataDir,
+      BB_HOST_DAEMON_PORT: "3999",
+      BB_SERVER_URL: "http://localhost:9999",
+    };
+
+    expect(
+      loadCliConfig({ env: { ...base, BB_API_TOKEN: "env-token" } })
+        .BB_API_TOKEN,
+    ).toBe("env-token");
+    expect(loadCliConfig({ env: { ...base } }).BB_API_TOKEN).toBe("file-token");
+    expect(
+      loadCliConfig({ env: { ...base, NODE_ENV: "development" } }).BB_API_TOKEN,
+    ).toBe("file-token");
+    expect(
+      loadCliConfig({
+        env: {
+          BB_HOST_DAEMON_PORT: "3999",
+          BB_SERVER_URL: "http://localhost:9999",
+          NODE_ENV: "development",
+        },
+      }).BB_API_TOKEN,
+    ).toBeNull();
   });
 
   it("validates host-daemon connection config without requiring data dir", () => {

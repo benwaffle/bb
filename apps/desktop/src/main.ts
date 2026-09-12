@@ -22,6 +22,13 @@ import {
   type WebContents,
 } from "electron";
 import { autoUpdater } from "electron-updater";
+import { WebSocket as NodeWsWebSocket } from "ws";
+import { bearerAuthorizationHeader } from "@bb/config/api-auth";
+import {
+  createLocalApiFetch,
+  installLocalApiSessionCookie,
+  readLocalApiToken,
+} from "./local-api-session.js";
 import {
   APP_SURFACE_DESKTOP,
   APP_SURFACE_ENV_NAME,
@@ -426,6 +433,11 @@ let serverTargetGeneration = 0;
 let connectAccountServers: ConnectAccountServer[] = [];
 let connectServerSyncSkipReason: ConnectServerSyncSkipReason | null = null;
 let builtinServerUrl: string = DEFAULT_BB_SERVER_URL;
+const localDataDir = resolveDataDirFromEnv({
+  env: process.env,
+  homeDir: homedir(),
+});
+const localApiFetch = createLocalApiFetch({ dataDir: localDataDir });
 let desktopBridgePath: string | null = null;
 let desktopUserDataPath: string | null = null;
 let builtinDataDir: string | null = null;
@@ -975,7 +987,7 @@ function createSystemConfigSync(serverUrl: string): SystemConfigSync {
     target: { kind: "system" },
   };
   let reconnectTimer: NodeJS.Timeout | null = null;
-  let socket: WebSocket | null = null;
+  let socket: NodeWsWebSocket | null = null;
   let stopped = false;
 
   function clearReconnectTimer(): void {
@@ -996,14 +1008,12 @@ function createSystemConfigSync(serverUrl: string): SystemConfigSync {
     }, 1_000);
   }
 
-  function handleMessage(event: MessageEvent): void {
-    if (typeof event.data !== "string") {
+  function handleMessage(data: unknown): void {
+    if (typeof data !== "string") {
       return;
     }
     try {
-      const parsed = serverMessageLenientSchema.safeParse(
-        JSON.parse(event.data),
-      );
+      const parsed = serverMessageLenientSchema.safeParse(JSON.parse(data));
       if (!parsed.success) {
         return;
       }
@@ -1011,7 +1021,7 @@ function createSystemConfigSync(serverUrl: string): SystemConfigSync {
         parsed.data.entity === "system" &&
         parsed.data.changes.includes("config-changed")
       ) {
-        void refreshSystemConfig({ fetchImpl: fetch, serverUrl });
+        void refreshSystemConfig({ fetchImpl: localApiFetch, serverUrl });
       }
     } catch {
       return;
@@ -1022,15 +1032,38 @@ function createSystemConfigSync(serverUrl: string): SystemConfigSync {
     if (stopped) {
       return;
     }
-    socket = new WebSocket(realtimeUrl);
+    void readLocalApiToken({ dataDir: localDataDir })
+      .then((token) => {
+        if (stopped) {
+          return;
+        }
+        socket = new NodeWsWebSocket(realtimeUrl, {
+          headers:
+            token === null
+              ? {}
+              : { authorization: bearerAuthorizationHeader(token) },
+        });
+        attach(socket);
+      })
+      .catch((error: unknown) => {
+        desktopLogger.warn(
+          `[desktop] could not read the local API token: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        scheduleReconnect();
+      });
+  }
+
+  function attach(socket: NodeWsWebSocket): void {
     socket.addEventListener("open", () => {
       socket?.send(JSON.stringify(subscribeMessage));
-      void refreshSystemConfig({ fetchImpl: fetch, serverUrl });
+      void refreshSystemConfig({ fetchImpl: localApiFetch, serverUrl });
     });
-    socket.addEventListener("message", handleMessage);
+    socket.addEventListener("message", (event) => {
+      handleMessage(event.data);
+    });
     socket.addEventListener("close", scheduleReconnect);
     socket.addEventListener("error", () => {
-      socket?.close();
+      socket.close();
     });
   }
 
@@ -1103,7 +1136,7 @@ function stopSystemConfigSync(): void {
 function startSystemConfigSync(serverUrl: string): void {
   systemConfigSync?.stop();
   systemConfigSync = createSystemConfigSync(serverUrl);
-  void refreshSystemConfig({ fetchImpl: fetch, serverUrl });
+  void refreshSystemConfig({ fetchImpl: localApiFetch, serverUrl });
 }
 
 function startRemoteSystemConfigSync(serverUrl: string): void {
@@ -1165,6 +1198,7 @@ async function ensureBuiltinRuntimeAttached(): Promise<boolean> {
   }
 
   const existingProbe = await probeBbServer({
+    fetchImpl: localApiFetch,
     serverUrl: builtinServerUrl,
     timeoutMs: ATTACH_PROBE_TIMEOUT_MS,
   });
@@ -2168,6 +2202,18 @@ async function loadActionView(args: LoadStartupErrorArgs): Promise<void> {
 
 async function loadBbApp(serverUrl: string): Promise<void> {
   bbAppLoaded = true;
+  const token = await readLocalApiToken({ dataDir: localDataDir });
+  if (token === null) {
+    desktopLogger.warn(
+      `[desktop] no API token found in ${localDataDir}; the app window will not be able to reach the local server`,
+    );
+  } else {
+    await installLocalApiSessionCookie({
+      cookies: session.defaultSession.cookies,
+      serverUrl,
+      token,
+    });
+  }
   await loadWindowUrl({ url: serverUrl });
   if (shouldOpenDevTools()) {
     desktopWindowFactory?.openDevTools();
@@ -2481,6 +2527,7 @@ async function startOwnedRuntime(
 
   const raceResult = await Promise.race<StartupRaceResult>([
     waitForCompatibleServer({
+      fetchImpl: localApiFetch,
       intervalMs: STARTUP_POLL_INTERVAL_MS,
       serverUrl: args.serverUrl,
       timeoutMs: STARTUP_TIMEOUT_MS,
@@ -2544,6 +2591,7 @@ async function waitForServerToStop(serverUrl: string): Promise<boolean> {
   const deadline = Date.now() + FOREIGN_RUNTIME_STOP_TIMEOUT_MS;
   while (Date.now() <= deadline) {
     const probe = await probeBbServer({
+      fetchImpl: localApiFetch,
       serverUrl,
       timeoutMs: ATTACH_PROBE_TIMEOUT_MS,
     });
@@ -2639,6 +2687,7 @@ async function decideOnExistingServer(
 
 async function initializeRuntime(args: InitializeRuntimeArgs): Promise<void> {
   const existingProbe = await probeBbServer({
+    fetchImpl: localApiFetch,
     serverUrl: args.serverUrl,
     timeoutMs: ATTACH_PROBE_TIMEOUT_MS,
   });

@@ -2077,8 +2077,11 @@ export function createPluginRuntime(context: PluginRuntimeContext) {
     return { outcome: "found", value };
   }
 
-  function bindSdk(args: { baseUrl: string }): void {
-    boundSdk = createNodeBbSdk({ baseUrl: args.baseUrl });
+  function bindSdk(args: { apiToken?: string; baseUrl: string }): void {
+    boundSdk = createNodeBbSdk({
+      ...(args.apiToken === undefined ? {} : { apiToken: args.apiToken }),
+      baseUrl: args.baseUrl,
+    });
     boundLoopbackBaseUrl = args.baseUrl;
   }
 
