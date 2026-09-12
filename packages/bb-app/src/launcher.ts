@@ -68,6 +68,12 @@ import { validateOptionalUrl } from "@bb/config/public-url";
 import { parseServerBindHost, type ServerBindHost } from "@bb/config/server";
 import { toOptionalString } from "@bb/config/strings";
 import {
+  buildApiSessionUrl,
+  readApiTokenFile,
+  resolveApiToken,
+  withBearerAuthorization,
+} from "@bb/config/api-auth";
+import {
   BB_PROD_HOST_DAEMON_PORT,
   BB_LOOPBACK_HOST,
   BB_PROD_SERVER_PORT,
@@ -710,11 +716,13 @@ interface RunClientCommandArgs {
 }
 
 interface ResolveClientSshTargetHostIdArgs {
+  dataDir: string;
   requestedHostId?: string;
   serverOrigin: string;
 }
 
 interface RefreshRunningServerConfigArgs {
+  dataDir: string;
   required: boolean;
   serverUrl: string;
 }
@@ -1681,7 +1689,10 @@ async function resolveClientSshTargetHostId(
   }
   const serverOrigin = normalizeClientServerOrigin(args.serverOrigin);
   const hostsUrl = new URL("/api/v1/hosts", serverOrigin);
-  const response = await fetch(hostsUrl);
+  const response = await fetch(
+    hostsUrl,
+    await localApiRequestInit({ dataDir: args.dataDir }),
+  );
   if (!response.ok) {
     throw new Error(
       `Failed to list hosts from ${serverOrigin}: HTTP ${response.status}`,
@@ -1783,7 +1794,10 @@ async function refreshRunningServerConfig(
   const reloadUrl = new URL("/api/v1/system/config/reload", args.serverUrl);
   let response: Response;
   try {
-    response = await fetch(reloadUrl, { method: "POST" });
+    response = await fetch(
+      reloadUrl,
+      await localApiRequestInit({ dataDir: args.dataDir }, { method: "POST" }),
+    );
   } catch {
     if (args.required) {
       throw new Error(`Could not reach bb server at ${args.serverUrl}`);
@@ -1847,12 +1861,25 @@ async function readConfiguredStartupOnlyManagedKeys(
   return [...configuredKeys].sort();
 }
 
+async function localApiRequestInit(
+  args: { dataDir: string },
+  init: RequestInit = {},
+): Promise<RequestInit> {
+  const token = await resolveApiToken({
+    dataDir: args.dataDir,
+    env: process.env,
+  });
+  return token === null ? init : withBearerAuthorization(init, token);
+}
+
 async function refreshRunningServerConfigAfterWrite(
+  dataDir: string,
   serverUrl: string,
   source: "config" | "env",
   key: string,
 ): Promise<void> {
   const refreshed = await refreshRunningServerConfig({
+    dataDir,
     required: false,
     serverUrl,
   });
@@ -1886,6 +1913,7 @@ async function runConfigCommand(args: RunConfigCommandArgs): Promise<void> {
   }
   if (commandArgs.length === 1 && commandArgs[0] === CONFIG_REFRESH_COMMAND) {
     await refreshRunningServerConfig({
+      dataDir: args.dataDir,
       required: true,
       serverUrl: args.serverUrl,
     });
@@ -1911,7 +1939,12 @@ async function runConfigCommand(args: RunConfigCommandArgs): Promise<void> {
     process.stdout.write(
       `Unset ${key} in ${formatBbAppConfigPath(args.dataDir)}\n`,
     );
-    await refreshRunningServerConfigAfterWrite(args.serverUrl, "config", key);
+    await refreshRunningServerConfigAfterWrite(
+      args.dataDir,
+      args.serverUrl,
+      "config",
+      key,
+    );
     return;
   }
   if (commandArgs[0] !== SET_COMMAND || commandArgs.length !== 3) {
@@ -1930,7 +1963,12 @@ async function runConfigCommand(args: RunConfigCommandArgs): Promise<void> {
   process.stdout.write(
     `Set ${key} in ${formatBbAppConfigPath(args.dataDir)}\n`,
   );
-  await refreshRunningServerConfigAfterWrite(args.serverUrl, "config", key);
+  await refreshRunningServerConfigAfterWrite(
+    args.dataDir,
+    args.serverUrl,
+    "config",
+    key,
+  );
 }
 
 async function runEnvCommand(args: RunEnvCommandArgs): Promise<void> {
@@ -1959,7 +1997,12 @@ async function runEnvCommand(args: RunEnvCommandArgs): Promise<void> {
     process.stdout.write(
       `Unset ${key} in ${formatBbAppEnvPath(args.dataDir)}\n`,
     );
-    await refreshRunningServerConfigAfterWrite(args.serverUrl, "env", key);
+    await refreshRunningServerConfigAfterWrite(
+      args.dataDir,
+      args.serverUrl,
+      "env",
+      key,
+    );
     return;
   }
   if (commandArgs[0] !== SET_COMMAND || commandArgs.length !== 3) {
@@ -1979,7 +2022,12 @@ async function runEnvCommand(args: RunEnvCommandArgs): Promise<void> {
     mergeManagedEnvFile(current, patch),
   );
   process.stdout.write(`Set ${key} in ${formatBbAppEnvPath(args.dataDir)}\n`);
-  await refreshRunningServerConfigAfterWrite(args.serverUrl, "env", key);
+  await refreshRunningServerConfigAfterWrite(
+    args.dataDir,
+    args.serverUrl,
+    "env",
+    key,
+  );
 }
 
 async function runClientCommand(args: RunClientCommandArgs): Promise<void> {
@@ -2024,6 +2072,7 @@ async function runClientCommand(args: RunClientCommandArgs): Promise<void> {
       throw new Error("SSH target must not be empty");
     }
     const hostId = await resolveClientSshTargetHostId({
+      dataDir: args.dataDir,
       ...(args.hostId !== undefined ? { requestedHostId: args.hostId } : {}),
       serverOrigin,
     });
@@ -3574,6 +3623,11 @@ export async function superviseBbAppStart(
       return "stopped";
     }
 
+    const apiToken = await readApiTokenFile(args.context.dataDir);
+    const appSessionUrl =
+      apiToken === null
+        ? args.serverListenerUrl
+        : buildApiSessionUrl(args.serverListenerUrl, apiToken);
     endStep(green("✓"), `Server listening on ${cyan(args.serverListenerUrl)}`);
 
     beginStep("Starting host daemon");
@@ -3596,7 +3650,7 @@ export async function superviseBbAppStart(
     process.stdout.write("\n");
     log(green("●"), bold("bb is ready"));
     process.stdout.write("\n");
-    log(" ", formatReadyOutputRow("app", cyan(args.serverListenerUrl)));
+    log(" ", formatReadyOutputRow("app", cyan(appSessionUrl)));
     log(" ", formatReadyOutputRow("daemon", String(args.context.daemonPort)));
     log(" ", formatReadyOutputRow("data", args.context.dataDir));
     log(" ", formatReadyOutputRow("db", args.context.dbPath));

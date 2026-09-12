@@ -4,6 +4,8 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ServerConfig } from "@bb/config/server";
 import { isLoopbackHostname } from "@bb/config/loopback";
+import { API_TOKEN_FILE_NAME, resolveApiTokenPath } from "@bb/config/api-auth";
+import { readOrCreateSecretFile } from "@bb/secret-storage";
 import { toOptionalString } from "@bb/config/strings";
 import { createLogger } from "@bb/logger";
 import {
@@ -146,7 +148,14 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
   const isProduction = process.env.NODE_ENV === "production";
   const staticDir =
     isProduction && existsSync(appDistDir) ? appDistDir : undefined;
+  const apiToken = await readOrCreateSecretFile({
+    bytes: 32,
+    dataDir: serverConfig.BB_DATA_DIR,
+    encoding: "hex",
+    fileName: API_TOKEN_FILE_NAME,
+  });
   const runtimeConfig: ServerRuntimeConfig = {
+    apiToken,
     appVersion: serverConfig.BB_APP_VERSION,
     builtinSkillsRootPath: resolveBuiltinSkillsRootPath(),
     marketplaceUrl: serverConfig.BB_MARKETPLACE_URL,
@@ -156,6 +165,9 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
     hostDaemonPort: serverConfig.BB_HOST_DAEMON_PORT,
     inheritedSkillsRootPaths: serverConfig.BB_INHERITED_SKILLS_ROOTS,
     isDevelopment: !isProduction,
+    restrictHostHeaderToLoopback: isLoopbackHostname(
+      serverConfig.BB_SERVER_BIND_HOST,
+    ),
     serverPort: serverConfig.BB_SERVER_PORT,
     sharedSkillRoots: { user: [], project: [] },
   };
@@ -356,7 +368,7 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
   if (!isLoopbackHostname(serverConfig.BB_SERVER_BIND_HOST)) {
     logger.warn(
       { bindHost: serverConfig.BB_SERVER_BIND_HOST },
-      "SECURITY WARNING: The public API is unauthenticated and permits command execution and file reads. Wildcard server binding must only be used behind a trusted network boundary.",
+      "SECURITY WARNING: The API permits command execution and file reads to anyone holding the local API token. Wildcard server binding exposes that surface to the whole network; use it only behind a trusted network boundary.",
     );
   }
 
@@ -371,10 +383,12 @@ export async function runServer(serverConfig: ServerConfig): Promise<void> {
       bindHost: serverConfig.BB_SERVER_BIND_HOST,
       port: serverConfig.BB_SERVER_PORT,
       dataDir: serverConfig.BB_DATA_DIR,
+      apiTokenPath: resolveApiTokenPath(serverConfig.BB_DATA_DIR),
     },
     "Server listening",
   );
   pluginService.bindSdk({
+    apiToken,
     baseUrl: `http://127.0.0.1:${serverConfig.BB_SERVER_PORT}`,
   });
   let sweepInterval: ReturnType<typeof setInterval> | null = null;
