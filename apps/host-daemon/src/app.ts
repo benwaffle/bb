@@ -629,6 +629,21 @@ export async function createHostDaemonApp(
             RUNTIME_SHELL_ENV_REFRESH_TTL_MS,
           promise: Promise.resolve(runtimeManager.getShellEnv()),
         };
+  let sessionApiToken: string | null = null;
+  const withSessionApiToken = (shellEnv: RuntimeShellEnv): RuntimeShellEnv =>
+    sessionApiToken === null
+      ? shellEnv
+      : { ...shellEnv, BB_API_TOKEN: sessionApiToken };
+  const applySessionApiToken = async (apiToken: string | null) => {
+    if (apiToken === null || apiToken === sessionApiToken) {
+      return;
+    }
+    sessionApiToken = apiToken;
+    runtimeShellEnvRefreshEntry = null;
+    await runtimeManager.replaceBaseShellEnv(
+      withSessionApiToken(runtimeManager.getShellEnv()),
+    );
+  };
   const refreshRuntimeShellEnv = async () => {
     if (!options.resolveRuntimeShellEnv) {
       return runtimeManager.getShellEnv();
@@ -646,7 +661,7 @@ export async function createHostDaemonApp(
       if (shellEnv === undefined) {
         return runtimeManager.getShellEnv();
       }
-      await runtimeManager.replaceBaseShellEnv(shellEnv);
+      await runtimeManager.replaceBaseShellEnv(withSessionApiToken(shellEnv));
       return runtimeManager.getShellEnv();
     })();
     const entry = {
@@ -845,6 +860,7 @@ export async function createHostDaemonApp(
     onSessionOpened: async (session) => {
       sessionState.value = session.sessionId;
       connectTunnel.replaceAuthoritativeShareSet(session.connectShares);
+      await applySessionApiToken(session.apiToken);
       await pluginHostManager.reconcileGenerations(
         session.pluginHostGenerations,
       );

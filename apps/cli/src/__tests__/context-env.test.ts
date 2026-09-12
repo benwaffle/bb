@@ -118,6 +118,7 @@ describe("context-env", () => {
   it("resolves connection settings from one CLI runtime context", () => {
     const context = createCliRuntimeContext({
       cliConfig: {
+        BB_API_TOKEN: null,
         BB_HOST_DAEMON_PORT: 4567,
         BB_SERVER_URL: "http://server.test",
       },

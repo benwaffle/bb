@@ -50,6 +50,7 @@ interface FetchRecorder {
 }
 
 interface CreateFetchRecorderArgs {
+  apiToken?: string;
   machineEnvironment?: HostDaemonContributedEnvEntry[];
   onToolCallSignal?: (signal: AbortSignal | null | undefined) => void;
   inactiveSessionOnFirstEventPost?: boolean;
@@ -146,6 +147,7 @@ function createFetchRecorder(
           heartbeatIntervalMs: 30000,
           leaseTimeoutMs: 90000,
           retiredEnvironmentIds: args.retiredEnvironmentIds ?? [],
+          apiToken: args.apiToken ?? null,
         },
         { status: 201 },
       );
@@ -842,6 +844,48 @@ describe("createHostDaemonApp", () => {
         },
         "Server reported inactive daemon session; reconnecting",
       );
+    } finally {
+      await app.daemon.shutdown("test", 0);
+    }
+  });
+
+  it("exports the session API token to agent shells", async () => {
+    const dataDir = await makeTempDir("bb-host-daemon-app-api-token-");
+    const logger = createLogger();
+    const fetchRecorder = createFetchRecorder({
+      apiToken: "token-from-session",
+    });
+    const runtime = createFakeRuntime();
+    const hostWatcher = {
+      watchWorkspace: vi.fn(() => async () => undefined),
+      watchThreadStorageRoot: vi.fn(() => () => undefined),
+    } satisfies HostWatcher;
+    const app = await createHostDaemonApp({
+      dataDir,
+      serverUrl: "http://127.0.0.1:3334",
+      hostKey: "host-key-api-token",
+      hostId: "host-api-token",
+      hostName: "API Token Host",
+      instanceId: "instance-api-token",
+      logger,
+      releaseLock: async () => undefined,
+      localApiConfig: null,
+      createRuntime: () => runtime,
+      fetchFn: fetchRecorder.fetchFn,
+      hostWatcher,
+      createWebSocket: createOpeningWebSocket(),
+      runtimeShellEnv: { BB_SERVER_URL: "http://127.0.0.1:3334" },
+    });
+
+    try {
+      expect(app.runtimeManager.getShellEnv()).not.toHaveProperty(
+        "BB_API_TOKEN",
+      );
+      await app.daemon.start();
+      expect(app.runtimeManager.getShellEnv()).toMatchObject({
+        BB_API_TOKEN: "token-from-session",
+        BB_SERVER_URL: "http://127.0.0.1:3334",
+      });
     } finally {
       await app.daemon.shutdown("test", 0);
     }

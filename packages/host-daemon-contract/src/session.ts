@@ -180,6 +180,9 @@ export const hostDaemonSessionOpenResponseSchema = z
       .array(hostDaemonPluginHostGenerationSchema)
       .default([]),
     retiredEnvironmentIds: z.array(z.string().min(1)).default([]),
+    // Local API token the daemon exports as BB_API_TOKEN to agent shells and
+    // terminals so the bb CLI can reach /api/v1 from any enrolled host.
+    apiToken: z.string().min(1).nullable().default(null),
   })
   .strict();
 export type HostDaemonSessionOpenResponse = z.infer<

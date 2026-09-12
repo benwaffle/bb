@@ -200,6 +200,7 @@ export async function createTestAppHarness(
     },
   };
   const config: ServerRuntimeConfig = {
+    apiToken: null,
     appVersion: "0.0.0-test",
     builtinSkillsRootPath: join(dataDir, "builtin-skills"),
     customModels: [],
@@ -212,6 +213,7 @@ export async function createTestAppHarness(
     inferenceModel: "test/mock-model",
     isDevelopment: true,
     openAiApiKey: "test-openai-key",
+    restrictHostHeaderToLoopback: false,
     serverPort: 3334,
     sharedSkillRoots: { user: [], project: [] },
     transcriptionModel: "test/mock-transcription",
