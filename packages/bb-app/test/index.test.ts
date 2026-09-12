@@ -17,8 +17,12 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { describe, expect, it, vi } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
+import {
+  API_TOKEN_FILE_NAME,
+  bearerAuthorizationHeader,
+} from "@bb/config/api-auth";
 import { waitForProcessExit } from "@bb/config/child-process-exit";
 import { resolvePortFromEnv } from "@bb/config/runtime";
 import {
@@ -81,9 +85,14 @@ interface HostListTestServer {
 }
 
 interface ConfigReloadRequest {
+  authorization: string | undefined;
   host: string | undefined;
   method: string | undefined;
   url: string | undefined;
+}
+
+interface StartConfigReloadTestServerArgs {
+  requiredToken?: string;
 }
 
 interface InvalidConfigCommandCase {
@@ -125,6 +134,10 @@ interface FakeSupervisor {
   setShutdownRequested(value: boolean): void;
   shutdownRequested(): boolean;
 }
+
+const TEST_API_TOKEN = "test-local-api-token";
+const API_TOKEN_REQUIRED_MESSAGE =
+  "This bb server requires a local API token. Open the session link printed by bb-app, or send it as a bearer token.";
 
 const invalidConfigCommandCases: InvalidConfigCommandCase[] = [
   ...["BB_INFERENCE", "BB_INFERENCE_FALLBACK", "BB_TRANSCRIPTION"].map(
@@ -344,7 +357,9 @@ async function stopFakeSupervisor(
   return supervision;
 }
 
-async function startConfigReloadTestServer(): Promise<ConfigReloadTestServer> {
+async function startConfigReloadTestServer(
+  args: StartConfigReloadTestServerArgs = {},
+): Promise<ConfigReloadTestServer> {
   const reloadRequests: ConfigReloadRequest[] = [];
   const server = createServer(
     (request: IncomingMessage, response: ServerResponse) => {
@@ -352,11 +367,26 @@ async function startConfigReloadTestServer(): Promise<ConfigReloadTestServer> {
         request.method === "POST" &&
         request.url === "/api/v1/system/config/reload"
       ) {
+        const authorization = request.headers.authorization;
         reloadRequests.push({
+          authorization,
           host: request.headers.host,
           method: request.method,
           url: request.url,
         });
+        if (
+          args.requiredToken !== undefined &&
+          authorization !== bearerAuthorizationHeader(args.requiredToken)
+        ) {
+          response.writeHead(401, { "content-type": "application/json" });
+          response.end(
+            JSON.stringify({
+              code: "unauthorized",
+              message: API_TOKEN_REQUIRED_MESSAGE,
+            }),
+          );
+          return;
+        }
         response.writeHead(200, { "content-type": "application/json" });
         response.end(JSON.stringify({ ok: true }));
         return;
@@ -460,12 +490,38 @@ function readPackageMetadata(): PackageMetadata {
 
 function expectedConfigReloadRequest(
   server: ConfigReloadTestServer,
+  token?: string,
 ): ConfigReloadRequest {
   return {
+    authorization:
+      token === undefined ? undefined : bearerAuthorizationHeader(token),
     host: `127.0.0.1:${server.port}`,
     method: "POST",
     url: "/api/v1/system/config/reload",
   };
+}
+
+function restoreEnvValue(name: string, value: string | undefined): void {
+  if (value === undefined) {
+    delete process.env[name];
+    return;
+  }
+  process.env[name] = value;
+}
+
+function createTokenizedDataDir(prefix: string): string {
+  const dataDir = mkdtempSync(join(tmpdir(), prefix));
+  writeFileSync(join(dataDir, API_TOKEN_FILE_NAME), `${TEST_API_TOKEN}\n`, {
+    mode: 0o600,
+  });
+  return dataDir;
+}
+
+async function reserveUnusedServerPort(): Promise<number> {
+  const server = await startConfigReloadTestServer();
+  const { port } = server;
+  await server.close();
+  return port;
 }
 
 async function captureStdout(run: () => Promise<void>): Promise<string> {
@@ -483,6 +539,19 @@ async function captureStdout(run: () => Promise<void>): Promise<string> {
   }
   return chunks.join("");
 }
+
+const ambientApiToken = process.env.BB_API_TOKEN;
+const ambientServerUrl = process.env.BB_SERVER_URL;
+
+beforeAll(() => {
+  delete process.env.BB_API_TOKEN;
+  delete process.env.BB_SERVER_URL;
+});
+
+afterAll(() => {
+  restoreEnvValue("BB_API_TOKEN", ambientApiToken);
+  restoreEnvValue("BB_SERVER_URL", ambientServerUrl);
+});
 
 describe("bb-app launcher", () => {
   it("waits for the expected host daemon identity and connection", async () => {
@@ -1079,10 +1148,13 @@ describe("bb-app launcher", () => {
 
   it("stores managed config values from the config command", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "bb-app-config-command-"));
+    const serverPort = String(await reserveUnusedServerPort());
 
     await runBbApp([
       "--data-dir",
       dataDir,
+      "--server-port",
+      serverPort,
       "config",
       "set",
       "BB_APP_URL",
@@ -1091,6 +1163,8 @@ describe("bb-app launcher", () => {
     await runBbApp([
       "--data-dir",
       dataDir,
+      "--server-port",
+      serverPort,
       "config",
       "set",
       "BB_LOG_LEVEL",
@@ -1099,6 +1173,8 @@ describe("bb-app launcher", () => {
     await runBbApp([
       "--data-dir",
       dataDir,
+      "--server-port",
+      serverPort,
       "env",
       "set",
       "OPENAI_API_KEY",
@@ -1245,6 +1321,8 @@ describe("bb-app launcher", () => {
     await runBbApp([
       "--data-dir",
       dataDir,
+      "--server-port",
+      String(await reserveUnusedServerPort()),
       "config",
       "set",
       "BB_APP_URL",
@@ -1309,6 +1387,8 @@ describe("bb-app launcher", () => {
     await runBbApp([
       "--data-dir",
       dataDir,
+      "--server-port",
+      String(await reserveUnusedServerPort()),
       "env",
       "unset",
       "BB_SERVER_BIND_HOST",
@@ -1630,13 +1710,17 @@ describe("bb-app launcher", () => {
   });
 
   it("uses persisted BB_SERVER_URL for config refresh without env or flags", async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-config-persisted-url-"));
-    const server = await startConfigReloadTestServer();
+    const dataDir = createTokenizedDataDir("bb-app-config-persisted-url-");
+    const server = await startConfigReloadTestServer({
+      requiredToken: TEST_API_TOKEN,
+    });
 
     try {
       await runBbApp([
         "--data-dir",
         dataDir,
+        "--server-port",
+        String(await reserveUnusedServerPort()),
         "config",
         "set",
         "BB_SERVER_URL",
@@ -1653,6 +1737,32 @@ describe("bb-app launcher", () => {
       await runBbApp(["--data-dir", dataDir, "config", "refresh"]);
 
       expect(server.reloadRequests()).toEqual([
+        expectedConfigReloadRequest(server, TEST_API_TOKEN),
+      ]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  it("refuses a config refresh when the data dir has no local API token", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-config-no-token-"));
+    const server = await startConfigReloadTestServer({
+      requiredToken: TEST_API_TOKEN,
+    });
+
+    try {
+      await expect(
+        runBbApp([
+          "--data-dir",
+          dataDir,
+          "--server-url",
+          server.url,
+          "config",
+          "refresh",
+        ]),
+      ).rejects.toThrow(API_TOKEN_REQUIRED_MESSAGE);
+
+      expect(server.reloadRequests()).toEqual([
         expectedConfigReloadRequest(server),
       ]);
     } finally {
@@ -1660,17 +1770,57 @@ describe("bb-app launcher", () => {
     }
   });
 
+  it("carries BB_API_TOKEN from the environment on config refresh", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-config-env-token-"));
+    const server = await startConfigReloadTestServer({
+      requiredToken: TEST_API_TOKEN,
+    });
+    const previousApiToken = process.env.BB_API_TOKEN;
+
+    try {
+      process.env.BB_API_TOKEN = TEST_API_TOKEN;
+
+      await runBbApp([
+        "--data-dir",
+        dataDir,
+        "--server-url",
+        server.url,
+        "config",
+        "refresh",
+      ]);
+
+      expect(server.reloadRequests()).toEqual([
+        expectedConfigReloadRequest(server, TEST_API_TOKEN),
+      ]);
+    } finally {
+      if (previousApiToken === undefined) {
+        delete process.env.BB_API_TOKEN;
+      } else {
+        process.env.BB_API_TOKEN = previousApiToken;
+      }
+      await server.close();
+    }
+  });
+
   it("uses --server-url over env and persisted config for config refresh", async () => {
-    const dataDir = mkdtempSync(join(tmpdir(), "bb-app-config-flag-url-"));
-    const configServer = await startConfigReloadTestServer();
-    const envServer = await startConfigReloadTestServer();
-    const flagServer = await startConfigReloadTestServer();
+    const dataDir = createTokenizedDataDir("bb-app-config-flag-url-");
+    const configServer = await startConfigReloadTestServer({
+      requiredToken: TEST_API_TOKEN,
+    });
+    const envServer = await startConfigReloadTestServer({
+      requiredToken: TEST_API_TOKEN,
+    });
+    const flagServer = await startConfigReloadTestServer({
+      requiredToken: TEST_API_TOKEN,
+    });
     const previousServerUrl = process.env.BB_SERVER_URL;
 
     try {
       await runBbApp([
         "--data-dir",
         dataDir,
+        "--server-port",
+        String(await reserveUnusedServerPort()),
         "config",
         "set",
         "BB_SERVER_URL",
@@ -1690,14 +1840,10 @@ describe("bb-app launcher", () => {
       expect(configServer.reloadRequests()).toEqual([]);
       expect(envServer.reloadRequests()).toEqual([]);
       expect(flagServer.reloadRequests()).toEqual([
-        expectedConfigReloadRequest(flagServer),
+        expectedConfigReloadRequest(flagServer, TEST_API_TOKEN),
       ]);
     } finally {
-      if (previousServerUrl === undefined) {
-        delete process.env.BB_SERVER_URL;
-      } else {
-        process.env.BB_SERVER_URL = previousServerUrl;
-      }
+      restoreEnvValue("BB_SERVER_URL", previousServerUrl);
       await flagServer.close();
       await envServer.close();
       await configServer.close();
