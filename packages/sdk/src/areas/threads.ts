@@ -25,6 +25,7 @@ import type {
   EditMessageRequest,
   EditMessageResponse,
   ForkThreadRequest,
+  ImportThreadRequest,
   DeleteThreadRequest,
   PromptHistoryResponse,
   QueuedMessageEditHoldResponse,
@@ -50,6 +51,7 @@ import type {
   ThreadDescendantsListResponse,
   ThreadCascadeAction,
   ThreadCascadeListResponse,
+  ThreadProviderSessionsResponse,
   ThreadPluginMetadataResponse,
   ThreadSearchResponse,
   ThreadStorageFileListResponse,
@@ -276,6 +278,17 @@ export interface ThreadForkArgs extends Omit<
   origin?: ForkThreadRequest["origin"];
   visibility?: ForkThreadRequest["visibility"];
 }
+
+export interface ThreadImportArgs extends Omit<ImportThreadRequest, "origin"> {
+  origin?: ImportThreadRequest["origin"];
+}
+export type ThreadImportResult = ThreadResponse;
+
+export interface ThreadProviderSessionsArgs {
+  providerId: string;
+  signal?: AbortSignal;
+}
+export type ThreadProviderSessionsResult = ThreadProviderSessionsResponse;
 
 export interface ThreadUpdateArgs extends UpdateThreadRequest {
   threadId: string;
@@ -646,6 +659,10 @@ export interface ThreadsArea {
   editMessage(args: ThreadEditMessageArgs): Promise<ThreadEditMessageResult>;
   events: ThreadEventsArea;
   fork(args: ThreadForkArgs): Promise<ThreadForkResult>;
+  experimental_import(args: ThreadImportArgs): Promise<ThreadImportResult>;
+  experimental_providerSessions(
+    args: ThreadProviderSessionsArgs,
+  ): Promise<ThreadProviderSessionsResult>;
   get(args: ThreadGetArgs): Promise<ThreadGetResult>;
   getPluginMetadata(
     args: ThreadPluginMetadataArgs,
@@ -915,6 +932,16 @@ function spawnJson(args: ThreadSpawnArgs): CreateThreadRequest {
     origin: origin ?? "sdk",
     startedOnBehalfOf: startedOnBehalfOf ?? null,
     originKind: originKind ?? null,
+  };
+}
+
+function importJson(args: ThreadImportArgs): ImportThreadRequest {
+  return {
+    ...args,
+    ...(args.pluginMetadata === undefined
+      ? {}
+      : { pluginMetadata: validatePluginMetadata(args.pluginMetadata) }),
+    origin: args.origin ?? "sdk",
   };
 }
 
@@ -1397,6 +1424,21 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
         transport.api.v1.threads.fork.$post({
           json: forkJson(input),
         }),
+      );
+    },
+    async experimental_import(input) {
+      return transport.readJson(
+        transport.api.v1.threads.import.$post({
+          json: importJson(input),
+        }),
+      );
+    },
+    async experimental_providerSessions(input) {
+      return transport.readJson(
+        transport.api.v1.threads["provider-sessions"].$get(
+          { query: { providerId: input.providerId } },
+          ...signalRequestArgs(input.signal),
+        ),
       );
     },
     get: getThread,
