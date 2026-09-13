@@ -70,6 +70,18 @@ export function presentedApiToken(
   );
 }
 
+export function bearerTokenAuthenticated(
+  context: ApiAuthRequestContext,
+  deps: ApiAuthDeps,
+): boolean {
+  const expected = deps.config.apiToken;
+  if (expected === null) {
+    return false;
+  }
+  const bearer = parseBearerToken(context.req.header("authorization"));
+  return bearer !== null && apiTokenMatches(bearer, expected);
+}
+
 export function apiTokenMatches(presented: string, expected: string): boolean {
   const presentedDigest = createHash("sha256").update(presented).digest();
   const expectedDigest = createHash("sha256").update(expected).digest();
