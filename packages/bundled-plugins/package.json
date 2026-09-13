@@ -15,6 +15,7 @@
     "bb-plugin-bb-guide": "workspace:*",
     "bb-plugin-browser-automation": "workspace:*",
     "bb-plugin-bb--composer": "workspace:*",
+    "bb-plugin-claude-code-session-import": "workspace:*",
     "bb-plugin-concurrency-limit": "workspace:*",
     "bb-plugin-bb-ai": "workspace:*",
     "bb-plugin-connect": "workspace:*",

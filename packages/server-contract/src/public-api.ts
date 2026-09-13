@@ -112,6 +112,7 @@ import {
   type EditMessageRequest,
   type EditMessageResponse,
   type ForkThreadRequest,
+  type ImportThreadRequest,
   type RestartTerminalRequest,
   type DeleteThreadSectionRequest,
   type DeleteThreadRequest,
@@ -267,6 +268,8 @@ import {
   type ThreadCascadeListRequest,
   type ThreadCascadeListResponse,
   type ThreadPluginMetadataQuery,
+  type ThreadProviderSessionsQuery,
+  type ThreadProviderSessionsResponse,
   type ThreadPluginMetadataResponse,
   type ThreadSearchQuery,
   type ThreadSearchResponse,
@@ -312,6 +315,8 @@ import {
   updateQueuedMessageRequestSchema,
   createThreadRequestSchema,
   forkThreadRequestSchema,
+  importThreadRequestSchema,
+  threadProviderSessionsQuerySchema,
   updateThreadPluginMetadataRequestSchema,
   pluginThreadMetadataListRequestSchema,
   threadAncestorsListRequestSchema,
@@ -1364,6 +1369,22 @@ export const publicApiRoutes = {
         forkThreadRequestSchema,
       ),
       response: jsonResponse<ThreadResponse>({ status: 201 }),
+    }),
+    import: defineRoute({
+      path: "/threads/import",
+      method: "post",
+      request: jsonRequest<EmptyInput, ImportThreadRequest>(
+        importThreadRequestSchema,
+      ),
+      response: jsonResponse<ThreadResponse>({ status: 201 }),
+    }),
+    providerSessions: defineRoute({
+      path: "/threads/provider-sessions",
+      method: "get",
+      request: queryRequest<EmptyInput, ThreadProviderSessionsQuery>(
+        threadProviderSessionsQuerySchema,
+      ),
+      response: jsonResponse<ThreadProviderSessionsResponse>(),
     }),
     get: defineRoute({
       path: "/threads/:id",
