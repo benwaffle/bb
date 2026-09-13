@@ -70,6 +70,10 @@ with `bb plugin config provider-claude-code set <key> <value>`.
   corresponding `bb thread` commands. Unlisted model IDs are accepted by the
   provider; verify actual availability on the target host.
 
+Terminal Claude Code sessions are imported into bb threads by the separate
+`claude-code-session-import` builtin plugin (`bb claude-code sessions` and
+`bb claude-code import`); its skill owns the details.
+
 Inspect the thread and provider state after a change; do not restart unrelated
 threads or change settings merely to answer a question.
 
