@@ -376,6 +376,8 @@ export interface ThreadOpenArgs {
   threadId: string;
   split?: ThreadOpenSplit;
   file: ThreadOpenFile | null;
+  /** Bring the desktop window to the front after switching to the thread. */
+  focus?: boolean;
 }
 
 export interface ThreadPaneActionArgs {
@@ -1264,6 +1266,7 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
           param: { id: input.threadId },
           json: {
             ...(input.split === undefined ? {} : { split: input.split }),
+            ...(input.focus === undefined ? {} : { focus: input.focus }),
             file: input.file,
           },
         }),
