@@ -524,6 +524,9 @@ function AppLayoutContent({ children }: AppLayoutProps) {
           threadId: signal.threadId,
           split: { zone: signal.split, store, isCompact: isCompactViewport },
         });
+        if (signal.focus) {
+          getBbDesktopInfo()?.focusWindow?.();
+        }
       }),
     [isCompactViewport, navigate, store],
   );
