@@ -3843,8 +3843,11 @@ describe("DesktopBrowserViewManager", () => {
     expect(reloadingView.visible).toBe(true);
   });
 
-  it("allows clipboard-sanitized-write but denies clipboard-read and device permissions", () => {
+  it("allows clipboard-sanitized-write and local network access but denies clipboard-read and device permissions", () => {
     expect(isAllowedBrowserPermission("clipboard-sanitized-write")).toBe(true);
+    expect(isAllowedBrowserPermission("local-network-access")).toBe(true);
+    expect(isAllowedBrowserPermission("local-network")).toBe(true);
+    expect(isAllowedBrowserPermission("loopback-network")).toBe(true);
     expect(isAllowedBrowserPermission("clipboard-read")).toBe(false);
     expect(isAllowedBrowserPermission("media")).toBe(false);
     expect(isAllowedBrowserPermission("notifications")).toBe(false);
@@ -3878,6 +3881,7 @@ describe("DesktopBrowserViewManager", () => {
     }
 
     expect(checkHandler(null, "clipboard-sanitized-write")).toBe(true);
+    expect(checkHandler(null, "local-network-access")).toBe(true);
     expect(checkHandler(null, "clipboard-read")).toBe(false);
     expect(checkHandler(null, "media")).toBe(false);
 
