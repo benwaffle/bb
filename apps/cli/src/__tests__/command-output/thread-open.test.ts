@@ -73,6 +73,7 @@ describe("bb thread open command output", () => {
     expect(collectLogLines(vi.mocked(console.log))).toEqual([
       "Thread: thread-current",
       "Split: replace",
+      "Focus: false",
       "Source: workspace",
       "Path: reports/status.md",
       "Delivered: 2",
@@ -102,6 +103,7 @@ describe("bb thread open command output", () => {
     expect(collectLogLines(vi.mocked(console.log))).toEqual([
       "Thread: thread-explicit",
       "Split: replace",
+      "Focus: false",
       "Source: workspace",
       "Path: reports/status.md",
       "Delivered: 1",
@@ -158,6 +160,7 @@ describe("bb thread open command output", () => {
     expect(collectLogLines(vi.mocked(console.log))).toEqual([
       "Thread: thread-workspace",
       "Split: replace",
+      "Focus: false",
       "Source: workspace",
       "Path: reports/status.md",
       "Line: 7",
@@ -196,6 +199,7 @@ describe("bb thread open command output", () => {
     expect(collectLogLines(vi.mocked(console.log))).toEqual([
       "Thread: thread-storage",
       "Split: replace",
+      "Focus: false",
       "Source: thread-storage",
       "Path: reports/preview.html",
       "Delivered: 1",
@@ -285,6 +289,7 @@ describe("bb thread open command output", () => {
     expect(collectLogLines(vi.mocked(console.log))).toEqual([
       "Thread: thread-split",
       "Split: right",
+      "Focus: false",
       "Delivered: 2",
     ]);
   });
