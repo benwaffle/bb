@@ -58,6 +58,32 @@ generation with code 1012. The supporting public types are
 5. Confirm the callback error policy should keep the socket open after an
    isolated message-handler failure.
 
+## `sdk.threads.experimental_import`
+
+**What it does.** Creates a thread from a conversation a provider already holds
+outside bb: `POST /api/v1/threads/import` takes the provider, an environment
+request, the provider's own session id, and the conversation as ordered turns,
+each a prompt plus timestamped provider events already translated into bb's
+event vocabulary. The server records each prompt as a user turn request,
+keeps the turn-level events a fork would inherit (turn start and completion,
+completed items, compactions), stamps them with the given timestamps, and
+leaves the thread `pending` with a fork descriptor naming the provider session.
+The thread's first message forks that session instead of starting an empty one.
+The claude-code plugin's `bb claude-code import` is the first caller.
+
+**Audit before stabilizing.**
+
+1. Decide whether the wire payload should stay pre-translated events or move
+   to a provider-neutral transcript the server translates through the provider
+   bridge, which would let core own the event filter.
+2. Confirm the fork-on-first-message model is right for providers whose fork
+   creates a copy the user cannot see from their own tooling, or whether an
+   opt-in resume of the original session is needed.
+3. Confirm whether imported history should record a distinct thread origin
+   kind so the UI and `bb thread list` can tell imports from forks.
+4. Decide the request size policy: large transcripts are paged by the caller
+   today and the route accepts one request per thread.
+
 ## `bb.providers.experimental_contributeEnvHealth`
 
 **What it does.** Registers one host-scoped readiness resolver beside a
