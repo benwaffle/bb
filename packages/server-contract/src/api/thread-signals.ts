@@ -23,6 +23,7 @@ export const threadOpenSignalLenientSchema = z.object({
   threadId: z.string(),
   split: threadOpenSplitSchema,
   file: threadOpenFileLenientSchema.nullable(),
+  focus: z.boolean().default(false),
 });
 
 export const threadPaneActionSchema = z.enum([
