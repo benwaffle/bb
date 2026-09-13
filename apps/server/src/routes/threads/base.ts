@@ -50,6 +50,7 @@ import { dispatchThreadRenameCommand } from "../../services/threads/thread-comma
 import { requestThreadStorageDeletion } from "../../services/threads/thread-lifecycle.js";
 import { createThreadFromRequest } from "../../services/threads/thread-create.js";
 import { createThreadForkFromRequest } from "../../services/threads/thread-fork.js";
+import { createThreadImportFromRequest } from "../../services/threads/thread-import.js";
 import { requireChildThreadsConfirmation } from "../../services/threads/child-thread-confirmation.js";
 import {
   toThreadListEntryResponses,
@@ -349,6 +350,11 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
 
   post(routes.fork, async (context, payload) => {
     const thread = await createThreadForkFromRequest(deps, payload);
+    return context.json(toThreadResponseFromThread(deps, { thread }), 201);
+  });
+
+  post(routes.import, async (context, payload) => {
+    const thread = await createThreadImportFromRequest(deps, payload);
     return context.json(toThreadResponseFromThread(deps, { thread }), 201);
   });
 

@@ -6,9 +6,11 @@ import {
   DEFAULT_CLAUDE_CODE_MODEL,
 } from "./src/model-catalog-data.js";
 import { CLAUDE_NATIVE_ROOTS_DECLARATION } from "./src/native-roots.js";
+import { registerClaudeSessionImportCli } from "./src/session-import-cli.js";
 
 export default function plugin(bb: BbPluginApi) {
   registerUsageSource(bb);
+  registerClaudeSessionImportCli(bb);
   bb.settings.define({
     memoryEnabled: {
       type: "boolean",
