@@ -26,6 +26,10 @@ import {
   type ThreadForkPoint,
 } from "./thread-fork-history.js";
 import {
+  appendImportedThreadHistory,
+  type ImportedThreadHistory,
+} from "./thread-import-history.js";
+import {
   rememberProjectExecutionDefaultsForCreate,
   resolveProjectExecutionDefaultsForCreate,
 } from "./project-execution-defaults.js";
@@ -79,6 +83,7 @@ interface CreateProvisioningThreadArgs {
     typeof buildExecutionOptions
   >[2]["projectDefaults"];
   fork: ThreadForkPoint | null;
+  importedHistory: ImportedThreadHistory | null;
   request: ThreadCreateServiceRequest;
   providerInput?: ThreadCreateServiceRequestInput["input"];
 }
@@ -410,9 +415,26 @@ async function createPendingThreadAndAttemptFirstDispatch(
       args.request,
       executionPlanArgs,
     );
+
+    if (args.importedHistory !== null) {
+      appendImportedThreadHistory(deps, {
+        environmentId: thread.environmentId,
+        execution,
+        threadId: thread.id,
+        turns: args.importedHistory.turns,
+      });
+    }
+
     const startContext: PendingThreadStartContext = {
       environmentIntent: args.environmentIntent,
-      fork: args.fork?.descriptor ?? null,
+      fork:
+        args.fork?.descriptor ??
+        (args.importedHistory === null
+          ? null
+          : {
+              sourceProviderThreadId:
+                args.importedHistory.sourceProviderThreadId,
+            }),
       ...(args.providerInput !== undefined
         ? { providerInput: args.providerInput }
         : {}),
@@ -429,6 +451,14 @@ async function createPendingThreadAndAttemptFirstDispatch(
       threadId: thread.id,
       startupContext: JSON.stringify({ kind: "pending", ...startContext }),
     });
+
+    if (args.importedHistory !== null) {
+      rememberProjectExecutionDefaultsForCreate(deps, {
+        execution,
+        request: args.request,
+      });
+      return getThreadSafe(deps, thread.id);
+    }
 
     await attemptDispatch(deps, {
       thread,
@@ -522,6 +552,7 @@ export async function createThreadFromRequest(
   options: {
     providerInput?: ThreadCreateServiceRequestInput["input"];
     forkSourceEnvironmentId?: string;
+    importedHistory?: ImportedThreadHistory;
   } = {},
 ) {
   const project = requirePublicProjectForThreadCreate(
@@ -685,7 +716,9 @@ export async function createThreadFromRequest(
     }),
     environment: requestedEnvironment,
     providerId,
-    titleFallback: deriveTitleFallback(requestInput.input),
+    titleFallback: deriveTitleFallback(
+      options.importedHistory?.turns[0]?.input ?? requestInput.input,
+    ),
   };
   const resolvedEnvironment =
     requestedEnvironment.type === "provider"
@@ -773,6 +806,7 @@ export async function createThreadFromRequest(
     environmentIntent,
     executionDefaults: resolvedExecutionDefaults,
     fork,
+    importedHistory: options.importedHistory ?? null,
     ...(options.providerInput !== undefined
       ? { providerInput: options.providerInput }
       : {}),

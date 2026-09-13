@@ -52,6 +52,11 @@ worktree` only; a provider takes its branch through `--environment-inputs`.
   `--source-seq-end` on a completed source turn (the clone and inherited
   timeline both end with the turn containing that sequence). Permission mode
   inherits the source thread unless explicitly overridden.
+- A Claude Code session that was started outside bb (terminal `claude`,
+  including `/rename`d sessions) is not a thread and cannot be forked. Run
+  `bb claude-code sessions` to find it and `bb claude-code import <id|title>`
+  to create a thread that continues it; the Claude Code provider plugin owns
+  the command's details.
 - Pass `--visibility hidden` for background/plugin workers that should remain
   out of sidebar organization without contributing unread/pending favicon
   attention. `bb thread list` excludes them by
