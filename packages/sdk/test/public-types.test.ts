@@ -415,6 +415,8 @@ type ExpectedThreadsKey =
   | "experimental_import"
   | "getPluginMetadata"
   | "updatePluginMetadata"
+  | "experimental_importProviderSession"
+  | "experimental_providerSessions"
   | "context"
   | "archive"
   | "archiveAll"

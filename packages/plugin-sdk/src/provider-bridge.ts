@@ -47,6 +47,11 @@ export {
   PROVIDER_BRIDGE_EXPORT_NAME,
   experimental_defineProviderBridge,
 } from "@bb/provider-bridge-protocol/bridge-kit";
+export { createDeltaAssembler as experimental_createDeltaAssembler } from "@bb/provider-bridge-protocol/assembler";
+export type {
+  CreateDeltaAssemblerOptions,
+  DeltaAssembler,
+} from "@bb/provider-bridge-protocol/assembler";
 export type {
   ProviderBridgeContext,
   ProviderBridgeDefinition,
