@@ -560,7 +560,11 @@ export function registerThreadActionRoutes(
     }
     const delivered = deps.hub.notifyThreadOpen(
       { projectId: publicThread.projectId, threadId: publicThread.id },
-      { split: payload.split ?? "replace", file: payload.file },
+      {
+        split: payload.split ?? "replace",
+        file: payload.file,
+        focus: payload.focus ?? false,
+      },
     );
     return context.json({ delivered });
   });
