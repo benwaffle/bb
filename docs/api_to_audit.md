@@ -440,6 +440,59 @@ Docs: `backend-events.md`, `testing.md`.
 5. Confirm the callback error policy should keep the socket open after an
    isolated message-handler failure.
 
+## `sdk.threads.experimental_import`
+
+**What it does.** Creates a thread from a conversation a provider already holds
+outside bb: `POST /api/v1/threads/import` takes the provider, an environment
+request, the provider's own session id, and the conversation as ordered turns,
+each a prompt plus timestamped provider events already translated into bb's
+event vocabulary. The server records each prompt as a user turn request,
+keeps the turn-level events a fork would inherit (turn start and completion,
+completed items, compactions), stamps them with the given timestamps, and
+leaves the thread `pending` with a fork descriptor naming the provider session.
+The thread's first message forks that session instead of starting an empty one.
+The `claude-code-session-import` builtin plugin's `bb claude-code import` command
+and its command-palette session browser are the first callers.
+
+**Audit before stabilizing.**
+
+1. Decide whether the wire payload should stay pre-translated events or move
+   to a provider-neutral transcript the server translates through the provider
+   bridge, which would let core own the event filter.
+2. Confirm the fork-on-first-message model is right for providers whose fork
+   creates a copy the user cannot see from their own tooling, or whether an
+   opt-in resume of the original session is needed.
+3. Confirm whether imported history should record a distinct thread origin
+   kind so the UI and `bb thread list` can tell imports from forks.
+4. Decide the request size policy: large transcripts are paged by the caller
+   today and the route accepts one request per thread.
+
+## `sdk.threads.experimental_providerSessions`
+
+**What it does.** Lists the provider session identities bb holds for one
+provider: `GET /api/v1/threads/provider-sessions?providerId=<id>` returns every
+distinct provider session id recorded on a non-deleted thread of that provider,
+paired with the thread holding it, plus the source session id of a thread that
+is still pending a fork or an import. Because a turn records the session id it
+ran under, a thread that resumed or forked contributes each id it has used, and
+threads on every machine the server knows are included. The
+`claude-code-session-import` builtin plugin calls it to leave sessions bb
+already has a thread for out of its session browser and
+`bb claude-code sessions`.
+
+**Audit before stabilizing.**
+
+1. Decide whether the response should page or accept an id filter; today it
+   returns every identity for the provider, and the query is a distinct scan of
+   the events table with no index on `provider_thread_id`.
+2. Confirm callers need the thread id, or whether the set of session ids alone
+   is the right contract.
+3. Decide whether a thread should keep its source session id after the fork
+   consumes the startup context, so an imported session stays attributable
+   without the caller recording the mapping itself.
+4. Confirm exposing provider session ids to any plugin with SDK access is
+   acceptable, or whether this belongs behind a provider-scoped grant.
+
 ## `bb.providers.experimental_contributeEnvHealth`
 
 Registers one host-scoped readiness resolver beside a provider environment
