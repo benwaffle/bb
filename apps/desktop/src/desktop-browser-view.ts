@@ -479,8 +479,15 @@ function microphoneOrigin(url: string): string | null {
   }
 }
 
+const ALLOWED_BROWSER_PERMISSIONS: ReadonlySet<string> = new Set([
+  "clipboard-sanitized-write",
+  "local-network-access",
+  "local-network",
+  "loopback-network",
+]);
+
 function isAllowedBrowserPermission(permission: string): boolean {
-  return permission === "clipboard-sanitized-write";
+  return ALLOWED_BROWSER_PERMISSIONS.has(permission);
 }
 
 export function createDesktopBrowserViewManager(
