@@ -162,6 +162,7 @@ export interface InsertEventsResult {
 }
 
 export interface AppendDaemonEventInput {
+  createdAt?: number;
   data: string;
   environmentId: string | null;
   itemId: string | null;
@@ -920,7 +921,7 @@ export function appendDaemonEventsInTransaction(
     insertStoredEventRow(db, {
       attachmentOwnership: "required",
       conflict: "error",
-      createdAt: now,
+      createdAt: input.createdAt ?? now,
       data: input.data,
       environmentId: input.environmentId,
       itemId: input.itemId,
@@ -4665,6 +4666,68 @@ export function classifyStoredProviderThreadClaim(
     readStoredProviderThreadClaim(db, scope, args.providerThreadId),
     args.threadId,
   );
+}
+
+export interface StoredProviderSessionRow {
+  providerThreadId: string;
+  threadId: string;
+}
+
+export function listStoredProviderSessionsByProvider(
+  db: DbQueryConnection,
+  args: { providerId: string },
+): StoredProviderSessionRow[] {
+  return db
+    .selectDistinct({
+      providerThreadId: events.providerThreadId,
+      threadId: events.threadId,
+    })
+    .from(events)
+    .innerJoin(threads, eq(threads.id, events.threadId))
+    .where(
+      and(
+        eq(events.type, "thread/identity"),
+        isNotNull(events.providerThreadId),
+        eq(threads.providerId, args.providerId),
+      ),
+    )
+    .all()
+    .flatMap((row) =>
+      row.providerThreadId === null
+        ? []
+        : [
+            {
+              providerThreadId: row.providerThreadId,
+              threadId: row.threadId,
+            },
+          ],
+    );
+}
+
+export interface StoredThreadStartupContextRow {
+  startupContext: string;
+  threadId: string;
+}
+
+export function listStoredStartupContextsByProvider(
+  db: DbQueryConnection,
+  args: { providerId: string },
+): StoredThreadStartupContextRow[] {
+  return db
+    .select({ startupContext: threads.startupContext, threadId: threads.id })
+    .from(threads)
+    .where(
+      and(
+        isNotNull(threads.startupContext),
+        eq(threads.providerId, args.providerId),
+      ),
+    )
+    .all()
+    .flatMap((row) =>
+      row.startupContext === null
+        ? []
+        : [{ startupContext: row.startupContext, threadId: row.threadId }],
+    );
 }
 
 export function listThreadTurnInterruptionEventStates(

@@ -44,6 +44,7 @@ import {
   listStoredDelegatingItemRowsByItemIds,
   listStoredEventRows,
   listStoredEventRowsByParentToolCallIds,
+  listStoredProviderSessionsByProvider,
   listStoredTurnCompletedKeys,
   listTodoSnapshotEventRowsForThread,
 } from "../src/data/events.js";
@@ -348,6 +349,54 @@ describe("slow query index plans", () => {
       expect(queryPlanDetails({ db, ...ownerQuery! })).toContain(
         "USING INDEX events_provider_identity_idx",
       );
+    } finally {
+      db.$client.close();
+    }
+  });
+
+  it("lists a provider's sessions through the identity index without scanning events", () => {
+    const { db, thread } = setup();
+    try {
+      insertEvents(db, noopNotifier, [
+        {
+          threadId: thread.id,
+          sequence: 1,
+          scope: threadScope(),
+          providerThreadId: "provider-session-identity",
+          type: "thread/identity" as const,
+          itemId: null,
+          itemKind: null,
+          parentToolCallId: null,
+          data: JSON.stringify({
+            providerThreadId: "provider-session-identity",
+          }),
+        },
+        ...Array.from({ length: 20 }, (_, index) => ({
+          threadId: thread.id,
+          sequence: index + 2,
+          scope: threadScope(),
+          providerThreadId: "provider-session-identity",
+          type: "provider/unhandled" as const,
+          itemId: null,
+          itemKind: null,
+          parentToolCallId: null,
+          data: JSON.stringify({ method: "noise", params: {} }),
+        })),
+      ]);
+      const captured = captureStatements(db, () => {
+        expect(
+          listStoredProviderSessionsByProvider(db, { providerId: "codex" }),
+        ).toEqual([
+          {
+            providerThreadId: "provider-session-identity",
+            threadId: thread.id,
+          },
+        ]);
+      });
+      expect(captured).toHaveLength(1);
+      const details = queryPlanDetails({ db, ...captured[0]! });
+      expect(details).toContain("USING INDEX events_provider_identity_idx");
+      expect(details).not.toMatch(/SCAN events(?! USING)/);
     } finally {
       db.$client.close();
     }
