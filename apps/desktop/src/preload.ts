@@ -89,6 +89,7 @@ import {
   BB_DESKTOP_OPEN_WINDOW_FIND_CHANNEL,
   BB_DESKTOP_SET_SPLIT_NAVIGATION_ENABLED_CHANNEL,
   BB_DESKTOP_CLOSE_WINDOW_REQUEST_CHANNEL,
+  BB_DESKTOP_FOCUS_WINDOW_CHANNEL,
   BB_DESKTOP_CLOSE_WINDOW_RESPONSE_CHANNEL,
   BB_DESKTOP_GET_WINDOW_STATE_CHANNEL,
   BB_DESKTOP_OPEN_NEW_TAB_CHANNEL,
@@ -413,6 +414,9 @@ const bbDesktopApi: BbDesktopApi = {
   },
   installUpdate() {
     return invokeInstallUpdate();
+  },
+  focusWindow() {
+    ipcRenderer.send(BB_DESKTOP_FOCUS_WINDOW_CHANNEL);
   },
   onChange(listener: BbDesktopInfoChangeHandler): BbDesktopInfoUnsubscribe {
     return addListener(listeners, listener);

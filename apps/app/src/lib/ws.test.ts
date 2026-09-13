@@ -224,6 +224,7 @@ describe("WebSocketManager thread-open signals", () => {
         path: "src/index.ts",
         lineNumber: 7,
       },
+      focus: false,
     };
     dispatchRaw(signal);
 
