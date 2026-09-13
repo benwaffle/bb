@@ -146,6 +146,7 @@ export interface InsertEventsResult {
 }
 
 export interface AppendDaemonEventInput {
+  createdAt?: number;
   data: string;
   environmentId: string | null;
   itemId: string | null;
@@ -883,7 +884,7 @@ export function appendDaemonEventsInTransaction(
     insertStoredEventRow(db, {
       attachmentOwnership: "required",
       conflict: "error",
-      createdAt: now,
+      createdAt: input.createdAt ?? now,
       data: input.data,
       environmentId: input.environmentId,
       itemId: input.itemId,
