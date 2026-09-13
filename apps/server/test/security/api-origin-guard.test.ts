@@ -1,4 +1,5 @@
 import http from "node:http";
+import { API_TOKEN_COOKIE_NAME } from "@bb/config/api-auth";
 import { createNodeBbSdk } from "@bb/sdk/node";
 import { afterEach, describe, expect, it } from "vitest";
 import {
@@ -181,6 +182,40 @@ describe("/api/v1 browser origin guard", () => {
         host: `127.0.0.1:${port}`,
       }),
     ).toBe(403);
+  });
+
+  it("lets a bearer-authenticated caller bypass the origin guard, but not a cookie", async () => {
+    const token = "extension-token";
+    server = await startTestServer({ apiToken: token });
+    const origin = "chrome-extension://abcdefghijklmnopabcdefghijklmnop";
+
+    expect(
+      await statusFor(server.baseUrl, {
+        headers: { origin, authorization: `Bearer ${token}` },
+      }),
+    ).toBe(200);
+    expect(
+      await statusFor(server.baseUrl, {
+        method: "POST",
+        path: "/api/v1/threads",
+        headers: {
+          origin,
+          authorization: `Bearer ${token}`,
+          "content-type": "application/json",
+        },
+      }),
+    ).not.toBe(403);
+
+    expect(
+      await statusFor(server.baseUrl, {
+        headers: { origin, cookie: `${API_TOKEN_COOKIE_NAME}=${token}` },
+      }),
+    ).toBe(403);
+    expect(
+      await statusFor(server.baseUrl, {
+        headers: { origin, authorization: "Bearer not-the-token" },
+      }),
+    ).toBe(401);
   });
 
   it("accepts a configured app origin", async () => {

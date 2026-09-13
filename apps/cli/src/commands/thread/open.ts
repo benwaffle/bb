@@ -21,6 +21,7 @@ interface ThreadOpenCommandOptions {
   line?: string;
   json?: boolean;
   split?: string;
+  focus?: boolean;
 }
 
 interface ThreadOpenTarget {
@@ -50,6 +51,10 @@ export function registerOpenCommand(
     .option(
       "--split <placement>",
       "Open in right, down, left, top, or replace placement; edge placements add panes through pane 8, then replace the focused pane",
+    )
+    .option(
+      "--focus",
+      "Bring the BB desktop window to the front after opening",
     )
     .option("--json", "Print machine-readable JSON output")
     .action(
@@ -88,6 +93,7 @@ export function registerOpenCommand(
           const result = await sdk.threads.open({
             threadId: target.threadId,
             ...(requestedSplit === undefined ? {} : { split: requestedSplit }),
+            ...(opts.focus === true ? { focus: true } : {}),
             file,
           });
 
@@ -95,6 +101,7 @@ export function registerOpenCommand(
             outputJson(opts, {
               threadId: target.threadId,
               split,
+              focus: opts.focus === true,
               file,
               delivered: result.delivered,
               inputPath: target.inputPath,
@@ -106,6 +113,7 @@ export function registerOpenCommand(
           printThreadContextLabel(target.resolved);
           console.log(`Thread: ${target.threadId}`);
           console.log(`Split: ${split}`);
+          console.log(`Focus: ${opts.focus === true}`);
           if (file !== null) {
             console.log(`Source: ${file.source}`);
             console.log(`Path: ${file.path}`);
