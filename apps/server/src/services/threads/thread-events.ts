@@ -196,6 +196,33 @@ function buildClientTurnBaseEventData(
   };
 }
 
+interface ImportedTurnRequestEventDataArgs {
+  execution: ResolvedThreadExecutionOptions;
+  input: PromptInput[];
+  requestId: ClientTurnRequestId;
+}
+
+export function buildImportedTurnRequestEventData(
+  args: ImportedTurnRequestEventDataArgs,
+): TurnRequestEventData {
+  return buildClientTurnRequestedEventData(
+    {
+      environmentId: null,
+      execution: args.execution,
+      initiator: "user",
+      input: args.input,
+      originPluginId: null,
+      requestMethod: "turn/start",
+      senderThreadId: null,
+      source: "tell",
+      target: { kind: "new-turn" },
+      threadId: "",
+      type: "client/turn/requested",
+    },
+    args.requestId,
+  );
+}
+
 function buildClientTurnRequestedEventData(
   args: ClientTurnRequestedEventArgs,
   requestId: ClientTurnRequestId,

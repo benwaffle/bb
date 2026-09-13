@@ -111,6 +111,7 @@ import {
   type EditMessageRequest,
   type EditMessageResponse,
   type ForkThreadRequest,
+  type ImportThreadRequest,
   type RestartTerminalRequest,
   type DeleteThreadSectionRequest,
   type DeleteThreadRequest,
@@ -309,6 +310,7 @@ import {
   updateQueuedMessageRequestSchema,
   createThreadRequestSchema,
   forkThreadRequestSchema,
+  importThreadRequestSchema,
   updateThreadPluginMetadataRequestSchema,
   pluginThreadMetadataListRequestSchema,
   threadAncestorsListRequestSchema,
@@ -1353,6 +1355,14 @@ export const publicApiRoutes = {
       method: "post",
       request: jsonRequest<EmptyInput, ForkThreadRequest>(
         forkThreadRequestSchema,
+      ),
+      response: jsonResponse<ThreadResponse>({ status: 201 }),
+    }),
+    import: defineRoute({
+      path: "/threads/import",
+      method: "post",
+      request: jsonRequest<EmptyInput, ImportThreadRequest>(
+        importThreadRequestSchema,
       ),
       response: jsonResponse<ThreadResponse>({ status: 201 }),
     }),
