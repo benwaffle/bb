@@ -847,7 +847,11 @@ export class NotificationHub implements DbNotifier {
 
   notifyThreadOpen(
     thread: { projectId: string; threadId: string },
-    request: { split: ThreadOpenSplit; file: ThreadOpenFile | null },
+    request: {
+      split: ThreadOpenSplit;
+      file: ThreadOpenFile | null;
+      focus: boolean;
+    },
   ): number {
     return this.broadcastToAllClients(
       JSON.stringify(
@@ -857,6 +861,7 @@ export class NotificationHub implements DbNotifier {
           threadId: thread.threadId,
           split: request.split,
           file: request.file,
+          focus: request.focus,
         }),
       ),
     );
