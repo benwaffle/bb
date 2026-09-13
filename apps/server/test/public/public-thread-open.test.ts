@@ -74,6 +74,7 @@ describe("public thread open", () => {
           path: "src/index.ts",
           lineNumber: 42,
         },
+        focus: false,
       });
 
       expect(getThread(harness.db, thread.id)).toEqual(before);
@@ -172,6 +173,7 @@ describe("public thread open", () => {
         threadId: thread.id,
         split: "right",
         file: null,
+        focus: false,
       });
 
       const invalid = await postOpen(harness, thread.id, {

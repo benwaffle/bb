@@ -183,6 +183,7 @@ import {
 import {
   BB_DESKTOP_APP_COMMAND_CHANNEL,
   BB_DESKTOP_CLOSE_WINDOW_REQUEST_CHANNEL,
+  BB_DESKTOP_FOCUS_WINDOW_CHANNEL,
   BB_DESKTOP_CLOSE_WINDOW_RESPONSE_CHANNEL,
   BB_DESKTOP_GET_WINDOW_STATE_CHANNEL,
   BB_DESKTOP_OPEN_NEW_TAB_CHANNEL,
@@ -1893,6 +1894,17 @@ function registerDesktopUpdateIpc(): void {
       desktopAutoUpdateService?.checkForUpdates() ?? Promise.resolve(null),
     ]);
     return getCurrentDesktopInfo();
+  });
+  ipcMain.on(BB_DESKTOP_FOCUS_WINDOW_CHANNEL, (event) => {
+    const browserWindow = BrowserWindow.fromWebContents(event.sender);
+    if (browserWindow !== null && !browserWindow.isDestroyed()) {
+      if (browserWindow.isMinimized()) {
+        browserWindow.restore();
+      }
+      browserWindow.show();
+      browserWindow.focus();
+    }
+    app.focus({ steal: true });
   });
   ipcMain.handle(BB_DESKTOP_INSTALL_UPDATE_CHANNEL, async () => {
     if (desktopAutoUpdateService === null) {

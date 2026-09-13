@@ -440,6 +440,9 @@ export function AppLayout({ children }: AppLayoutProps) {
           store.set(splitLayoutAtom, next);
         }
         void navigate(route, alreadyOpen ? { replace: true } : undefined);
+        if (signal.focus) {
+          getBbDesktopInfo()?.focusWindow?.();
+        }
       }),
     [isCompactViewport, navigate, store],
   );

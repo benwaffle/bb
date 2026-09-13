@@ -230,6 +230,7 @@ Opening threads and files in the app:
 
   bb thread open <path>                    Open a file in the current BB thread panel
   bb thread open <thread-id> [path]        Open a thread, optionally with a panel file
+                                           (--focus brings the desktop window to the front)
     --line <number>                        Line number to focus
     --split <placement>                    right, down, left, top, or replace
   bb thread pane <action> [thread-id]      Maximize, restore, toggle, spotlight, or clear spotlight

@@ -744,6 +744,7 @@ export const threadOpenSignalSchema = z
     threadId: z.string().min(1),
     split: threadOpenSplitSchema,
     file: threadOpenFileSchema.nullable(),
+    focus: z.boolean(),
   })
   .strict();
 export type ThreadOpenSignal = z.infer<typeof threadOpenSignalSchema>;
@@ -754,12 +755,15 @@ export const threadOpenSignalLenientSchema = z.object({
   threadId: z.string(),
   split: threadOpenSplitSchema,
   file: threadOpenFileLenientSchema.nullable(),
+  focus: z.boolean().default(false),
 });
 
 export const threadOpenRequestSchema = z
   .object({
     split: threadOpenSplitSchema.optional(),
     file: threadOpenFileSchema.nullable(),
+    /** Bring the desktop window to the front after switching to the thread. */
+    focus: z.boolean().optional(),
   })
   .strict();
 export type ThreadOpenRequest = z.infer<typeof threadOpenRequestSchema>;
