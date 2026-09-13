@@ -31,6 +31,11 @@ import {
   type ThreadForkPoint,
 } from "./thread-fork-history.js";
 import {
+  appendImportedThreadHistory,
+  resolveImportedForkCheckpoint,
+  type ImportedThreadHistory,
+} from "./thread-import-history.js";
+import {
   rememberProjectExecutionDefaultsForCreate,
   resolveProjectExecutionDefaultsForCreate,
 } from "./project-execution-defaults.js";
@@ -85,6 +90,7 @@ interface CreateProvisioningThreadArgs {
   environmentId: string | null;
   defaultModel: string | null;
   fork: ThreadForkPoint | null;
+  importedHistory: ImportedThreadHistory | null;
   request: ThreadCreateServiceRequest;
   providerInput?: ThreadCreateServiceRequestInput["input"];
 }
@@ -400,6 +406,20 @@ function requireLiveSourceThread(
   return sourceThread;
 }
 
+function importedForkDescriptor(
+  history: ImportedThreadHistory,
+): ThreadForkPoint["descriptor"] {
+  const sourceProviderCheckpointId = resolveImportedForkCheckpoint(
+    history.turns,
+  );
+  return {
+    sourceProviderThreadId: history.sourceProviderThreadId,
+    ...(sourceProviderCheckpointId === undefined
+      ? {}
+      : { sourceProviderCheckpointId }),
+  };
+}
+
 /**
  * Creates the thread row and hands its first message to the dispatch
  * checkpoint.
@@ -473,7 +493,11 @@ async function createPendingThreadAndAttemptFirstDispatch(
   }
   const startContext: PendingThreadStartContext = {
     environmentIntent: args.environmentIntent,
-    fork: args.fork?.descriptor ?? null,
+    fork:
+      args.fork?.descriptor ??
+      (args.importedHistory === null
+        ? null
+        : importedForkDescriptor(args.importedHistory)),
     ...(args.providerInput !== undefined
       ? { providerInput: args.providerInput }
       : {}),
@@ -528,6 +552,21 @@ async function createPendingThreadAndAttemptFirstDispatch(
       args.request,
       executionPlanArgs,
     );
+
+    if (args.importedHistory !== null) {
+      appendImportedThreadHistory(deps, {
+        environmentId: thread.environmentId,
+        execution,
+        threadId: thread.id,
+        turns: args.importedHistory.turns,
+      });
+      rememberProjectExecutionDefaultsForCreate(deps, {
+        execution,
+        request: args.request,
+      });
+      return getThreadSafe(deps, thread.id);
+    }
+
     await attemptDispatch(deps, {
       thread,
       payload: {
@@ -606,6 +645,7 @@ export async function createThreadFromRequest(
   options: {
     providerInput?: ThreadCreateServiceRequestInput["input"];
     forkSourceEnvironmentId?: string;
+    importedHistory?: ImportedThreadHistory;
   } = {},
 ) {
   const project = requirePublicProjectForThreadCreate(
@@ -765,7 +805,9 @@ export async function createThreadFromRequest(
     }),
     environment: requestedEnvironment,
     providerId,
-    titleFallback: deriveTitleFallback(requestInput.input),
+    titleFallback: deriveTitleFallback(
+      options.importedHistory?.turns[0]?.input ?? requestInput.input,
+    ),
   };
   if (
     request.title === undefined &&
@@ -870,6 +912,7 @@ export async function createThreadFromRequest(
     environmentIntent,
     defaultModel,
     fork,
+    importedHistory: options.importedHistory ?? null,
     ...(options.providerInput !== undefined
       ? { providerInput: options.providerInput }
       : {}),
