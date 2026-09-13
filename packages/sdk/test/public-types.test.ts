@@ -403,6 +403,7 @@ type ExpectedThreadSectionsKey = "create" | "delete" | "list" | "update";
 type ExpectedThreadsKey =
   | "getPluginMetadata"
   | "updatePluginMetadata"
+  | "experimental_import"
   | "context"
   | "archive"
   | "archiveAll"
