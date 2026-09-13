@@ -136,6 +136,11 @@ Forking:
   a numbered prefix: "foo" becomes "(1) foo" and "(1) foo" becomes "(2) foo".
   Forks created with a first prompt get a title from that prompt.
 
+  A Claude Code conversation started outside bb (in a terminal) is imported
+  rather than forked: `bb claude-code sessions` lists the sessions on a
+  machine and `bb claude-code import <id|title>` turns one into a thread whose
+  next message continues it. See the providers chapter.
+
 Editing a sent message:
 
   bb thread edit-message <id> --message "Replacement text"
