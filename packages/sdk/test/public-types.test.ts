@@ -408,6 +408,7 @@ type ExpectedThreadsKey =
   | "experimental_listPluginMetadata"
   | "getPluginMetadata"
   | "updatePluginMetadata"
+  | "experimental_import"
   | "context"
   | "archive"
   | "archiveAll"
