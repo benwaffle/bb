@@ -61,7 +61,7 @@ import {
   findAppendedEventRows,
   rememberAppendedEventRow,
 } from "./appended-event-rows.js";
-import { alias, unionAll } from "drizzle-orm/sqlite-core";
+import { alias, union, unionAll } from "drizzle-orm/sqlite-core";
 import type { DbNotifier } from "../notifier.js";
 import {
   environments,
@@ -162,6 +162,7 @@ export interface InsertEventsResult {
 }
 
 export interface AppendDaemonEventInput {
+  createdAt?: number;
   data: string;
   environmentId: string | null;
   itemId: string | null;
@@ -920,7 +921,7 @@ export function appendDaemonEventsInTransaction(
     insertStoredEventRow(db, {
       attachmentOwnership: "required",
       conflict: "error",
-      createdAt: now,
+      createdAt: input.createdAt ?? now,
       data: input.data,
       environmentId: input.environmentId,
       itemId: input.itemId,
@@ -4665,6 +4666,73 @@ export function classifyStoredProviderThreadClaim(
     readStoredProviderThreadClaim(db, scope, args.providerThreadId),
     args.threadId,
   );
+}
+
+export interface StoredProviderSessionRow {
+  providerThreadId: string;
+  threadId: string;
+}
+
+export function listStoredProviderSessionsByProvider(
+  db: DbQueryConnection,
+  args: { providerId: string },
+): StoredProviderSessionRow[] {
+  const sessionsFromEvents = (type: "thread/identity" | "turn/started") =>
+    db
+      .select({
+        providerThreadId: events.providerThreadId,
+        threadId: events.threadId,
+      })
+      .from(events)
+      .innerJoin(threads, eq(threads.id, events.threadId))
+      .where(
+        and(
+          eq(events.type, type),
+          isNotNull(events.providerThreadId),
+          eq(threads.providerId, args.providerId),
+        ),
+      );
+  return union(
+    sessionsFromEvents("thread/identity"),
+    sessionsFromEvents("turn/started"),
+  )
+    .all()
+    .flatMap((row) =>
+      row.providerThreadId === null
+        ? []
+        : [
+            {
+              providerThreadId: row.providerThreadId,
+              threadId: row.threadId,
+            },
+          ],
+    );
+}
+
+export interface StoredThreadStartupContextRow {
+  startupContext: string;
+  threadId: string;
+}
+
+export function listStoredStartupContextsByProvider(
+  db: DbQueryConnection,
+  args: { providerId: string },
+): StoredThreadStartupContextRow[] {
+  return db
+    .select({ startupContext: threads.startupContext, threadId: threads.id })
+    .from(threads)
+    .where(
+      and(
+        isNotNull(threads.startupContext),
+        eq(threads.providerId, args.providerId),
+      ),
+    )
+    .all()
+    .flatMap((row) =>
+      row.startupContext === null
+        ? []
+        : [{ startupContext: row.startupContext, threadId: row.threadId }],
+    );
 }
 
 export function listThreadTurnInterruptionEventStates(

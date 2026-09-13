@@ -44,6 +44,7 @@ import {
   listStoredDelegatingItemRowsByItemIds,
   listStoredEventRows,
   listStoredEventRowsByParentToolCallIds,
+  listStoredProviderSessionsByProvider,
   listStoredTurnCompletedKeys,
   listTodoSnapshotEventRowsForThread,
 } from "../src/data/events.js";
@@ -348,6 +349,72 @@ describe("slow query index plans", () => {
       expect(queryPlanDetails({ db, ...ownerQuery! })).toContain(
         "USING INDEX events_provider_identity_idx",
       );
+    } finally {
+      db.$client.close();
+    }
+  });
+
+  it("lists a provider's identity and turn sessions through indexes without scanning events", () => {
+    const { db, thread } = setup();
+    try {
+      insertEvents(db, noopNotifier, [
+        {
+          threadId: thread.id,
+          sequence: 1,
+          scope: threadScope(),
+          providerThreadId: "provider-session-identity",
+          type: "thread/identity" as const,
+          itemId: null,
+          itemKind: null,
+          parentToolCallId: null,
+          data: JSON.stringify({
+            providerThreadId: "provider-session-identity",
+          }),
+        },
+        {
+          threadId: thread.id,
+          sequence: 2,
+          scope: turnScope("turn-provider-session"),
+          providerThreadId: "provider-session-turn",
+          type: "turn/started" as const,
+          itemId: null,
+          itemKind: null,
+          parentToolCallId: null,
+          data: "{}",
+        },
+        ...Array.from({ length: 20 }, (_, index) => ({
+          threadId: thread.id,
+          sequence: index + 3,
+          scope: threadScope(),
+          providerThreadId: "provider-session-identity",
+          type: "provider/unhandled" as const,
+          itemId: null,
+          itemKind: null,
+          parentToolCallId: null,
+          data: JSON.stringify({ method: "noise", params: {} }),
+        })),
+      ]);
+      const captured = captureStatements(db, () => {
+        expect(
+          listStoredProviderSessionsByProvider(db, { providerId: "codex" }),
+        ).toEqual(
+          expect.arrayContaining([
+            {
+              providerThreadId: "provider-session-identity",
+              threadId: thread.id,
+            },
+            {
+              providerThreadId: "provider-session-turn",
+              threadId: thread.id,
+            },
+          ]),
+        );
+      });
+      expect(captured).toHaveLength(1);
+      const details = queryPlanDetails({ db, ...captured[0]! });
+      expect(details).toContain("USING INDEX events_provider_identity_idx");
+      expect(details).toContain("USING INDEX events_thread_type_sequence_idx");
+      expect(details).not.toMatch(/SCAN events(?! USING)/);
     } finally {
       db.$client.close();
     }
