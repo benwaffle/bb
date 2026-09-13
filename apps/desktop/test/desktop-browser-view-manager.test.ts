@@ -4668,7 +4668,7 @@ describe("DesktopBrowserViewManager", () => {
     },
   );
 
-  it("allows clipboard-sanitized-write but denies clipboard-read and device permissions", () => {
+  it("allows clipboard-sanitized-write and local network access but denies clipboard-read and device permissions", () => {
     const manager = createDesktopBrowserViewManager({
       partition: "persist:test",
     });
@@ -4698,6 +4698,9 @@ describe("DesktopBrowserViewManager", () => {
 
     const permissions = [
       "clipboard-sanitized-write",
+      "local-network-access",
+      "local-network",
+      "loopback-network",
       "clipboard-read",
       "media",
       "notifications",
@@ -4705,7 +4708,7 @@ describe("DesktopBrowserViewManager", () => {
     ];
     expect(
       permissions.map((permission) => checkHandler(null, permission)),
-    ).toEqual([true, false, false, false, false]);
+    ).toEqual([true, true, true, true, false, false, false, false]);
 
     const requestGrants: boolean[] = [];
     for (const permission of permissions) {
@@ -4718,7 +4721,7 @@ describe("DesktopBrowserViewManager", () => {
         { requestingUrl: "https://example.com/", isMainFrame: true },
       );
     }
-    expect(requestGrants).toEqual([true, false, false, false, false]);
+    expect(requestGrants).toEqual([true, true, true, true, false, false, false, false]);
   });
 });
 describe("hidden browser retention", () => {
