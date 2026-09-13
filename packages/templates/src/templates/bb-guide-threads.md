@@ -129,6 +129,11 @@ Forking:
   provider session lives on its original machine. Omit --prompt to create an
   idle fork.
 
+  A Claude Code conversation started outside bb (in a terminal) is imported
+  rather than forked: `bb claude-code sessions` lists the sessions on a
+  machine and `bb claude-code import <id|title>` turns one into a thread whose
+  next message continues it. See the providers chapter.
+
 Editing a sent message:
 
   bb thread edit-message <id> --message "Replacement text"

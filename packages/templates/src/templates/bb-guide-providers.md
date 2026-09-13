@@ -93,6 +93,17 @@ default. Enable them with
 the Chrome extension and a claude.ai login. A change restarts the thread's
 Claude process before its next turn and keeps the conversation.
 
+Existing Claude Code sessions from the terminal can become bb threads.
+`bb claude-code sessions [--dir <path>]` lists them by id, title, directory,
+and last activity; `bb claude-code import <session-id|title|session.jsonl>`
+imports one. The import reads the
+transcript on the machine that holds it, replays every turn into a new thread
+in the project whose source matches the session's directory, and forks the
+Claude session when the thread's next message is sent, so the conversation
+continues with its context intact. `--project`, `--environment`, `--machine`,
+`--title`, and `--turns A-B` override what the command infers; `--json` prints
+the thread.
+
 Known ACP agents can appear automatically when their CLI is installed on the
 host. For example, opencode, omp, Grok Build's grok CLI, or Hermes' hermes CLI
 on PATH appears as provider acp-opencode, acp-omp, acp-grok, or
