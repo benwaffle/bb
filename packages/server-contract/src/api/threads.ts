@@ -30,6 +30,7 @@ import {
   threadTimelineGoalSchema,
   threadTimelineModelFallbackSchema,
   threadTimelinePendingTodosSchema,
+  threadEventSchema,
   threadEventTypeValues,
   threadVisibilitySchema,
   threadWithRuntimeSchema,
@@ -229,6 +230,64 @@ export const forkThreadRequestSchema = z
     }
   });
 export type ForkThreadRequest = z.infer<typeof forkThreadRequestSchema>;
+
+export const importedThreadEventSchema = z
+  .object({
+    at: z.number().int().nonnegative(),
+    event: threadEventSchema,
+  })
+  .strict();
+export type ImportedThreadEvent = z.infer<typeof importedThreadEventSchema>;
+
+export const importedThreadTurnSchema = z
+  .object({
+    at: z.number().int().nonnegative(),
+    input: z.array(promptInputSchema).min(1),
+    events: z.array(importedThreadEventSchema),
+  })
+  .strict();
+export type ImportedThreadTurn = z.infer<typeof importedThreadTurnSchema>;
+
+export const importThreadRequestSchema = z
+  .object({
+    projectId: z.string().min(1),
+    providerId: z.string().min(1),
+    environment: createThreadEnvironmentArgsSchema,
+    sourceProviderThreadId: z.string().min(1),
+    turns: z.array(importedThreadTurnSchema).min(1),
+    title: z.string().min(1).optional(),
+    model: z.string().min(1).optional(),
+    reasoningLevel: reasoningLevelSchema.optional(),
+    permissionMode: permissionModeInputSchema.optional(),
+    origin: threadCreateOriginSchema.default("sdk"),
+    originPluginId: z.string().min(1).optional(),
+    pluginMetadata: pluginMetadataSchema.optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.origin === "plugin" && value.originPluginId === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: 'originPluginId is required when origin is "plugin"',
+        path: ["originPluginId"],
+      });
+    }
+    if (value.origin !== "plugin" && value.originPluginId !== undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: 'originPluginId requires origin "plugin"',
+        path: ["originPluginId"],
+      });
+    }
+    if (value.pluginMetadata !== undefined && value.origin !== "plugin") {
+      ctx.addIssue({
+        code: "custom",
+        message: 'pluginMetadata requires origin "plugin"',
+        path: ["pluginMetadata"],
+      });
+    }
+  });
+export type ImportThreadRequest = z.infer<typeof importThreadRequestSchema>;
 
 const sendMessageRequestFieldsSchema = z.object({
   input: z.array(promptInputSchema).min(1),

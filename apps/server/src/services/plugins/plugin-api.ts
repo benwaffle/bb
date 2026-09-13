@@ -115,6 +115,7 @@ import type {
 import type {
   BbSdk,
   ThreadForkArgs,
+  ThreadImportArgs,
   ThreadPluginMetadataArgs,
   ThreadPluginMetadataUpdateArgs,
   ThreadSpawnArgs,
@@ -323,7 +324,7 @@ export type PluginProviderEnvHealthResolver = (
   | Promise<ExperimentalPluginProviderEnvHealth | null>;
 
 function withPluginThreadAttribution<
-  TArgs extends ThreadForkArgs | ThreadSpawnArgs,
+  TArgs extends ThreadForkArgs | ThreadImportArgs | ThreadSpawnArgs,
 >(args: TArgs, pluginId: string): TArgs {
   const attribution: Pick<ThreadSpawnArgs, "origin" | "originPluginId"> =
     args.pluginMetadata !== undefined
@@ -364,6 +365,11 @@ function wrapSdkForPlugin(sdk: BbSdk, pluginId: string): PluginBbSdk {
       },
       spawn(args: ThreadSpawnArgs) {
         return sdk.threads.spawn(withPluginThreadAttribution(args, pluginId));
+      },
+      experimental_import(args: ThreadImportArgs) {
+        return sdk.threads.experimental_import(
+          withPluginThreadAttribution(args, pluginId),
+        );
       },
     },
   };
