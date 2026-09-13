@@ -116,6 +116,7 @@ function normalizeCallArgs(
   switch (path) {
     case "threads.spawn":
     case "threads.fork":
+    case "threads.experimental_import":
       return withThreadAttribution(pluginId, args);
     case "threads.getPluginMetadata":
     case "threads.experimental_listPluginMetadata":
