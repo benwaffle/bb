@@ -39,6 +39,7 @@ import type { ServerAppDeps } from "./types.js";
 import { ApiError, createServerErrorHandler } from "./errors.js";
 import {
   apiAuthProblem,
+  bearerTokenAuthenticated,
   buildSessionCookie,
   fileReadCookieAuthenticated,
   fileReadCookiesForResponse,
@@ -995,6 +996,9 @@ export function createApp(
         false,
       );
     }
+    if (bearerTokenAuthenticated(context, deps)) {
+      return next();
+    }
     const problem = browserRequestProblem(context, deps);
     if (problem !== null) {
       throw new ApiError(problem.status, "forbidden_origin", problem.error);
@@ -1092,6 +1096,9 @@ export function createApp(
         authProblem.error,
         false,
       );
+    }
+    if (bearerTokenAuthenticated(context, deps)) {
+      return;
     }
     const problem = browserRequestProblem(context, deps);
     if (problem !== null) {
