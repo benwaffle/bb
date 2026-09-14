@@ -39,6 +39,7 @@ function importedTurn(args: {
   prompt: string;
   reply: string;
   turnId: string;
+  checkpointId?: string;
 }) {
   const scope = turnScope(args.turnId);
   const events: ThreadEvent[] = [
@@ -79,6 +80,9 @@ function importedTurn(args: {
       providerThreadId: SOURCE_SESSION_ID,
       scope,
       status: "completed",
+      ...(args.checkpointId === undefined
+        ? {}
+        : { providerCheckpointId: args.checkpointId }),
     },
   ];
   return {
@@ -193,6 +197,60 @@ describe("POST /api/v1/threads/import", () => {
       expect(start.command.input).toEqual([
         { type: "text", text: "and dark mode?", mentions: [] },
       ]);
+    });
+  });
+
+  it("pins the fork to the last imported turn's provider checkpoint", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, project } = seedImportTarget(harness);
+      const response = await postImport(harness, {
+        projectId: project.id,
+        providerId: "codex",
+        environment: { type: "reuse", environmentId: environment.id },
+        sourceProviderThreadId: SOURCE_SESSION_ID,
+        turns: [
+          importedTurn({
+            at: 1_000,
+            prompt: "first",
+            reply: "one",
+            turnId: "turn-1",
+            checkpointId: "uuid-turn-1",
+          }),
+          importedTurn({
+            at: 2_000,
+            prompt: "second",
+            reply: "two",
+            turnId: "turn-2",
+            checkpointId: "uuid-turn-2",
+          }),
+        ],
+      });
+      expect(response.status).toBe(201);
+      const thread = threadResponseSchema.parse(await readJson(response));
+      const send = await harness.app.request(
+        `/api/v1/threads/${thread.id}/send`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            mode: "start",
+            input: [{ type: "text", text: "third", mentions: [] }],
+          }),
+        },
+      );
+      expect(send.status).toBe(200);
+      const start = await waitForQueuedCommand(
+        harness,
+        ({ command }) =>
+          command.type === "thread.start" && command.threadId === thread.id,
+      );
+      if (start.command.type !== "thread.start") {
+        throw new Error("Expected thread.start");
+      }
+      expect(start.command.fork).toEqual({
+        sourceProviderThreadId: SOURCE_SESSION_ID,
+        sourceProviderCheckpointId: "uuid-turn-2",
+      });
     });
   });
 
