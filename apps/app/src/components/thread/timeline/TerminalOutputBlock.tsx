@@ -3,6 +3,8 @@ import Convert from "ansi-to-html";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { sanitizeTerminalOutput } from "@bb/text-utils";
 import { getDetailScrollMaxHeightClass } from "../../ui/detail-scroll-size.js";
+import { highlightMarkdownCode } from "../../ui/markdown-code-highlight.js";
+import "../../ui/markdown-code-highlight.css";
 import { TimelineDetailScroll } from "./TimelineDetailScroll.js";
 
 export interface TerminalOutputBlockProps {
@@ -76,11 +78,16 @@ export function TerminalOutputBlock({
     [output],
   );
 
+  const highlightedCommandLineHtml = useMemo(
+    () => highlightMarkdownCode({ code: commandLine, language: "shell" }),
+    [commandLine],
+  );
+
   const showExitCode = exitCode !== null;
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="px-4 py-3 font-mono text-xs leading-tight text-foreground opacity-70">
+      <div className="px-4 py-3 font-mono text-xs leading-tight text-foreground">
         {commandLine ? (
           <div
             className={cn(
@@ -88,7 +95,10 @@ export function TerminalOutputBlock({
               getDetailScrollMaxHeightClass("base"),
             )}
           >
-            {commandLine}
+            <span
+              className="bb-code-highlight"
+              dangerouslySetInnerHTML={{ __html: highlightedCommandLineHtml }}
+            />
           </div>
         ) : null}
         {metadataLines.map((line, index) => (
@@ -100,7 +110,7 @@ export function TerminalOutputBlock({
           <TimelineDetailScroll
             size="base"
             streaming={streaming}
-            className="mt-1.5"
+            className="mt-1.5 border-t border-border pt-1.5"
             scrollClassName="whitespace-pre leading-tight text-muted-foreground"
           >
             <div dangerouslySetInnerHTML={{ __html: renderedOutputHtml }} />
