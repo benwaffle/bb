@@ -144,6 +144,23 @@ describe("PluginHomepageSections", () => {
     expect(screen.getByText("plugin broken crashed")).toBeDefined();
     expect(screen.getByText("fine section body")).toBeDefined();
   });
+
+  it("renders a homepage section without a title header-less", () => {
+    function Pill() {
+      return <button type="button">pill body</button>;
+    }
+    setPluginSlotRegistrations(
+      "pill",
+      registrationSet({ homepageSections: [{ id: "p", component: Pill }] }),
+    );
+    render(
+      <MemoryRouter initialEntries={["/"]}>
+        <PluginHomepageSections />
+      </MemoryRouter>,
+    );
+    expect(screen.getByRole("button", { name: "pill body" })).toBeDefined();
+    expect(screen.queryByRole("heading")).toBeNull();
+  });
 });
 
 function ThreadDraftViewer({ threadId }: { threadId: string }) {
