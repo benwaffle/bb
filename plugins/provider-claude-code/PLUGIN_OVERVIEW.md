@@ -7,7 +7,7 @@ Start a thread, pick Claude Code, and let it work in your repository from bb. Th
 - Checkpoint forks, manual compaction, and native questions from the agent.
 - Claude Code skills and CLAUDE.md files from your home directory and project.
 - Health, usage, and install status for Claude Code on each host, with an install or update action.
-- `bb claude-code sessions` lists Claude Code sessions on a machine, and `bb claude-code import <id|title>` turns one started in the terminal into a bb thread that continues the conversation.
+- Import Claude Code sessions started in the terminal: browse them from the home screen or with `bb claude-code sessions`, and turn one into a thread that continues the conversation with `bb claude-code import <id|title>`.
 
 ## Settings
 

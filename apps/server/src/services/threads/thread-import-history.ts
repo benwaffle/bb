@@ -36,6 +36,22 @@ export interface ImportedThreadHistory {
   turns: readonly ImportedThreadTurn[];
 }
 
+export function resolveImportedForkCheckpoint(
+  turns: readonly ImportedThreadTurn[],
+): string | undefined {
+  for (const turn of [...turns].reverse()) {
+    for (const entry of [...turn.events].reverse()) {
+      if (
+        entry.event.type === "turn/completed" &&
+        entry.event.providerCheckpointId !== undefined
+      ) {
+        return entry.event.providerCheckpointId;
+      }
+    }
+  }
+  return undefined;
+}
+
 interface AppendImportedThreadHistoryArgs {
   environmentId: string | null;
   execution: ResolvedThreadExecutionOptions;
