@@ -710,7 +710,8 @@ frontend bundles re-import and their UI slots remount without a page refresh —
 and replace host worker generations on their next call.
 
 Frontend entries (app.tsx) default-export `definePluginApp` from
-`@get-bb/plugin-sdk/app` and register UI slots: homepageSection (root compose),
+`@get-bb/plugin-sdk/app` and register UI slots: homepageSection (root compose; optional host-rendered
+title, omitted for a header-less section),
 settingsSection (per-plugin settings page below the host-rendered settings
 form; no props in V1, optional host-rendered title),
 navPanel (own navigation rail destination + /plugins/<id>/<path>/* route; the

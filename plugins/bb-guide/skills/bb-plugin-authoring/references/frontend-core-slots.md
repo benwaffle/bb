@@ -61,7 +61,9 @@ cleanup-safe example: `examples/plugins/content-script`.
 Slot props contracts (versioned, additive-only):
 
 - `homepageSection` → `{ projectId: string | null }` (project in view on
-  the compose surface). Registration: `{ id, title, component }`.
+  the compose surface). Registration: `{ id, title?, component }`; `title` is
+  an optional host-rendered heading, and a section without one renders only
+  its component.
 - `settingsSection` → `{}` (deliberately no props in V1). Rendered on the
   plugin detail page below the host-rendered declarative settings
   form for running, needs-configuration, and degraded plugins. Registration:

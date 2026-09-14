@@ -571,6 +571,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         bullets: [
           "Show shortcuts, pinned work, or recent activity before any thread exists",
           "Span the full width below the composer on desktop",
+          "Skip the heading to show a compact control, such as a single button",
         ],
         apiSymbols: [
           "PluginHomepageSectionRegistration",

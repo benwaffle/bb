@@ -498,7 +498,8 @@ export interface PluginMessageDirectiveProps {
 export interface PluginHomepageSectionRegistration {
   /** Unique within the plugin; letters, digits, `-`, `_`. */
   id: string;
-  title: string;
+  /** Optional host-rendered section heading; omit it for a header-less section. */
+  title?: string;
   component: ComponentType<PluginHomepageSectionProps>;
 }
 
