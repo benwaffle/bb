@@ -62,6 +62,10 @@
     "category": "utilities",
     "screenshots": []
   },
+  "voice-whisper-local": {
+    "category": "utilities",
+    "screenshots": []
+  },
   "plugin-api-docs": {
     "category": "plugin-development",
     "screenshots": [
