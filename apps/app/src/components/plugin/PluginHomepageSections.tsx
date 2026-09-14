@@ -26,9 +26,11 @@ function PluginHomepageSectionList({
           id={getPluginHomepageSectionAnchor(section.pluginId, section.id)}
           className="space-y-3"
         >
-          <h2 className="text-sm font-semibold text-foreground">
-            {section.title}
-          </h2>
+          {section.title === undefined ? null : (
+            <h2 className="text-sm font-semibold text-foreground [text-shadow:0_1px_3px_var(--canvas)]">
+              {section.title}
+            </h2>
+          )}
           <PluginSlotMount
             pluginId={section.pluginId}
             slotKind="homepageSection"
