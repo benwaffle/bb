@@ -27,6 +27,7 @@ import {
 } from "./thread-fork-history.js";
 import {
   appendImportedThreadHistory,
+  resolveImportedForkCheckpoint,
   type ImportedThreadHistory,
 } from "./thread-import-history.js";
 import {
@@ -351,6 +352,20 @@ function requireLiveSourceThread(
   return sourceThread;
 }
 
+function importedForkDescriptor(
+  history: ImportedThreadHistory,
+): ThreadForkPoint["descriptor"] {
+  const sourceProviderCheckpointId = resolveImportedForkCheckpoint(
+    history.turns,
+  );
+  return {
+    sourceProviderThreadId: history.sourceProviderThreadId,
+    ...(sourceProviderCheckpointId === undefined
+      ? {}
+      : { sourceProviderCheckpointId }),
+  };
+}
+
 /**
  * Creates the thread row and hands its first message to the dispatch
  * checkpoint.
@@ -394,9 +409,7 @@ async function createPendingThreadAndAttemptFirstDispatch(
       args.fork?.descriptor ??
       (args.importedHistory === null
         ? null
-        : {
-            sourceProviderThreadId: args.importedHistory.sourceProviderThreadId,
-          }),
+        : importedForkDescriptor(args.importedHistory)),
     ...(args.providerInput !== undefined
       ? { providerInput: args.providerInput }
       : {}),
