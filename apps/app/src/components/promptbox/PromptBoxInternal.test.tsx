@@ -2701,6 +2701,55 @@ describe("PromptBoxInternal compact layout", () => {
     },
   );
 
+  it("stops the run on Escape when the composer is empty and running", () => {
+    const onStop = vi.fn();
+    render(
+      <PromptBoxInternal
+        {...createPromptBoxProps({
+          submission: { isRunning: true, onStop },
+        })}
+      />,
+    );
+
+    const wasNotCanceled = fireEvent.keyDown(getPromptEditorElement(), {
+      key: "Escape",
+    });
+
+    expect(wasNotCanceled).toBe(false);
+    expect(onStop).toHaveBeenCalledOnce();
+  });
+
+  it("keeps Escape as blur while running with a typed draft", () => {
+    const onStop = vi.fn();
+    render(
+      <PromptBoxInternal
+        {...createPromptBoxProps({
+          value: "Please also check the mobile layout.",
+          submission: { isRunning: true, onStop },
+        })}
+      />,
+    );
+
+    fireEvent.keyDown(getPromptEditorElement(), { key: "Escape" });
+
+    expect(onStop).not.toHaveBeenCalled();
+  });
+
+  it("does not stop on Escape when idle", () => {
+    const onStop = vi.fn();
+    render(
+      <PromptBoxInternal
+        {...createPromptBoxProps({
+          submission: { isRunning: false, onStop },
+        })}
+      />,
+    );
+
+    fireEvent.keyDown(getPromptEditorElement(), { key: "Escape" });
+
+    expect(onStop).not.toHaveBeenCalled();
+  });
+
   it.each([false, true])(
     "dictates into a compact draft without submitting (running: %s)",
     (isRunning) => {
