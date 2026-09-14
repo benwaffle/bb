@@ -3136,6 +3136,11 @@ export function PromptBoxInternal({
           onEscape();
           return true;
         }
+        if (showStop && onStop) {
+          event.preventDefault();
+          onStop();
+          return true;
+        }
         blurPromptEditor(currentEditor);
         return true;
       }
@@ -3241,10 +3246,12 @@ export function PromptBoxInternal({
       isPointerCoarse,
       onEscape,
       onModifierSubmit,
+      onStop,
       postCompositionKeyDownEvents,
       resetHistorySession,
       selectedIndex,
       setPendingCommandSubmit,
+      showStop,
       showTypeaheadMenu,
       submitModifierPrompt,
       submitPrompt,
