@@ -4,7 +4,11 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "noEmit": true,
     "skipLibCheck": true,
     "paths": {
@@ -15,7 +19,15 @@
         "../../packages/plugin-sdk/bundled-types/bb-plugin-sdk-app.d.ts"
       ]
     },
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "jsx": "react-jsx"
   },
-  "include": ["server.ts", "src", "vitest.config.ts"]
+  "include": [
+    "server.ts",
+    "app.tsx",
+    "src",
+    "vitest.config.ts"
+  ]
 }
