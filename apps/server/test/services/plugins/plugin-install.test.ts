@@ -412,6 +412,7 @@ describe("plugin install flows", () => {
     materializationCount = 0;
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
+      bundledPlugins: [],
       telemetry: createNoopTelemetryService(),
       db,
       hub: {
@@ -1028,6 +1029,7 @@ describe("plugin install flows", () => {
 
       service = createPluginService({
         aiServices: createAiServiceRegistry(),
+        bundledPlugins: [],
         telemetry: createNoopTelemetryService(),
         db,
         hub: {
@@ -1146,6 +1148,7 @@ describe("plugin install flows", () => {
       await writeFile(join(`${entry.rootDir}.promoting`, "partial"), "copy");
       service = createPluginService({
         aiServices: createAiServiceRegistry(),
+        bundledPlugins: [],
         telemetry: createNoopTelemetryService(),
         db,
         hub: {

@@ -128,6 +128,11 @@ export const BUILTIN_PLUGINS = [
     defaultEnabled: true,
   },
   {
+    name: "voice-whisper-local",
+    pluginId: "voice-whisper-local",
+    defaultEnabled: true,
+  },
+  {
     name: "plugin-api-docs",
     pluginId: "plugin-api-docs",
     defaultEnabled: false,

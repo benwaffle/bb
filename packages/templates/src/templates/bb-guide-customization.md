@@ -233,7 +233,8 @@ Host files and voice transcription
 
 Voice transcription uses the `BB_TRANSCRIPTION` model, which defaults to
 `codex/gpt-transcribe`. Override it with
-`bb-app config set BB_TRANSCRIPTION <provider/model>`.
+`bb-app config set BB_TRANSCRIPTION <provider/model>`. For fully local
+transcription with whisper.cpp, use `whisper/<model>` and see `bb whisper`.
 
 `bb file` supports `--host` for remote machines and `--root` on mutating
 commands to confine access beneath an absolute directory. `bb file list` and

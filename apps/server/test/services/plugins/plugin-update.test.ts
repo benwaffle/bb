@@ -86,6 +86,7 @@ describe("plugin update scheduling", () => {
     const scheduled: number[] = [];
     const emptyService = createPluginService({
       aiServices: createAiServiceRegistry(),
+      bundledPlugins: [],
       telemetry: createNoopTelemetryService(),
       db: emptyDb,
       hub: {
@@ -287,6 +288,7 @@ describe("plugin update service and routes", () => {
     materializationCount = 0;
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
+      bundledPlugins: [],
       telemetry: createNoopTelemetryService(),
       db,
       hub: {
@@ -696,6 +698,7 @@ describe("plugin update service and routes", () => {
     await service.stop();
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
+      bundledPlugins: [],
       telemetry: createNoopTelemetryService(),
       db,
       hub: {
@@ -798,6 +801,7 @@ describe("plugin update service and routes", () => {
     await service.stop();
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
+      bundledPlugins: [],
       telemetry: createNoopTelemetryService(),
       db,
       hub: {
@@ -836,6 +840,7 @@ describe("plugin update service and routes", () => {
     await service.stop();
     service = createPluginService({
       aiServices: createAiServiceRegistry(),
+      bundledPlugins: [],
       telemetry: createNoopTelemetryService(),
       db,
       hub: {
@@ -952,6 +957,7 @@ describe("plugin update service and routes", () => {
     const makeService = () =>
       createPluginService({
         aiServices: createAiServiceRegistry(),
+        bundledPlugins: [],
         telemetry: createNoopTelemetryService(),
         db,
         hub: {

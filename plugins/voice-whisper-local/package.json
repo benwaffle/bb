@@ -1,0 +1,37 @@
+{
+  "name": "bb-plugin-voice-whisper-local",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Transcribe voice input locally with whisper.cpp; no cloud account needed.",
+  "engines": {
+    "bb": ">=0.0"
+  },
+  "bb": {
+    "name": "Local voice (whisper.cpp)",
+    "description": "Transcribe voice input locally with whisper.cpp; no cloud account needed.",
+    "branding": {
+      "icon": "Mic"
+    },
+    "server": "./server.ts",
+    "host": "./host.ts"
+  },
+  "keywords": [
+    "bb-plugin"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "prepare:bundled": "bb-plugin-build prepare-bundled"
+  },
+  "dependencies": {
+    "@get-bb/plugin-sdk": "workspace:*",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@bb/plugin-build": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vitest": "^4.1.1"
+  }
+}

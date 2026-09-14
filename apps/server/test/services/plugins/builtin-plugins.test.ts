@@ -266,6 +266,7 @@ describe("builtin plugin reconciliation", () => {
       ["plugin-api-tester", "Beaker"],
       ["inline-vis", "AppWindow"],
       ["keep-awake", "Coffee"],
+      ["voice-whisper-local", "Mic"],
       ["monaco-editor", "Code"],
       ["pdf-preview", "FileText"],
       ["environment-project-checkout", "Laptop"],
