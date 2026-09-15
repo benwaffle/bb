@@ -1,5 +1,6 @@
 import { outputJson } from "../../command-result.js";
 import { Command } from "commander";
+import { formatContextWindowReadout } from "@bb/thread-view";
 import { action } from "../../action.js";
 import { createCliBbSdk } from "../../client.js";
 import { requireThreadIdOrSelf } from "../helpers.js";
@@ -35,6 +36,7 @@ export function registerContextCommand(
           console.log(
             `${usage.estimated ? "Estimated context" : "Context window"}: ${count(usage.usedTokens)} / ${count(usage.modelContextWindow)} tokens`,
           );
+          console.log(`Readout: ${formatContextWindowReadout(usage)}`);
           if (usage.cost) {
             console.log(
               `Session cost: ${usage.cost.amount} ${usage.cost.currency}`,
