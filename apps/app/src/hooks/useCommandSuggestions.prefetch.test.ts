@@ -25,6 +25,7 @@ describe("useCommandSuggestions catalog prefetch", () => {
       providerId: "codex",
       environmentId: "env-1",
       hostId: null,
+      threadId: null,
     });
 
     expect(sdk.projects.commands).toHaveBeenCalledTimes(1);
