@@ -174,6 +174,8 @@ Context breakdowns are optional snapshots on `contextWindow` deltas:
 - `skillsConfigureParamsSchema`
 - `textBlockSchema`
 - `threadArchiveParamsSchema`
+- `threadBackgroundTaskStopParamsSchema`
+- `threadBackgroundTaskStopResultSchema`
 - `threadContextWindowUsageEnvelopeSchema`
 - `threadDeltaNotificationParamsSchema`
 - `threadDeltaSchema`

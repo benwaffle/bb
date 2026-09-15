@@ -504,6 +504,83 @@ describe("bb thread action command output", () => {
       );
     },
   );
+  it("bb thread commands lists running background commands with task id and command line", async () => {
+    const getTimeline = vi.fn(async () => ({
+      ...fixtures.makeTimelineResponse([]),
+      activeBackgroundCommands: [
+        {
+          ...fixtures.makeTimelineBase({ id: "task:b0i8hik1l", sourceSeqStart: 4 }),
+          kind: "work",
+          workKind: "workflow",
+          status: "pending",
+          itemId: "task:b0i8hik1l",
+          familyId: "b0i8hik1l",
+          taskType: "local_bash",
+          workflowName: null,
+          description: "Count ticks",
+          model: null,
+          taskStatus: "running",
+          workflow: null,
+          usage: null,
+          summary: null,
+          error: null,
+          command: "for i in $(seq 1 100); do echo tick $i; sleep 1; done",
+          output: "tick 1\ntick 2\n",
+          completedAt: null,
+        },
+      ],
+    }));
+    stubServerApi({ "v1.threads.:id.timeline.$get": getTimeline });
+
+    await runCommand(["thread", "commands", "thread-bg"], register);
+
+    expect(getTimeline).toHaveBeenCalledWith(
+      expect.objectContaining({
+        param: { id: "thread-bg" },
+        query: { summaryOnly: "true" },
+      }),
+    );
+    const output = collectLogLines(vi.mocked(console.log)).join("\n");
+    expect(output).toContain("b0i8hik1l");
+    expect(output).toContain(
+      "for i in $(seq 1 100); do echo tick $i; sleep 1; done",
+    );
+    expect(output).not.toContain("Count ticks");
+  });
+
+  it("bb thread commands reports when nothing is running", async () => {
+    stubServerApi({
+      "v1.threads.:id.timeline.$get": fixtures.makeEmptyTimelineGetMock(),
+    });
+
+    await runCommand(["thread", "commands", "thread-bg"], register);
+
+    expect(collectLogLines(vi.mocked(console.log))).toContain(
+      "Thread thread-bg has no running background commands",
+    );
+  });
+
+  it("bb thread commands stop posts the task id to the stop route", async () => {
+    const stopPost = vi.fn(async () => ({ ok: true, stopped: true }));
+    stubServerApi({
+      "v1.threads.:id.background-commands.:taskId.stop.$post": stopPost,
+    });
+
+    await runCommand(
+      ["thread", "commands", "stop", "b0i8hik1l", "thread-bg"],
+      register,
+    );
+
+    expect(stopPost).toHaveBeenCalledWith(
+      expect.objectContaining({
+        param: { id: "thread-bg", taskId: "b0i8hik1l" },
+      }),
+    );
+    expect(collectLogLines(vi.mocked(console.log))).toContain(
+      "Stopped background command b0i8hik1l in thread thread-bg",
+    );
+  });
+
   it("bb thread retry defaults the turn and the reason at the boundary", async () => {
     const retryPost = vi.fn(async () => ({
       ok: true,

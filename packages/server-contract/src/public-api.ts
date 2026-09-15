@@ -250,6 +250,7 @@ import type {
   ThreadStoragePathsQuery,
   ThreadTimelineQuery,
   ThreadTimelineResponse,
+  ThreadBackgroundCommandStopResponse,
   ThreadContextResponse,
   ThreadWithIncludesResponse,
   TimelineTurnSummaryDetailsQuery,
@@ -398,6 +399,9 @@ import type { ApiError } from "./errors.js";
 type PathProjectSourceId = { param: { id: string; sourceId: string } };
 type PathThreadInteractionId = {
   param: { id: string; interactionId: string };
+};
+type PathThreadBackgroundCommandTaskId = {
+  param: { id: string; taskId: string };
 };
 
 export const publicApiRoutes = {
@@ -1456,6 +1460,12 @@ export const publicApiRoutes = {
       method: "post",
       request: noRequest<PathId>(),
       response: jsonResponse<{ ok: true }>(),
+    }),
+    stopBackgroundCommand: defineRoute({
+      path: "/threads/:id/background-commands/:taskId/stop",
+      method: "post",
+      request: noRequest<PathThreadBackgroundCommandTaskId>(),
+      response: jsonResponse<ThreadBackgroundCommandStopResponse>(),
     }),
     open: defineRoute({
       path: "/threads/:id/open",
