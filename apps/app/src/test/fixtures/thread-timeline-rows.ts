@@ -217,11 +217,14 @@ interface ImageViewRowArgs extends RowBaseOverrideArgs {
 }
 
 interface WorkflowRowArgs extends RowBaseOverrideArgs {
+  command?: string | null;
   description?: string;
   durationMs?: number | null;
   error?: string | null;
+  familyId?: string | null;
   id?: string;
   itemId?: string;
+  output?: string | null;
   model?: string | null;
   seq?: number;
   sourceSeqEnd?: number;
@@ -934,13 +937,16 @@ export function imageViewRow({
 }
 
 export function workflowRow({
+  command = null,
   createdAt,
   description = "Fixture workflow",
   durationMs = null,
   error = null,
+  familyId = null,
   id = DEFAULT_WORKFLOW_ID,
   itemId,
   model = null,
+  output = null,
   seq,
   sourceSeqEnd,
   sourceSeqStart,
@@ -971,6 +977,7 @@ export function workflowRow({
     workKind: "workflow",
     status,
     itemId: itemId ?? id,
+    familyId,
     taskType,
     workflowName,
     description,
@@ -980,6 +987,8 @@ export function workflowRow({
     usage,
     summary,
     error,
+    command,
+    output,
     completedAt: completedAtFromDuration(base.startedAt, durationMs),
   };
 }
