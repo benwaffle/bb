@@ -228,6 +228,7 @@ vi.mock("@/hooks/mutations/thread-runtime-mutations", () => {
     useSetThreadQueuedMessageGroupBoundary: idleMutation,
     useSendThreadQueuedMessage: idleMutation,
     useStopThread: idleMutation,
+    useStopThreadBackgroundCommand: idleMutation,
     useUpdateThreadQueuedMessage: () => ({
       isPending: false,
       mutateAsync: mocks.updateQueuedMessageMutateAsync,
