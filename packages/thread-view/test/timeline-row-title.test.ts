@@ -1642,6 +1642,91 @@ describe("buildTimelineRowTitle", () => {
     ]);
   });
 
+  it("prefers a provider summary title over the parsed exploration intent", () => {
+    const command = "f=/tmp/out.txt\ngrep -n '^====' $f";
+    const label = { pending: "Running command", completed: "Ran command" };
+    const icon = { glyph: "Terminal" };
+
+    const summarized = buildTimelineRowTitle(
+      {
+        ...commandRow(),
+        command,
+        presentation: { label, icon, title: "Find section headers" },
+        activityIntents: [searchIntent("^====", "$f")],
+      } satisfies TimelineCommandWorkRow,
+      DEFAULT_OPTIONS,
+    );
+    expect(summarized.plain).toBe("Ran command Find section headers (2s)");
+    expect(summarized.segments.map((s) => s.text)).toEqual([
+      "Ran command",
+      "Find section headers",
+    ]);
+    expect(summarized.segments[0]?.accent).toBeUndefined();
+    expect(summarized.segments[1]).toMatchObject({
+      em: false,
+      accent: "prominent",
+    });
+
+    const echoedCommand = buildTimelineRowTitle(
+      {
+        ...commandRow(),
+        command,
+        presentation: { label, icon, title: "f=/tmp/out.txt" },
+        activityIntents: [searchIntent("^====", "$f")],
+      } satisfies TimelineCommandWorkRow,
+      DEFAULT_OPTIONS,
+    );
+    expect(echoedCommand.plain).toBe("Searched for ^==== in $f");
+
+    const truncatedCommand = buildTimelineRowTitle(
+      {
+        ...commandRow(),
+        command,
+        presentation: { label, icon, title: "f=/tmp/ou…" },
+        activityIntents: [searchIntent("^====", "$f")],
+      } satisfies TimelineCommandWorkRow,
+      DEFAULT_OPTIONS,
+    );
+    expect(truncatedCommand.plain).toBe("Searched for ^==== in $f");
+
+    const waiting = buildTimelineRowTitle(
+      {
+        ...commandRow(),
+        command,
+        status: "pending",
+        approvalStatus: "waiting_for_approval",
+        presentation: { label, icon, title: "Find section headers" },
+        activityIntents: [searchIntent("^====", "$f")],
+      } satisfies TimelineCommandWorkRow,
+      DEFAULT_OPTIONS,
+    );
+    expect(waiting.plain).toContain("Waiting for approval");
+  });
+
+  it("emits no compact exploration titles for a command with a provider summary", () => {
+    const command = "f=/tmp/out.txt\ngrep -n '^====' $f";
+    const label = { pending: "Running command", completed: "Ran command" };
+    const icon = { glyph: "Terminal" };
+
+    const summarized = buildTimelineActivityIntentTitles({
+      ...commandRow(),
+      command,
+      presentation: { label, icon, title: "Find section headers" },
+      activityIntents: [searchIntent("^====", "$f")],
+    } satisfies TimelineCommandWorkRow);
+    expect(summarized).toEqual([]);
+
+    const echoedCommand = buildTimelineActivityIntentTitles({
+      ...commandRow(),
+      command,
+      presentation: { label, icon, title: "f=/tmp/out.txt" },
+      activityIntents: [searchIntent("^====", "$f")],
+    } satisfies TimelineCommandWorkRow);
+    expect(echoedCommand.map((entry) => entry.title.plain)).toEqual([
+      "Searched for ^==== in $f",
+    ]);
+  });
+
   it("carries a presentation badge onto command and exploration titles", () => {
     const badge = {
       glyph: "SquareUnlock02",
