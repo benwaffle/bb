@@ -4,6 +4,7 @@ import type {
   TimelineRowStatus,
 } from "@bb/server-contract";
 import { displayWidth } from "@bb/text-utils";
+import { isBackgroundCommandTaskType } from "@bb/domain";
 import { assertNever } from "./assert-never.js";
 import {
   buildTimelineWorkSummaryLabel,
@@ -255,7 +256,14 @@ function formatWorkBody(
     case "approval":
     case "question":
     case "form":
+      return lines;
     case "workflow":
+      if (isBackgroundCommandTaskType(row.taskType) && row.command !== null) {
+        lines.push(`  $ ${cyan(row.command, context.color)}`);
+        if (context.verbose && row.output !== null && row.output.trim()) {
+          lines.push(formatWorkOutput(row.output, context.color));
+        }
+      }
       return lines;
     case "delegation":
       if (row.childRows.length > 0) {

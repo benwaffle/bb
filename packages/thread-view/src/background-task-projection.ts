@@ -1,4 +1,5 @@
 import { itemStatusToExecStatus } from "./exec-lifecycle.js";
+import { isBackgroundCommandTaskType } from "@bb/domain";
 import type { ThreadEvent, ThreadEventBackgroundTaskItem } from "@bb/domain";
 import type { EventMeta } from "./event-decode.js";
 import type {
@@ -6,9 +7,38 @@ import type {
   EventProjectionWorkflowMessage,
 } from "./event-projection-message.js";
 
+
 export interface BackgroundTaskProjectionState {
   messages: EventProjectionMessage[];
   backgroundTasksByItemId: Map<string, EventProjectionWorkflowMessage>;
+}
+
+export function mirrorBackgroundCommandOutputsToSpawningCalls(
+  state: BackgroundTaskProjectionState,
+): void {
+  const outputByCallId = new Map<string, string>();
+  for (const task of state.backgroundTasksByItemId.values()) {
+    if (
+      task.parentToolCallId === undefined ||
+      task.output === null ||
+      !isBackgroundCommandTaskType(task.taskType)
+    ) {
+      continue;
+    }
+    outputByCallId.set(task.parentToolCallId, task.output);
+  }
+  if (outputByCallId.size === 0) {
+    return;
+  }
+  for (const message of state.messages) {
+    if (message.kind !== "command") {
+      continue;
+    }
+    const output = outputByCallId.get(message.callId);
+    if (output !== undefined) {
+      message.output = output;
+    }
+  }
 }
 
 interface BackgroundTaskLifecycleEvent {
@@ -54,6 +84,8 @@ function applyBackgroundTaskItem(
   message.usage = item.usage ?? null;
   message.summary = item.summary ?? null;
   message.error = item.error ?? null;
+  message.command = item.command ?? null;
+  message.output = item.output ?? null;
   if (lifecycle.kind === "end" && message.completedAt === null) {
     message.completedAt = meta.createdAt;
   }
@@ -104,6 +136,8 @@ export function upsertBackgroundTaskMessage(
     usage: lifecycle.item.usage ?? null,
     summary: lifecycle.item.summary ?? null,
     error: lifecycle.item.error ?? null,
+    command: lifecycle.item.command ?? null,
+    output: lifecycle.item.output ?? null,
     completedAt: lifecycle.kind === "end" ? meta.createdAt : null,
   };
   state.backgroundTasksByItemId.set(lifecycle.item.id, message);

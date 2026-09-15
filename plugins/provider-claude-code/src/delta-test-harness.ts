@@ -11,6 +11,7 @@ import {
   type ClaudeDeltaTranslationContext,
   type ClaudeDeltaTranslator,
 } from "./delta-translation.js";
+import type { ClaudeBackgroundCommandOutputReader } from "./task-translation.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES = resolve(__dirname, "./__fixtures__");
@@ -128,15 +129,20 @@ interface ClaudeDeltaHarness {
   ): ThreadEvent[];
   acceptInput(clientRequestId: string, threadId?: string): ThreadEvent[];
   settleSession(threadId?: string): ThreadEvent[];
+  pollBackgroundCommandOutput(threadId?: string): ThreadEvent[];
   itemId(providerItemId: string, threadId?: string): string;
 }
 
 export function createClaudeDeltaHarness(
-  options: { sandboxEnabled?: boolean } = {},
+  options: {
+    sandboxEnabled?: boolean;
+    readBackgroundCommandOutput?: ClaudeBackgroundCommandOutputReader;
+  } = {},
 ): ClaudeDeltaHarness {
   const translator = createClaudeDeltaTranslator({
     cwd: "/workspace",
     sandboxEnabled: options.sandboxEnabled ?? false,
+    readBackgroundCommandOutput: options.readBackgroundCommandOutput,
   });
   const assembler = createDeltaAssembler({
     providerId: "claude-code",
@@ -164,6 +170,12 @@ export function createClaudeDeltaHarness(
       return assembler.assemble({
         threadId,
         deltas: translator.buildSessionSettlementDeltas(threadId),
+      });
+    },
+    pollBackgroundCommandOutput(threadId = "") {
+      return assembler.assemble({
+        threadId,
+        deltas: translator.pollBackgroundCommandOutput(threadId),
       });
     },
     itemId(providerItemId, threadId = "") {

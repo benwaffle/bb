@@ -27,6 +27,29 @@ const single: TimelineWorkflowWorkRow[] = [
   }),
 ];
 
+const withOutput: TimelineWorkflowWorkRow[] = [
+  runningCommand({
+    id: "thr_fixture:bg:tick-a",
+    command:
+      "for i in $(seq 1 60); do echo \"$(date '+%H:%M:%S') A tick $i/60\"; sleep 10; done",
+    description: "Count A ticks",
+    familyId: "task-a",
+    output:
+      "16:30:08 A tick 1/60\n16:30:18 A tick 2/60\n16:30:28 A tick 3/60\n",
+    startedAt: Date.now() - 37_000,
+  }),
+  runningCommand({
+    id: "thr_fixture:bg:tick-b",
+    command:
+      "for i in $(seq 1 60); do echo \"$(date '+%H:%M:%S') B tick $i/60\"; sleep 10; done",
+    description: "Count B ticks",
+    familyId: "task-b",
+    output:
+      "16:30:01 B tick 1/60\n16:30:11 B tick 2/60\n16:30:21 B tick 3/60\n16:30:31 B tick 4/60\n",
+    startedAt: Date.now() - 44_000,
+  }),
+];
+
 const many: TimelineWorkflowWorkRow[] = [
   runningCommand({
     id: "thr_fixture:bg:dev-server",
@@ -45,6 +68,22 @@ const many: TimelineWorkflowWorkRow[] = [
   }),
 ];
 
+const longScript = [
+  ...withOutput,
+  runningCommand({
+    id: "thr_fixture:bg:long-script",
+    command: Array.from(
+      { length: 40 },
+      (_, index) => `echo "migrating shard ${index + 1}" && sleep 2`,
+    ).join("\n"),
+    description: "Migrate every shard",
+    familyId: "task-long",
+    output: "migrating shard 1\nmigrating shard 2\n",
+    startedAt: Date.now() - 12_000,
+  }),
+  ...many,
+];
+
 function ExpandableCard({
   commands,
   startExpanded = false,
@@ -59,6 +98,7 @@ function ExpandableCard({
         commands={commands}
         isExpanded={expanded}
         onToggle={() => setExpanded((value) => !value)}
+        onStopCommand={() => {}}
       />
       <FauxComposer />
     </div>
@@ -70,7 +110,7 @@ export function Overview() {
     <StoryCard>
       <StoryRow
         label="single"
-        hint="compact: summarized and expandable; wide: detailed single line"
+        hint="header summarizes; expand for the command row, its time and stop"
       >
         <ResponsiveStage>
           <ExpandableCard commands={single} />
@@ -78,7 +118,7 @@ export function Overview() {
       </StoryRow>
       <StoryRow
         label="multiple (collapsed)"
-        hint='most recent command + "+N more"; click to expand'
+        hint="summarized by count; click to expand the full list"
       >
         <ResponsiveStage>
           <ExpandableCard commands={many} />
@@ -86,10 +126,26 @@ export function Overview() {
       </StoryRow>
       <StoryRow
         label="multiple (expanded)"
-        hint="expanded: the other running commands listed below the primary"
+        hint="expanded: every running command listed as a uniform row"
       >
         <ResponsiveStage>
           <ExpandableCard commands={many} startExpanded />
+        </ResponsiveStage>
+      </StoryRow>
+      <StoryRow
+        label="two commands with output (expanded)"
+        hint="each row: command, elapsed time, stop, then its output tail"
+      >
+        <ResponsiveStage>
+          <ExpandableCard commands={withOutput} startExpanded />
+        </ResponsiveStage>
+      </StoryRow>
+      <StoryRow
+        label="long script among many (expanded)"
+        hint="command clamped to three lines with a per-row reveal; the body scrolls under a fixed header"
+      >
+        <ResponsiveStage>
+          <ExpandableCard commands={longScript} startExpanded />
         </ResponsiveStage>
       </StoryRow>
     </StoryCard>
