@@ -180,6 +180,7 @@ it("retrieves the enrollment command after asynchronous access preparation", asy
       ...reservedHost,
       connectMachineId: null,
       threadStorageRootPath: null,
+      memoryUsage: null,
     });
   });
   await act(async () => {
@@ -204,6 +205,7 @@ it("marks a previously available command as used when the server withdraws it", 
       ...reservedHost,
       connectMachineId: null,
       threadStorageRootPath: null,
+      memoryUsage: null,
     });
   });
   await act(async () => {
@@ -230,6 +232,7 @@ it("accepts a connection before an enrollment command is returned", async () => 
       ...reservedHost,
       connectMachineId: null,
       threadStorageRootPath: null,
+      memoryUsage: null,
       status: "connected",
       lifecycle: { ...reservedHost.lifecycle, phase: "active" },
     });

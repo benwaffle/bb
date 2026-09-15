@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { createRealtimeCacheEffects } from "./realtime-cache-effects";
+import { applyHostMemoryUsageSignal } from "./cache-owners/query-cache";
 import { useDeletedResourceRouteOwner } from "./cache-owners/resource-route-owner";
 import { createArchivedThreadBrowserOwner } from "./cache-owners/archived-thread-browser-owner";
 import { wsManager } from "../lib/ws";
@@ -43,6 +44,11 @@ export function useWebSocket(): void {
       deletedResourceRouteChangeRef.current(message);
       handleArchivedThreadBrowsers.handleChanged(message);
     });
+    const unsubscribeHostMemoryUsage = wsManager.onHostMemoryUsage(
+      (signal) => {
+        applyHostMemoryUsageSignal(queryClient, signal);
+      },
+    );
 
     wsManager.connect();
 
@@ -54,6 +60,7 @@ export function useWebSocket(): void {
       releaseHeldThreadTimelineTags();
       unsubscribeThreadTimeline();
       unsubscribe();
+      unsubscribeHostMemoryUsage();
     };
   }, [queryClient]);
 }

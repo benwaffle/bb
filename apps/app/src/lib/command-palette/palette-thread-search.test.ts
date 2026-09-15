@@ -18,6 +18,7 @@ function makeThread(
     title: `Title ${id}`,
     titleFallback: `Fallback ${id}`,
     sectionId: null,
+    memoryUsage: null,
     status: "idle",
     parentThreadId: null,
     lifecycleOwnerThreadId: null,

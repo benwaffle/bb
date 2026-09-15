@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { threadCreateOriginSchema } from "./thread-create-origin.js";
 import { environmentWorkspaceDisplayKindSchema } from "./environment.js";
+import { threadMemoryUsageSchema } from "./memory-usage.js";
 import {
   queuedMessageFailureReasonSchema,
   queuedMessagePayloadSchema,
@@ -165,5 +166,6 @@ export const threadListEntrySchema = threadWithRuntimeSchema.extend({
   environmentProviderId: z.string().nullable(),
   environmentIsWorktree: z.boolean().nullable(),
   environmentWorkspaceDisplayKind: environmentWorkspaceDisplayKindSchema,
+  memoryUsage: threadMemoryUsageSchema.nullable(),
 });
 export type ThreadListEntry = z.infer<typeof threadListEntrySchema>;
