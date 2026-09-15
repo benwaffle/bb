@@ -238,11 +238,20 @@ export function sessionTitle(lines: TranscriptRecord[]): string | null {
   let agentName: string | null = null;
   let aiTitle: string | null = null;
   for (const record of lines) {
-    if (record.type === "custom-title" && typeof record.customTitle === "string") {
+    if (
+      record.type === "custom-title" &&
+      typeof record.customTitle === "string"
+    ) {
       customTitle = record.customTitle;
-    } else if (record.type === "agent-name" && typeof record.agentName === "string") {
+    } else if (
+      record.type === "agent-name" &&
+      typeof record.agentName === "string"
+    ) {
       agentName = record.agentName;
-    } else if (record.type === "ai-title" && typeof record.aiTitle === "string") {
+    } else if (
+      record.type === "ai-title" &&
+      typeof record.aiTitle === "string"
+    ) {
       aiTitle = record.aiTitle;
     }
   }
@@ -518,7 +527,8 @@ export function convertClaudeTranscript(
     const { record, at, agent } = entry;
     lastAt = at;
     const parentToolUseId = agent === null ? null : agent.toolUseId;
-    const uuid = typeof record.uuid === "string" ? record.uuid : syntheticUuid();
+    const uuid =
+      typeof record.uuid === "string" ? record.uuid : syntheticUuid();
     const timestamp =
       typeof record.timestamp === "string" ? record.timestamp : undefined;
 

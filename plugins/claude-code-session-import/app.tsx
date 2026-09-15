@@ -9,6 +9,7 @@ import {
 import {
   definePluginApp,
   useBbNavigate,
+  experimental_usePluginId as usePluginId,
   useRpc,
   type StandardSchemaV1InferOutput,
 } from "@get-bb/plugin-sdk/app";
@@ -29,16 +30,62 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@bb/shared-ui/select";
-import type { claudeSessionImportRpcContract } from "./src/session-import-rpc.js";
+import type { claudeSessionImportRpcContract } from "./src/rpc-contract.js";
+import {
+  describeHiddenReason,
+  type SessionHiddenReason,
+} from "./src/session-visibility.js";
 
 type Listing = StandardSchemaV1InferOutput<
   (typeof claudeSessionImportRpcContract)["listSessions"]["output"]
+>;
+type MachineChoices = StandardSchemaV1InferOutput<
+  (typeof claudeSessionImportRpcContract)["listMachines"]["output"]
 >;
 type SessionEntry = Listing["sessions"][number];
 type ProjectChoice = Listing["projects"][number];
 
 const PAGE_SIZE = 15;
 const ACTIVE_WINDOW_MS = 2 * 60 * 1000;
+
+const HIDDEN_REASON_HINTS: Record<SessionHiddenReason, string> = {
+  imported: "This session was already imported into a bb thread.",
+  "bb-thread": "A bb thread already holds this Claude Code session.",
+  "bb-workspace":
+    "This session ran in a workspace bb provisioned, so a bb thread created it.",
+  "thread-workspace":
+    "This session ran in a directory bb named after one of its threads, so a bb thread created it.",
+  "bb-driven-session":
+    "The transcript shows bb drove this session, so it belongs to a bb thread on this or another bb instance.",
+};
+
+function machineStorageKey(pluginId: string): string {
+  return `${pluginId}:session-browser-machine`;
+}
+
+function readStoredMachine(pluginId: string): string | null {
+  try {
+    return window.localStorage.getItem(machineStorageKey(pluginId));
+  } catch {
+    return null;
+  }
+}
+
+function storeMachine(pluginId: string, hostId: string): void {
+  try {
+    window.localStorage.setItem(machineStorageKey(pluginId), hostId);
+  } catch {}
+}
+
+function initialMachine(
+  choices: MachineChoices,
+  stored: string | null,
+): string | null {
+  const remembered = choices.machines.find(
+    (candidate) => candidate.connected && candidate.id === stored,
+  );
+  return remembered?.id ?? choices.defaultHostId;
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -119,10 +166,12 @@ function SessionRow({
       ? null
       : (projects.find((project) => project.id === targetProjectId) ?? null);
   return (
-    <li className="flex flex-wrap items-start gap-3 py-2">
+    <li className="flex flex-wrap items-start gap-3 py-3">
       <div className="min-w-0 flex-1 basis-64">
         <div className="flex min-w-0 items-center gap-2">
-          <span className="truncate text-sm font-medium">{label}</span>
+          <span className="truncate text-sm font-medium text-foreground">
+            {label}
+          </span>
           {active ? (
             <Badge
               variant="outline"
@@ -131,17 +180,25 @@ function SessionRow({
               active
             </Badge>
           ) : null}
+          {session.hiddenReason === null ? null : (
+            <Badge
+              variant="outline"
+              title={HIDDEN_REASON_HINTS[session.hiddenReason]}
+            >
+              {describeHiddenReason(session.hiddenReason)}
+            </Badge>
+          )}
           <Badge variant={owned ? "secondary" : "outline"}>
             {owned ? session.projectName : "no project"}
           </Badge>
         </div>
-        <div className="text-muted-foreground truncate text-xs">
+        <div className="truncate text-xs text-muted-foreground">
           {shortenPath(session.cwd)} · {session.turnCount}{" "}
           {session.turnCount === 1 ? "turn" : "turns"} ·{" "}
           {formatAge(session.lastActivityAt, now)}
         </div>
         {!owned ? (
-          <div className="text-muted-foreground text-xs">
+          <div className="text-xs text-muted-foreground">
             This directory is not a bb project source. The thread imports as a
             personal thread unless you pick a project; it then runs in that
             project's default environment.
@@ -226,7 +283,9 @@ function SessionBrowserDialog({
   projectId,
 }: SessionBrowserDialogProps) {
   const rpc = useRpc<typeof claudeSessionImportRpcContract>();
+  const pluginId = usePluginId();
   const navigate = useBbNavigate();
+  const [choices, setChoices] = useState<MachineChoices | null>(null);
   const [listing, setListing] = useState<Listing | null>(null);
   const [machine, setMachine] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
@@ -234,11 +293,13 @@ function SessionBrowserDialog({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [importing, setImporting] = useState<string | null>(null);
+  const [revealHidden, setRevealHidden] = useState(false);
   const [chosenProjects, setChosenProjects] = useState<Record<string, string>>(
     {},
   );
   const [now, setNow] = useState(() => Date.now());
   const activeRef = useRef(true);
+  const attemptedRef = useRef(false);
 
   useEffect(() => {
     activeRef.current = true;
@@ -252,29 +313,47 @@ function SessionBrowserDialog({
       setLoading(true);
       setError(null);
       try {
-        const next = await rpc.call("listSessions", {
-          machine: selectedMachine,
-          dir: null,
-        });
+        const nextChoices = await rpc.call("listMachines", {});
+        if (!activeRef.current) return;
+        setChoices(nextChoices);
+        const hostId =
+          selectedMachine ??
+          initialMachine(nextChoices, readStoredMachine(pluginId));
+        setMachine(hostId);
+        if (hostId === null) {
+          setListing(null);
+          setError(
+            nextChoices.machines.some((candidate) => candidate.connected)
+              ? "Pick the machine that holds the session."
+              : "No connected machine can read Claude Code sessions.",
+          );
+          return;
+        }
+        const next = await rpc.call("listSessions", { hostId, dir: null });
         if (!activeRef.current) return;
         setListing(next);
-        setMachine(next.machine.id);
         setNow(Date.now());
       } catch (caught) {
         if (!activeRef.current) return;
+        setListing(null);
         setError(errorMessage(caught));
       } finally {
         if (activeRef.current) setLoading(false);
       }
     },
-    [rpc],
+    [pluginId, rpc],
   );
 
   useEffect(() => {
-    if (open && listing === null && !loading && error === null) {
-      void load(null);
+    if (!open) {
+      attemptedRef.current = false;
+      return;
     }
-  }, [open, listing, loading, error, load]);
+    if (attemptedRef.current || listing !== null || loading) return;
+    attemptedRef.current = true;
+    setError(null);
+    void load(null);
+  }, [open, listing, loading, load]);
 
   const personalProjectId = useMemo(
     () =>
@@ -283,14 +362,27 @@ function SessionBrowserDialog({
     [listing],
   );
 
-  const visible = useMemo(() => {
+  const matching = useMemo(() => {
     if (listing === null) return [];
     const needle = filter.trim().toLowerCase();
-    return sortForProject(
-      listing.sessions.filter((session) => matchesFilter(session, needle)),
-      projectId,
-    );
-  }, [listing, filter, projectId]);
+    return listing.sessions.filter((session) => matchesFilter(session, needle));
+  }, [listing, filter]);
+
+  const hiddenCount = useMemo(
+    () => matching.filter((session) => session.hiddenReason !== null).length,
+    [matching],
+  );
+
+  const visible = useMemo(
+    () =>
+      sortForProject(
+        revealHidden
+          ? matching
+          : matching.filter((session) => session.hiddenReason === null),
+        projectId,
+      ),
+    [matching, revealHidden, projectId],
+  );
 
   const onImport = useCallback(
     async (session: SessionEntry, targetProjectId: string) => {
@@ -300,7 +392,7 @@ function SessionBrowserDialog({
       try {
         const result = await rpc.call("importSession", {
           sessionId: session.sessionId,
-          machine: listing.machine.id,
+          hostId: listing.machine.id,
           projectId: targetProjectId,
         });
         if (!activeRef.current) return;
@@ -317,7 +409,7 @@ function SessionBrowserDialog({
   );
 
   const connectedMachines =
-    listing?.machines.filter((candidate) => candidate.connected) ?? [];
+    choices?.machines.filter((candidate) => candidate.connected) ?? [];
 
   return (
     <Dialog
@@ -339,16 +431,17 @@ function SessionBrowserDialog({
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-wrap items-center gap-2">
-          {connectedMachines.length > 1 && machine !== null ? (
+          {connectedMachines.length > 1 ? (
             <Select
-              value={machine}
+              value={machine ?? undefined}
               onValueChange={(next) => {
                 setMachine(next);
+                storeMachine(pluginId, next);
                 void load(next);
               }}
             >
               <SelectTrigger className="h-8 w-48" aria-label="Machine">
-                <SelectValue />
+                <SelectValue placeholder="Choose machine…" />
               </SelectTrigger>
               <SelectContent>
                 {connectedMachines.map((candidate) => (
@@ -380,24 +473,44 @@ function SessionBrowserDialog({
         </div>
         <div className="min-h-0 overflow-y-auto">
           {error !== null ? (
-            <div className="text-destructive text-xs whitespace-pre-wrap">
+            <div className="whitespace-pre-wrap py-2 text-xs text-destructive">
               {error}
             </div>
           ) : null}
           {loading && listing === null ? (
-            <div className="text-muted-foreground text-xs">
+            <div className="py-2 text-xs text-muted-foreground">
               Reading sessions…
             </div>
           ) : null}
           {listing !== null && visible.length === 0 && !loading ? (
-            <div className="text-muted-foreground text-xs">
+            <div className="py-2 text-xs text-muted-foreground">
               {listing.sessions.length === 0
                 ? `No Claude Code sessions on ${listing.machine.name}.`
-                : "No sessions match the filter."}
+                : matching.length === 0
+                  ? "No sessions match the filter."
+                  : "Every matching session already belongs to a bb thread."}
+            </div>
+          ) : null}
+          {hiddenCount > 0 ? (
+            <div className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+              <span>
+                {hiddenCount} {hiddenCount === 1 ? "session" : "sessions"}{" "}
+                already in bb
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setRevealHidden((current) => !current);
+                  setShown(PAGE_SIZE);
+                }}
+              >
+                {revealHidden ? "Hide" : "Show"}
+              </Button>
             </div>
           ) : null}
           {visible.length > 0 ? (
-            <ul className="divide-border divide-y">
+            <ul className="divide-y divide-border">
               {visible.slice(0, shown).map((session) => (
                 <SessionRow
                   key={session.sessionId}
@@ -434,7 +547,7 @@ function SessionBrowserDialog({
             </Button>
           ) : null}
         </div>
-        <div className="text-muted-foreground text-xs">
+        <div className="text-xs text-muted-foreground">
           A session whose directory belongs to a bb project runs there; any
           other session becomes a personal thread unless you pick a project on
           its row, in which case it runs in that project's default environment.

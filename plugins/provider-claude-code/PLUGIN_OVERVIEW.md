@@ -8,7 +8,6 @@ Start a thread, pick Claude Code, and let it work in your repository from bb. Th
 - Claude Code skills and provider-native CLAUDE.md or supported AGENTS.md files
   from your home directory and project.
 - Health, usage, and install status for Claude Code on each host, with an install or update action.
-- Import Claude Code sessions started in the terminal: browse them from the command palette's "Import Claude Code session…" command or with `bb claude-code sessions`, and turn one into a thread that continues the conversation with `bb claude-code import <id|title>`.
 
 ## Settings
 

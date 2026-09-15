@@ -1,10 +1,13 @@
-import { getThread, listEvents } from "@bb/db";
+import { deleteThread, getThread, listEvents, markThreadDeleted } from "@bb/db";
 import {
   turnRequestEventDataSchema,
   turnScope,
   type ThreadEvent,
 } from "@bb/domain";
-import { threadResponseSchema } from "@bb/server-contract";
+import {
+  threadProviderSessionsResponseSchema,
+  threadResponseSchema,
+} from "@bb/server-contract";
 import { describe, expect, it } from "vitest";
 import { waitForQueuedCommand } from "../helpers/commands.js";
 import { readJson } from "../helpers/json.js";
@@ -13,6 +16,7 @@ import {
   seedEnvironment,
   seedHostSession,
   seedProjectWithSource,
+  seedTurnStarted,
 } from "../helpers/seed.js";
 import { withTestHarness, type TestAppHarness } from "../helpers/test-app.js";
 
@@ -335,6 +339,112 @@ describe("POST /api/v1/threads/import", () => {
       expect(response.status).toBe(400);
       const body = (await readJson(response)) as { message?: string };
       expect(body.message).toContain("thread forks");
+    });
+  });
+});
+
+describe("GET /api/v1/threads/provider-sessions", () => {
+  async function providerSessions(harness: TestAppHarness, providerId: string) {
+    const response = await harness.app.request(
+      `/api/v1/threads/provider-sessions?providerId=${providerId}`,
+    );
+    expect(response.status).toBe(200);
+    return threadProviderSessionsResponseSchema.parse(await readJson(response))
+      .sessions;
+  }
+
+  async function importPendingThread(harness: TestAppHarness) {
+    const { environment, project } = seedImportTarget(harness);
+    const response = await postImport(harness, {
+      projectId: project.id,
+      providerId: "codex",
+      environment: { type: "reuse", environmentId: environment.id },
+      sourceProviderThreadId: SOURCE_SESSION_ID,
+      turns: [
+        importedTurn({
+          at: 1_000,
+          prompt: "add search to settings",
+          reply: "Done.",
+          turnId: "turn-1",
+        }),
+      ],
+    });
+    expect(response.status).toBe(201);
+    return {
+      environment,
+      thread: threadResponseSchema.parse(await readJson(response)),
+    };
+  }
+
+  it("reports the source session of a pending import, and nothing for another provider", async () => {
+    await withTestHarness(async (harness) => {
+      const { thread } = await importPendingThread(harness);
+
+      expect(await providerSessions(harness, "codex")).toEqual([
+        { providerThreadId: SOURCE_SESSION_ID, threadId: thread.id },
+      ]);
+      expect(await providerSessions(harness, "claude-code")).toEqual([]);
+    });
+  });
+
+  it("reports every session id the thread's turns ran under", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = await importPendingThread(harness);
+      seedTurnStarted(harness.deps, {
+        environmentId: environment.id,
+        providerThreadId: "claude-session-resumed",
+        threadId: thread.id,
+        turnId: "turn-2",
+      });
+
+      const sessions = await providerSessions(harness, "codex");
+      expect(sessions.map((entry) => entry.providerThreadId).sort()).toEqual([
+        "claude-session-resumed",
+        SOURCE_SESSION_ID,
+      ]);
+      expect(new Set(sessions.map((entry) => entry.threadId))).toEqual(
+        new Set([thread.id]),
+      );
+    });
+  });
+
+  it("still reports a session whose thread was soft-deleted", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = await importPendingThread(harness);
+      seedTurnStarted(harness.deps, {
+        environmentId: environment.id,
+        providerThreadId: "claude-session-worker",
+        threadId: thread.id,
+        turnId: "turn-2",
+      });
+      markThreadDeleted(harness.db, harness.deps.hub, { threadId: thread.id });
+
+      const sessions = await providerSessions(harness, "codex");
+      expect(sessions.map((entry) => entry.providerThreadId).sort()).toEqual([
+        SOURCE_SESSION_ID,
+        "claude-session-worker",
+      ]);
+    });
+  });
+
+  it("loses the session of a hard-deleted worker thread, which the plugin ledger covers", async () => {
+    await withTestHarness(async (harness) => {
+      const { environment, thread } = await importPendingThread(harness);
+      seedTurnStarted(harness.deps, {
+        environmentId: environment.id,
+        providerThreadId: "claude-session-worker",
+        threadId: thread.id,
+        turnId: "turn-2",
+      });
+      expect(
+        (await providerSessions(harness, "codex")).map(
+          (entry) => entry.providerThreadId,
+        ),
+      ).toContain("claude-session-worker");
+
+      deleteThread(harness.db, harness.deps.hub, thread.id);
+
+      expect(await providerSessions(harness, "codex")).toEqual([]);
     });
   });
 });
