@@ -16,9 +16,12 @@ const SANDBOX_ESCAPED_BADGE = {
 
 export function commandPresentation(args: {
   command: string;
+  description: string | null;
   background: boolean;
   sandboxEscaped: boolean;
 }): DeltaPresentation {
+  const descriptionTitle =
+    args.description === null ? undefined : presentationTitle(args.description);
   const presentation = withTitle(
     {
       label: args.background
@@ -29,7 +32,7 @@ export function commandPresentation(args: {
         : { pending: "Running command", completed: "Ran command" },
       icon: { glyph: "Terminal" },
     },
-    presentationTitle(args.command),
+    descriptionTitle ?? presentationTitle(args.command),
   );
   return args.sandboxEscaped
     ? { ...presentation, badge: SANDBOX_ESCAPED_BADGE }
