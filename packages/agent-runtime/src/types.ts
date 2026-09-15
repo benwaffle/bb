@@ -56,6 +56,17 @@ export interface AgentRuntimeProcessExitInfo {
   stderr: string | null;
 }
 
+export interface AgentRuntimeProviderProcessThread {
+  threadId: string;
+  pid: number | null;
+}
+
+export interface AgentRuntimeProviderProcessInfo {
+  pid: number;
+  providerId: string;
+  threads: AgentRuntimeProviderProcessThread[];
+}
+
 export interface AgentRuntimeOptions {
   workspacePath: string;
 
@@ -361,6 +372,8 @@ export interface AgentRuntime {
   ): Promise<ProviderInstallationRunResult>;
 
   listRunningProviders(): string[];
+
+  listProviderProcesses(): AgentRuntimeProviderProcessInfo[];
 
   getActiveTurnId(threadId: string): string | null;
 
