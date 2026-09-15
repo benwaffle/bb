@@ -396,6 +396,7 @@ describe("git plugin cache lifecycle", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,

@@ -445,6 +445,7 @@ describe("plugin install flows", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -1038,6 +1039,7 @@ describe("plugin install flows", () => {
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginChanged: () => {},
           onWatchedTargets: () => () => {},
           notifyPluginSignal: () => 0,
@@ -1138,6 +1140,7 @@ describe("plugin install flows", () => {
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginChanged: () => {},
           onWatchedTargets: () => () => {},
           notifyPluginSignal: () => 0,
