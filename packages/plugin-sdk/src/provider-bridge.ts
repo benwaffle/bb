@@ -115,6 +115,8 @@ export {
   providerUsageWindowSchema,
   skillsConfigureParamsSchema,
   threadArchiveParamsSchema,
+  threadBackgroundTaskStopParamsSchema,
+  threadBackgroundTaskStopResultSchema,
   threadDiscardParamsSchema,
   threadForkParamsSchema,
   threadGoalClearParamsSchema,
