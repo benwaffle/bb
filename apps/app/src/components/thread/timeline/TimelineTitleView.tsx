@@ -54,6 +54,8 @@ function accentToneClass(
       return "text-subtle-foreground";
     case "file":
       return em ? "font-medium text-timeline-accent" : "text-timeline-accent";
+    case "prominent":
+      return em ? "font-medium text-foreground" : "text-foreground";
     default:
       return assertNever(accent);
   }
