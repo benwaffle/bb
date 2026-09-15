@@ -636,6 +636,16 @@ env plugins contribute for that host, resolved with no thread or project.
 it reports the machine's own sign-in rather than a routed account's. The contract test `contract-tests/provider-cli-env.test.ts` runs this
 rule against every first-party bridge.
 
+One fact about that topology does cross the wire: a bridge that spawns a
+child for one bb thread calls
+`experimental_reportProviderChildProcess({ child, threadId })` right after
+`spawn()`, which emits a `thread/process` notification carrying
+`{ threadId, pid }`. The host daemon uses it to attribute the resident memory
+of that child's process tree to the thread; without it, the daemon can only
+attribute the whole bridge tree to every thread the bridge hosts. The call is
+a no-op for a `null` thread id or a child without a pid, and the runtime
+ignores the notification from bridges that never send it.
+
 ## Record mode
 
 Set `BB_PROVIDER_BRIDGE_RECORD_DIR` to a directory in the host daemon's

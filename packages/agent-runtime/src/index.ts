@@ -5,6 +5,8 @@ export type {
   AgentRuntimeBridgeLaunch,
   AgentRuntimeOptions,
   AgentRuntimeProcessExitInfo,
+  AgentRuntimeProviderProcessInfo,
+  AgentRuntimeProviderProcessThread,
   AgentRuntimeProviderSession,
   AgentRuntimeSkillRoot,
   ReapedIdleProviderSession,

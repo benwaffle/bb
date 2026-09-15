@@ -7,6 +7,8 @@ export const SETTINGS_SECTION_ROUTE_PATH = "/settings/:section";
 export const SETTINGS_PLUGINS_ROUTE_PATH = "/settings/plugins";
 export const SETTINGS_PLUGIN_ROUTE_PATH = "/settings/plugins/:pluginId";
 export const SETTINGS_MACHINE_ROUTE_PATH = "/settings/machines/:hostId";
+export const SETTINGS_MACHINE_MEMORY_ROUTE_PATH =
+  "/settings/machines/:hostId/memory";
 export const SETTINGS_PROJECT_ROUTE_PATH = "/settings/projects/:projectId";
 export const PLUGINS_ROUTE_PATH = "/plugins";
 export const PLUGIN_DETAIL_ROUTE_PATH = "/plugins/:pluginId";
@@ -80,6 +82,10 @@ export function getProjectComposeRoutePath(projectId: string): string {
   return isProjectlessProjectId(projectId)
     ? getRootComposeRoutePath()
     : getLegacyProjectComposeRoutePath(projectId);
+}
+
+export function getSettingsMachineMemoryRoutePath(hostId: string): string {
+  return `/settings/machines/${encodeURIComponent(hostId)}/memory`;
 }
 
 export function getSkillsRoutePath(): string {
@@ -236,6 +242,7 @@ export const ROUTE_PATTERNS: readonly string[] = [
   SETTINGS_ROUTE_PATH,
   SETTINGS_SECTION_ROUTE_PATH,
   SETTINGS_PROJECT_ROUTE_PATH,
+  SETTINGS_MACHINE_MEMORY_ROUTE_PATH,
   SETTINGS_PLUGINS_ROUTE_PATH,
   SETTINGS_PLUGIN_ROUTE_PATH,
   PLUGINS_ROUTE_PATH,

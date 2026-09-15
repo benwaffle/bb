@@ -22,6 +22,7 @@ const SNAPSHOT_FENCE_CLASSIFICATION: Record<
   "plugin-host.signal": "fenced",
   "plugin-host.worker-exited": "fenced",
   "plugin-host.worker-output": "unfenced",
+  "process-memory.sample": "unfenced",
   "server_move.progress": "unfenced",
   "session.route": "fenced",
   "terminal.error": "unfenced",
