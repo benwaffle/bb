@@ -9,6 +9,7 @@ import { parseCompactionLifecycleEvent } from "./compaction-lifecycle.js";
 import { getEventParentToolCallId, getEventTurnId } from "./event-decode.js";
 import { parseOperationMessage } from "./parse-operation-message.js";
 import { normalizeProvisioningFailures } from "./normalize-provisioning-failures.js";
+import { mirrorBackgroundCommandOutputsToSpawningCalls } from "./background-command-output-mirror.js";
 import { parseErrorMessage } from "./parse-error-message.js";
 import {
   normalizeEventProjection,
@@ -835,7 +836,9 @@ function finishFlatProjection(
   finalizeProjectionState({ state, options: options });
   const messages = sortEventProjectionMessagesBySource(
     nestDelegatedTurnMessages(
-      normalizeProvisioningFailures(orderedEvents, state.messages),
+      mirrorBackgroundCommandOutputsToSpawningCalls(
+        normalizeProvisioningFailures(orderedEvents, state.messages),
+      ),
       state.delegationParentToolCallIdsByTurnId,
     ),
   );

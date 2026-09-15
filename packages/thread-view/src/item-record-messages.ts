@@ -573,6 +573,8 @@ function itemRecordMessages(
           usage: item.usage ?? null,
           summary: item.summary ?? null,
           error: item.error ?? null,
+          command: item.command ?? null,
+          output: item.output ?? null,
           completedAt: record.completion?.createdAt ?? null,
         },
       ];

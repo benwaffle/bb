@@ -37,6 +37,11 @@
   min-width: 100%;
 }
 
+.bb-code-highlight.bb-code-highlight--flowing-lines .sh__line {
+  display: inline;
+  min-width: 0;
+}
+
 .bb-code-highlight .sh__line--diff-add {
   background-color: color-mix(in oklab, var(--diff-added) 14%, transparent);
 }

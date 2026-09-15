@@ -5523,6 +5523,63 @@ export function listOpenBackgroundTaskItemRowsForThread(
   );
 }
 
+export function listOpenBackgroundTaskStateRowsForThread(
+  db: DbQueryConnection,
+  args: { threadId: string },
+): StoredEventRow[] {
+  const startedType = "item/started" satisfies ThreadEventType;
+  const progressType = "item/backgroundTask/progress" satisfies ThreadEventType;
+  const completedType =
+    "item/backgroundTask/completed" satisfies ThreadEventType;
+  const backgroundTaskItemKind = "backgroundTask" satisfies ThreadEventItemType;
+  const backgroundTaskItemKindPredicate = sql.raw(
+    `= '${backgroundTaskItemKind}'`,
+  );
+  return db.all<StoredEventRow>(sql`
+    WITH latest_background_task_state AS (
+      SELECT
+        ${events.threadId} AS thread_id,
+        MAX(
+          CASE
+            WHEN ${inArray(events.type, [startedType, progressType])}
+              THEN ${events.sequence}
+            ELSE NULL
+          END
+        ) AS sequence,
+        MAX(
+          CASE
+            WHEN ${eq(events.type, completedType)} THEN 1
+            ELSE 0
+          END
+        ) AS is_completed
+      FROM ${events} INDEXED BY events_background_task_thread_type_item_sequence_idx
+      WHERE ${eq(events.threadId, args.threadId)}
+        AND ${events.itemKind} ${backgroundTaskItemKindPredicate}
+        AND ${inArray(events.type, [startedType, progressType, completedType])}
+        AND ${isNotNull(events.itemId)}
+      GROUP BY ${events.threadId}, ${events.itemId}
+    )
+    SELECT
+      open_event.created_at AS createdAt,
+      open_event.data AS data,
+      open_event.id AS id,
+      open_event.item_id AS itemId,
+      open_event.item_kind AS itemKind,
+      open_event.parent_tool_call_id AS parentToolCallId,
+      open_event.provider_thread_id AS providerThreadId,
+      open_event.scope_kind AS scopeKind,
+      open_event.sequence AS sequence,
+      open_event.thread_id AS threadId,
+      open_event.turn_id AS turnId,
+      open_event.type AS type
+    FROM latest_background_task_state latest
+    JOIN events open_event
+      ON open_event.thread_id = latest.thread_id
+      AND open_event.sequence = latest.sequence
+    WHERE latest.is_completed = 0
+    ORDER BY open_event.sequence`);
+}
+
 export function getUnfinishedCommandItemData(
   db: DbQueryConnection,
   args: { afterSequence: number; threadId: string },

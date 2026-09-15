@@ -39,6 +39,7 @@ import {
   listLatestOpenBackgroundTaskStateRowsForThread,
   listOpenBackgroundTaskItemRowsForHost,
   listOpenBackgroundTaskItemRowsForThread,
+  listOpenBackgroundTaskStateRowsForThread,
   listStoredBufferedTextDeltaRowsByItems,
   listStoredClientTurnRequestIdsInRange,
   listStoredConversationOutlineEventRows,
@@ -361,6 +362,88 @@ describe("slow query index plans", () => {
       expect(queryPlanDetails({ db, ...ownerQuery! })).toContain(
         "USING INDEX events_provider_identity_idx",
       );
+    } finally {
+      db.$client.close();
+    }
+  });
+
+  it("reads only the latest state of each open background task through the background-task index", () => {
+    const { db, thread } = setup();
+    try {
+      const task = (
+        itemId: string,
+        sequence: number,
+        type:
+          | "item/started"
+          | "item/backgroundTask/progress"
+          | "item/backgroundTask/completed",
+      ) => ({
+        threadId: thread.id,
+        sequence,
+        scope: turnScope("turn-background"),
+        providerThreadId: "provider-session-background",
+        type,
+        itemId,
+        itemKind: "backgroundTask" as const,
+        parentToolCallId: null,
+        data: JSON.stringify({ item: { id: itemId, type: "backgroundTask" } }),
+      });
+      insertEvents(db, noopNotifier, [
+        task("task:open", 1, "item/started"),
+        task("task:open", 2, "item/backgroundTask/progress"),
+        task("task:done", 3, "item/started"),
+        task("task:done", 4, "item/backgroundTask/completed"),
+      ]);
+      const captured = captureStatements(db, () => {
+        expect(
+          listOpenBackgroundTaskStateRowsForThread(db, {
+            threadId: thread.id,
+          }).map((row) => [row.itemId, row.sequence]),
+        ).toEqual([["task:open", 2]]);
+      });
+      expect(captured).toHaveLength(1);
+      const details = queryPlanDetails({ db, ...captured[0]! });
+      expect(details).toContain(
+        "USING COVERING INDEX events_background_task_thread_type_item_sequence_idx",
+      );
+      expect(details).toContain(
+        "SEARCH open_event USING INDEX events_thread_sequence_idx",
+      );
+      expect(details).not.toContain("CORRELATED");
+      expect(details).not.toContain("SCAN events");
+    } finally {
+      db.$client.close();
+    }
+  });
+
+  it("keeps a background task open when a later non-task event reuses its item id", () => {
+    const { db, thread } = setup();
+    try {
+      const event = (
+        sequence: number,
+        type: "item/started" | "item/backgroundTask/progress",
+        itemKind: "backgroundTask" | "commandExecution",
+      ) => ({
+        threadId: thread.id,
+        sequence,
+        scope: turnScope("turn-background"),
+        providerThreadId: "provider-session-background",
+        type,
+        itemId: "task:shared",
+        itemKind,
+        parentToolCallId: null,
+        data: JSON.stringify({ item: { id: "task:shared", type: itemKind } }),
+      });
+      insertEvents(db, noopNotifier, [
+        event(1, "item/started", "backgroundTask"),
+        event(2, "item/backgroundTask/progress", "backgroundTask"),
+        event(3, "item/started", "commandExecution"),
+      ]);
+      expect(
+        listOpenBackgroundTaskStateRowsForThread(db, {
+          threadId: thread.id,
+        }).map((row) => [row.itemId, row.sequence, row.itemKind]),
+      ).toEqual([["task:shared", 2, "backgroundTask"]]);
     } finally {
       db.$client.close();
     }

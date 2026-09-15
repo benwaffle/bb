@@ -3,8 +3,7 @@ import Convert from "ansi-to-html";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { sanitizeTerminalOutput } from "@bb/text-utils";
 import { getDetailScrollMaxHeightClass } from "../../ui/detail-scroll-size.js";
-import { highlightMarkdownCode } from "../../ui/markdown-code-highlight.js";
-import "../../ui/markdown-code-highlight.css";
+import { ShellCommandHighlight } from "../../ui/shell-command-highlight.js";
 import { TimelineDetailScroll } from "./TimelineDetailScroll.js";
 
 export interface TerminalOutputBlockProps {
@@ -78,11 +77,6 @@ export function TerminalOutputBlock({
     [output],
   );
 
-  const highlightedCommandLineHtml = useMemo(
-    () => highlightMarkdownCode({ code: commandLine, language: "shell" }),
-    [commandLine],
-  );
-
   const showExitCode = exitCode !== null;
 
   return (
@@ -95,10 +89,7 @@ export function TerminalOutputBlock({
               getDetailScrollMaxHeightClass("base"),
             )}
           >
-            <span
-              className="bb-code-highlight"
-              dangerouslySetInnerHTML={{ __html: highlightedCommandLineHtml }}
-            />
+            <ShellCommandHighlight command={commandLine} />
           </div>
         ) : null}
         {metadataLines.map((line, index) => (

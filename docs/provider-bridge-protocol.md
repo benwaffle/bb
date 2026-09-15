@@ -55,8 +55,8 @@ answer `-32601`, unknown notifications are ignored, unknown capability fields
 pass through. Bridges version with their plugin, not with the daemon.
 
 Handshake capabilities are **session-behavior facts** (`sessionRestore`,
-`threadArchive`, `threadRename`, `threadGoalClear`, `fork`,
-`approvalEnforcedBy`, `grammarVersions`, `steerMode`, `skills`). They are
+`threadArchive`, `threadRename`, `threadGoalClear`, `backgroundTaskStop`,
+`fork`, `approvalEnforcedBy`, `grammarVersions`, `steerMode`, `skills`). They are
 reported by the code that implements them, so they cannot drift from
 behavior. The runtime never sends a capability-gated method to a bridge that
 did not advertise it. A handshake fact may only _narrow_ what the provider's
