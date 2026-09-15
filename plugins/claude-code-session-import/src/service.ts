@@ -1,5 +1,9 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
-import { claudeSessionImportHostContract } from "./session-import-contract.js";
+import { claudeSessionImportHostContract } from "./host-contract.js";
+import {
+  sessionHiddenReason,
+  type SessionHiddenReason,
+} from "./session-visibility.js";
 
 type ImportArgs = Parameters<
   BbPluginApi["sdk"]["threads"]["experimental_import"]
@@ -37,8 +41,10 @@ export interface SessionListEntry {
   firstPrompt: string | null;
   lastActivityAt: number;
   turnCount: number;
+  bbDriven: boolean;
   projectId: string | null;
   projectName: string | null;
+  hiddenReason: SessionHiddenReason | null;
 }
 
 export interface ImportSessionRequest {
@@ -74,6 +80,14 @@ export class SessionImportError extends Error {
 
 const INITIAL_TURN_BATCH = 8;
 const HOST_CALL_TIMEOUT_MS = 5 * 60 * 1000;
+const IMPORTED_SESSION_PREFIX = "imported-session:";
+const HELD_SESSION_PREFIX = "held-session:";
+export const CLAUDE_CODE_PROVIDER_ID = "claude-code";
+
+interface ImportedSessionRecord {
+  threadId: string;
+  importedAt: number;
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -158,25 +172,140 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     }));
   }
 
+  async function liveProviderSessionIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const result = await bb.sdk.threads.experimental_providerSessions({
+      providerId: CLAUDE_CODE_PROVIDER_ID,
+      ...(signal ? { signal } : {}),
+    });
+    return new Set(result.sessions.map((entry) => entry.providerThreadId));
+  }
+
+  async function rememberProviderSessionIds(
+    sessionIds: Iterable<string>,
+    known: ReadonlySet<string>,
+  ): Promise<void> {
+    for (const sessionId of sessionIds) {
+      if (known.has(sessionId)) continue;
+      await bb.storage.kv.set(`${HELD_SESSION_PREFIX}${sessionId}`, {
+        heldAt: Date.now(),
+      });
+    }
+  }
+
+  async function heldProviderSessionIds(): Promise<Set<string>> {
+    const keys = await bb.storage.kv.list(HELD_SESSION_PREFIX);
+    return new Set(keys.map((key) => key.slice(HELD_SESSION_PREFIX.length)));
+  }
+
+  async function ownedWorkspacePaths(
+    hostId: string,
+    signal: AbortSignal | undefined,
+  ): Promise<string[]> {
+    const environments = await bb.sdk.environments.list({
+      hostId,
+      ...(signal ? { signal } : {}),
+    });
+    const paths: string[] = [];
+    for (const environment of environments) {
+      if (environment.managed && environment.path !== null) {
+        paths.push(environment.path);
+      }
+    }
+    return paths;
+  }
+
+  async function knownThreadIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const threads = await bb.sdk.threads.list({
+      includeHidden: true,
+      ...(signal ? { signal } : {}),
+    });
+    return new Set(threads.map((thread) => thread.id));
+  }
+
+  async function providerSessionIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const [live, held] = await Promise.all([
+      liveProviderSessionIds(signal),
+      heldProviderSessionIds(),
+    ]);
+    await rememberProviderSessionIds(live, held);
+    for (const sessionId of held) live.add(sessionId);
+    return live;
+  }
+
+  async function recordHeldProviderSessions(): Promise<void> {
+    const [live, held] = await Promise.all([
+      liveProviderSessionIds(undefined),
+      heldProviderSessionIds(),
+    ]);
+    await rememberProviderSessionIds(live, held);
+  }
+
+  async function importedSessionIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const keys = await bb.storage.kv.list(IMPORTED_SESSION_PREFIX);
+    if (keys.length === 0) return new Set();
+    const threads = await bb.sdk.threads.list({
+      originPluginId: bb.pluginId,
+      includeHidden: true,
+      ...(signal ? { signal } : {}),
+    });
+    const liveThreadIds = new Set(threads.map((thread) => thread.id));
+    const imported = new Set<string>();
+    for (const key of keys) {
+      const record = await bb.storage.kv.get<ImportedSessionRecord>(key);
+      if (record === undefined) continue;
+      if (liveThreadIds.has(record.threadId)) {
+        imported.add(key.slice(IMPORTED_SESSION_PREFIX.length));
+        continue;
+      }
+      await bb.storage.kv.delete(key);
+    }
+    return imported;
+  }
+
   async function listSessions(args: {
     machine: string | null;
     dir: string | null;
     signal: AbortSignal | undefined;
   }): Promise<SessionListing> {
-    const { selected, machines } = await selectMachine(args.machine, args.signal);
-    const [result, projects] = await Promise.all([
+    const { selected, machines } = await selectMachine(
+      args.machine,
+      args.signal,
+    );
+    const [
+      result,
+      projects,
+      providerSessions,
+      imported,
+      ownedPaths,
+      threadIds,
+    ] = await Promise.all([
       host.call(
         "listClaudeSessions",
         args.dir === null ? {} : { dir: args.dir },
         callOptions(selected.id, args.signal),
       ),
       listProjects(args.signal),
+      providerSessionIds(args.signal),
+      importedSessionIds(args.signal),
+      ownedWorkspacePaths(selected.id, args.signal),
+      knownThreadIds(args.signal),
     ]);
     const projectByPath = new Map<string, { id: string; name: string }>();
     for (const project of projects) {
       for (const source of project.sources) {
         if (source.hostId === selected.id) {
-          projectByPath.set(source.path, { id: project.id, name: project.name });
+          projectByPath.set(source.path, {
+            id: project.id,
+            name: project.name,
+          });
         }
       }
     }
@@ -195,6 +324,12 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
           ...session,
           projectId: project?.id ?? null,
           projectName: project?.name ?? null,
+          hiddenReason: sessionHiddenReason(session, {
+            importedSessionIds: imported,
+            providerSessionIds: providerSessions,
+            ownedWorkspacePaths: ownedPaths,
+            threadIds,
+          }),
         };
       }),
     };
@@ -365,13 +500,21 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     const title = request.title ?? session.title ?? undefined;
     const thread = await bb.sdk.threads.experimental_import({
       projectId,
-      providerId: "claude-code",
+      providerId: CLAUDE_CODE_PROVIDER_ID,
       environment,
       sourceProviderThreadId: session.sessionId,
       turns,
       ...(title === undefined ? {} : { title }),
       ...(session.model === null ? {} : { model: session.model }),
     });
+    const importedRecord: ImportedSessionRecord = {
+      threadId: thread.id,
+      importedAt: Date.now(),
+    };
+    await bb.storage.kv.set(
+      `${IMPORTED_SESSION_PREFIX}${session.sessionId}`,
+      importedRecord,
+    );
     return {
       thread,
       session: {
@@ -384,7 +527,12 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     };
   }
 
-  return { importSession, listMachines, listSessions };
+  return {
+    importSession,
+    listMachines,
+    listSessions,
+    recordHeldProviderSessions,
+  };
 }
 
 export type ClaudeSessionImportService = ReturnType<
