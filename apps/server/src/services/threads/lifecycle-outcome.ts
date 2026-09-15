@@ -35,7 +35,10 @@ function announceTurnFailed(
 
 interface ApplyLoggedThreadLifecycleEventDeps {
   db: DbConnection;
-  hub: Pick<NotificationHub, "getDaemonSessionIdForHost" | "notifyThread">;
+  hub: Pick<
+    NotificationHub,
+    "getDaemonSessionIdForHost" | "getThreadMemoryUsage" | "notifyThread"
+  >;
   logger: ServerLogger;
   providerRegistry: ProviderRegistryService;
 }
