@@ -106,7 +106,10 @@ import {
   recoverInterruptedGitPluginPromotion,
 } from "./install-sources.js";
 import { readPluginManifest, type PluginManifest } from "./manifest.js";
-import { listBundledPluginRegistrations } from "./builtin-registry.js";
+import {
+  isRegisteredBuiltinName,
+  listBundledPluginRegistrations,
+} from "./builtin-registry.js";
 import {
   type BbPluginApi,
   type PluginAgentConfigurationContext,
@@ -618,6 +621,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     installedUpdateVersion,
     npmIntentForRow,
     provenanceForRow,
+    pruneStrandedBuiltinRegistrations,
     reconcileBundled,
     registerInstalled,
     registrationMatchesForActivation,
@@ -1162,8 +1166,22 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
     return { metadataByPluginId, publisherLabels };
   }
 
+  /**
+   * A builtin the running build still ships, so deleting its registration is
+   * refused and the user disables it instead. A builtin that has left the
+   * registry is excluded: its registration is prunable, and refusing it would
+   * strand the row and keep its id reserved.
+   */
+  function isRegistryBackedBuiltin(id: string): boolean {
+    if (!isBuiltinPluginId(id)) return false;
+    const row = getInstalledPlugin(deps.db, id);
+    return (
+      row !== undefined &&
+      isRegisteredBuiltinName(row.sourceBuiltinName, bundledPlugins)
+    );
+  }
   return {
-    isBuiltin: isBuiltinPluginId,
+    isBuiltin: isRegistryBackedBuiltin,
 
     listThemes() {
       return [...loaded.entries()]
@@ -1313,6 +1331,7 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
         }
         await recoverIncompletePluginRollbacks();
       });
+      pruneStrandedBuiltinRegistrations();
       await reconcileBundled();
       await loadAll();
       await withPluginOperationLock(REGISTRATION_MUTATION_KEY, runArtifactGc);
@@ -1516,8 +1535,15 @@ export function createPluginService(deps: PluginServiceDeps): PluginService {
         appBundles.delete(id);
         brandingAssets.delete(id);
         identities.delete(id);
+        // A builtin keeps a tombstone so bundled reconciliation does not
+        // reinstall it on the next start. One whose builtin has left the
+        // registry cannot be reinstalled anyway, and a surviving row would go
+        // on reserving the id, so that registration is deleted outright.
+        const tombstoneBuiltin =
+          row?.sourceKind === "builtin" &&
+          isRegisteredBuiltinName(row.sourceBuiltinName, bundledPlugins);
         const removed = row
-          ? row.sourceKind === "builtin"
+          ? tombstoneBuiltin
             ? markInstalledPluginRemoved(deps.db, id)
             : deleteInstalledPlugin(deps.db, id)
           : false;

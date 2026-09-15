@@ -250,8 +250,7 @@ Host files and voice transcription
 
 Voice transcription uses the `BB_TRANSCRIPTION` model, which defaults to
 `codex/gpt-transcribe`. Override it with
-`bb-app config set BB_TRANSCRIPTION <provider/model>`. For fully local
-transcription with whisper.cpp, use `whisper/<model>` and see `bb whisper`. Plugin-served audio
+`bb-app config set BB_TRANSCRIPTION <provider/model>`. Plugin-served audio
 uploads accept up to 20 MB; direct OpenAI uploads accept up to 25 MB. These
 limits apply to the app, SDK, and CLI. If transcription fails in the app,
 the error toast offers a download of the original recording until dismissed.
