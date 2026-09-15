@@ -104,3 +104,20 @@ export function extractThreadContextWindowUsage(
     usedTokens,
   };
 }
+
+const CONTEXT_TOKEN_COMPACT_FORMATTER = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 0,
+});
+
+export function formatContextWindowTokens(value: number): string {
+  return CONTEXT_TOKEN_COMPACT_FORMATTER.format(
+    Math.max(0, Math.round(value)),
+  ).toLowerCase();
+}
+
+export function formatContextWindowReadout(
+  usage: ThreadContextWindowUsage,
+): string {
+  return `${formatContextWindowTokens(usage.usedTokens)}/${formatContextWindowTokens(usage.modelContextWindow)}`;
+}

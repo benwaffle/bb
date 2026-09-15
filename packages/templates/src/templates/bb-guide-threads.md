@@ -453,7 +453,9 @@ starting a provider request. Use `--self` for the current thread and `--json` fo
 `{ usage: ... }` (`null` when unavailable). Claude Code refreshes the estimated
 breakdown after turns and compaction when its SDK supports context inspection.
 A later aggregate-only measurement replaces any older breakdown. Other providers
-continue to expose their available totals.
+continue to expose their available totals. The `Readout:` line prints the same
+compact `used/total` string the app shows in the composer status bar, so the
+two can be compared directly.
 
 Lifecycle ownership:
   spawn and fork accept --lifecycle-owner-thread <id>. SDK arguments use
