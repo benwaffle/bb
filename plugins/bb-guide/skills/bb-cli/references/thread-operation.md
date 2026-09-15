@@ -96,7 +96,9 @@ hostId, providerId, projectId, parentThreadId, groupBy })`.
   `bb thread queue` group contains the queued-message operations. Queue updates
   use the listed version and accept repeatable `--file` and `--image` options.
 - Use `bb thread show <thread-id>` for status, parent, environment, pull request
-  status, and result.
+  status, and result. It also prints the resident memory of the thread's agent
+  process tree while one is running; `bb thread list` shows the same figure per
+  row, and `bb machine show` the per-machine total.
 - Use `bb thread show <thread-id> --git-diff` to review file changes.
 - Use `bb thread log <thread-id>` to inspect the conversation. The default
   shows only the newest 20 user-message turns and ends with a notice when older

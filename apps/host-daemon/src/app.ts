@@ -13,6 +13,7 @@ import {
 } from "./interactive-request-registry.js";
 import { startEventLoopStallMonitor } from "./event-loop-stall-monitor.js";
 import { startHostDaemonHealthMonitor } from "./host-daemon-health-monitor.js";
+import { startProcessMemoryMonitor } from "./process-memory-monitor.js";
 import { startLocalApiServer, type LocalApiServer } from "./local-api.js";
 import type { HostDaemonLocalApiConfig } from "./local-api-config.js";
 import type { HostDaemonLogger } from "./logger.js";
@@ -698,6 +699,11 @@ export async function createHostDaemonApp(
       };
     },
   });
+  const processMemoryMonitor = startProcessMemoryMonitor({
+    logger: options.logger,
+    listProviderProcesses: () => runtimeManager.listProviderProcesses(),
+    sendMessage: (message) => sendServerMessage(message),
+  });
   const terminalManager = new TerminalManager({
     logger: options.logger,
     runtimeManager,
@@ -910,6 +916,7 @@ export async function createHostDaemonApp(
     shutdownRuntimes: async () => {
       await desktopBrowserBroker.close();
       idleProviderSessionReaper.stop();
+      processMemoryMonitor.stop();
       eventLoopStallMonitor.stop();
       hostDaemonHealthMonitor.stop();
       await pluginHostManager.shutdown();

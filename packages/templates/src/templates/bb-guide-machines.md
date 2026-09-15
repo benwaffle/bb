@@ -78,6 +78,15 @@ machine cannot set it for any machine, so a sandbox machine can stay at Full
 Access while your laptop stays lower. `bb machine list --json` and `bb machine
 show` report the current limit.
 
+`bb machine show` also reports `memoryUsage`: the resident memory and process
+count of every agent process tree the machine's host daemon is running, summed,
+with the time of the last sample. It is `null` while the daemon is disconnected
+or has not sampled yet. Per-thread figures are on `bb thread list --json` and
+`bb thread show`. In the app the same breakdown is a page of its own at
+Settings → Machines → the machine → Memory by thread, also reachable from the
+command palette as "Memory on <machine>"; it lists each thread with its memory,
+process count, and whether the figure is shared, and updates as samples arrive.
+
 Standalone create does not create a thread or workspace. Omit inputs to use the
 provider defaults; supply JSON when its schema requires additional values. Omit
 `--key` to let the server generate one, or supply a stable key for retries.

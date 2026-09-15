@@ -15,7 +15,9 @@ import {
   type AppDefaultKeybinding,
   type AppKeybinding,
   type AppKeybindingOverrides,
+  type Host,
 } from "@bb/domain";
+import { makeHost } from "@bb/test-helpers/domain-fixtures";
 import { CompactViewportOverrideProvider } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { AppCommandProvider, useAppCommandHandler } from "./AppCommandProvider";
 import {
@@ -92,6 +94,7 @@ const testState = vi.hoisted(() => ({
     id: string;
     name: string | null;
   }>,
+  hosts: [] as Host[],
 }));
 
 vi.mock("@/hooks/queries/system-queries", () => ({
@@ -132,7 +135,10 @@ vi.mock("@/hooks/useHostDaemon", () => ({
 
 vi.mock("@/lib/app-query-client", () => ({
   appQueryClient: {
-    fetchQuery: () => Promise.resolve(testState.plugins),
+    fetchQuery: (options: { queryKey: readonly unknown[] }) =>
+      Promise.resolve(
+        options.queryKey[0] === "hosts" ? testState.hosts : testState.plugins,
+      ),
   },
 }));
 
@@ -256,6 +262,7 @@ afterEach(() => {
   testState.calls.length = 0;
   testState.filesAvailable = false;
   testState.plugins.length = 0;
+  testState.hosts.length = 0;
   window.localStorage.clear();
 });
 
@@ -282,6 +289,33 @@ describe("CommandPalette", () => {
 
     await waitFor(() => expect(optionTitles()).toHaveLength(1));
     expect(selectedOption()?.textContent).toContain("Open terminal");
+  });
+
+  it("offers a memory page for each paired machine and navigates to it", async () => {
+    testState.hosts.push(
+      makeHost({ id: "host_ws", name: "workstation" }),
+      makeHost({ id: "host_box", name: "sandbox", type: "ephemeral" }),
+    );
+    renderPalette();
+    openPalette();
+    await waitFor(() => expect(searchField()).toBeTruthy());
+
+    fireEvent.change(searchField(), { target: { value: ">memory" } });
+
+    await waitFor(() => expect(optionTitles()).toHaveLength(1));
+    expect(selectedOption()?.textContent).toContain("Memory on workstation");
+
+    fireEvent.keyDown(searchField(), { key: "Enter" });
+
+    await waitFor(() =>
+      expect(screen.getByTestId("location").textContent).toBe(
+        JSON.stringify({
+          pathname: "/settings/machines/host_ws/memory",
+          search: "",
+          state: null,
+        }),
+      ),
+    );
   });
 
   it("finds commands when the query starts with a space", async () => {

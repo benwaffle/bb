@@ -292,6 +292,7 @@ describe("the AI service host binding", () => {
       pluginHostArtifacts: new PluginHostArtifactRegistry(),
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },

@@ -89,7 +89,10 @@ export interface PluginServiceDeps {
    * the `plugins-changed` system broadcast on lifecycle completion. */
   hub: Pick<
     NotificationHub,
-    "getDaemonSessionIdForHost" | "notifyPluginSignal" | "notifySystem"
+    | "getDaemonSessionIdForHost"
+    | "getThreadMemoryUsage"
+    | "notifyPluginSignal"
+    | "notifySystem"
   >;
   logger: ServerLogger;
   telemetry: TelemetryService;

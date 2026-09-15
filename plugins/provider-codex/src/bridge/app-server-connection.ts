@@ -1,6 +1,9 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { createInterface, type Interface } from "node:readline";
-import { experimental_recordProviderChildIo } from "@get-bb/plugin-sdk/provider-bridge";
+import {
+  experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
+} from "@get-bb/plugin-sdk/provider-bridge";
 import type { z } from "zod";
 
 const STDERR_TAIL_MAX_CHUNKS = 40;
@@ -106,6 +109,10 @@ export function createCodexAppServerConnection(
     stdio: ["pipe", "pipe", "pipe"],
   });
   experimental_recordProviderChildIo(child, {
+    threadId: options.recordThreadId,
+  });
+  experimental_reportProviderChildProcess({
+    child,
     threadId: options.recordThreadId,
   });
 

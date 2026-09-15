@@ -43,6 +43,7 @@ import {
   REGISTRY_SKILLS_ROUTE_PATH,
   SETTINGS_PLUGIN_ROUTE_PATH,
   SETTINGS_PLUGINS_ROUTE_PATH,
+  SETTINGS_MACHINE_MEMORY_ROUTE_PATH,
   SETTINGS_MACHINE_ROUTE_PATH,
   SETTINGS_PROJECT_ROUTE_PATH,
   SETTINGS_ROUTE_PATH,
@@ -91,6 +92,11 @@ const ProjectDetailSettingsView = lazy(() =>
 const MachineSettingsView = lazy(() =>
   import("./views/MachineSettingsView").then((m) => ({
     default: m.MachineSettingsView,
+  })),
+);
+const MachineMemoryView = lazy(() =>
+  import("./views/MachineMemoryView").then((m) => ({
+    default: m.MachineMemoryView,
   })),
 );
 const splitWorkspaceRouteModule = import("./views/SplitWorkspaceRoute");
@@ -286,6 +292,10 @@ export function AppRoutes() {
             element={<SettingsView />}
           />
           <Route path={SETTINGS_PLUGIN_ROUTE_PATH} element={<SettingsView />} />
+          <Route
+            path={SETTINGS_MACHINE_MEMORY_ROUTE_PATH}
+            element={<MachineMemoryView />}
+          />
           <Route
             path={SETTINGS_MACHINE_ROUTE_PATH}
             element={<MachineSettingsView />}

@@ -6,6 +6,8 @@ export type {
   AgentRuntimeExecutionOptions,
   AgentRuntimeOptions,
   AgentRuntimeProcessExitInfo,
+  AgentRuntimeProviderProcessInfo,
+  AgentRuntimeProviderProcessThread,
   AgentRuntimeProviderSession,
   AgentRuntimeSkillRoot,
   EnsureProviderArgs,

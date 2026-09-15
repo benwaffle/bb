@@ -633,6 +633,43 @@ const hostDaemonMachineShutdownAckMessageSchema = z
   })
   .strict();
 
+const hostDaemonProcessMemoryThreadSampleSchema = z
+  .object({
+    threadId: z.string().min(1),
+    pid: z.number().int().positive().nullable(),
+    rssBytes: z.number().int().nonnegative().nullable(),
+    processCount: z.number().int().nonnegative().nullable(),
+  })
+  .strict();
+export type HostDaemonProcessMemoryThreadSample = z.infer<
+  typeof hostDaemonProcessMemoryThreadSampleSchema
+>;
+
+const hostDaemonProcessMemoryProcessSampleSchema = z
+  .object({
+    environmentId: z.string().min(1),
+    providerId: z.string().min(1),
+    pid: z.number().int().positive(),
+    rssBytes: z.number().int().nonnegative(),
+    processCount: z.number().int().nonnegative(),
+    threads: z.array(hostDaemonProcessMemoryThreadSampleSchema),
+  })
+  .strict();
+export type HostDaemonProcessMemoryProcessSample = z.infer<
+  typeof hostDaemonProcessMemoryProcessSampleSchema
+>;
+
+export const hostDaemonProcessMemorySampleMessageSchema = z
+  .object({
+    type: z.literal("process-memory.sample"),
+    sampledAt: z.number().int().nonnegative(),
+    processes: z.array(hostDaemonProcessMemoryProcessSampleSchema),
+  })
+  .strict();
+export type HostDaemonProcessMemorySampleMessage = z.infer<
+  typeof hostDaemonProcessMemorySampleMessageSchema
+>;
+
 const hostDaemonEnvironmentChangeMessageSchema =
   hostDaemonEnvironmentChangePayloadSchema
     .extend({
@@ -745,6 +782,7 @@ export const hostDaemonDaemonWsMessageSchema = z.union([
   desktopBrowserChangedSchema,
   hostDaemonMachineShutdownAckMessageSchema,
   hostDaemonHeartbeatMessageSchema,
+  hostDaemonProcessMemorySampleMessageSchema,
   hostDaemonEnvironmentChangeMessageSchema,
   hostDaemonEnvironmentMetadataChangeMessageSchema,
   hostDaemonConnectTunnelIdentityMessageSchema,

@@ -301,7 +301,9 @@ bridges use. Record a real session: start the host daemon with
 `BB_PROVIDER_BRIDGE_RECORD_DIR=<dir>` in its environment, run a thread on
 your provider, and bb writes `<dir>/<providerId>/<threadId>/<direction>.ndjson`
 (a bridge that spawns a CLI also calls `experimental_recordProviderChildIo`
-right after `spawn()`). Commit the lanes under your plugin, then replay them in
+right after `spawn()`, and `experimental_reportProviderChildProcess({ child,
+threadId })` so bb can attribute that child's process-tree memory to the
+thread). Commit the lanes under your plugin, then replay them in
 a test: `experimental_resolveProviderBridgeLaunch({ modulePath, pluginId })`
 builds the bridge process exactly as the runtime spawns it,
 `experimental_replayRecording` drives the recorded runtime lane into it and

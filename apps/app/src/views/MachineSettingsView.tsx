@@ -1,7 +1,7 @@
 import { MachineLifecycleNoticeContent } from "@/components/machines/MachineLifecycleNotice";
 import { useMemo, useState, type ComponentProps } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import type { Host, PermissionMode } from "@bb/domain";
+import { formatMemoryBytes, type Host, type PermissionMode } from "@bb/domain";
 import type { SystemMachineProvider } from "@bb/server-contract";
 import type { HostPlatform } from "@bb/host-daemon-contract";
 import { Button } from "@bb/shared-ui/button";
@@ -38,7 +38,7 @@ import {
   useSuspendHost,
   useUpdateHostPermissionCeiling,
 } from "@/hooks/mutations/host-mutations";
-import { useHosts } from "@/hooks/queries/host-queries";
+import { useHostMemoryUsage, useHosts } from "@/hooks/queries/host-queries";
 import { useSystemMachineProviders } from "@/hooks/queries/machine-provider-queries";
 import { useSidebarNavigation } from "@/hooks/queries/sidebar-navigation-query";
 import {
@@ -61,6 +61,7 @@ import { formatRelativeTime } from "@/lib/relative-time";
 import { ProviderIconMark } from "@/components/settings/ProviderIconMark";
 import { getProviderIconInfo } from "@/lib/provider-icon";
 import {
+  getSettingsMachineMemoryRoutePath,
   getSettingsProjectRoutePath,
   getSettingsRoutePath,
 } from "@/lib/route-paths";
@@ -97,6 +98,40 @@ function headerMeta({
     `paired ${formatRelativeTime({ timestamp: host.createdAt, now })}`,
   );
   return parts.join(" · ");
+}
+
+function MachineMemoryUsageValue({ host }: { host: Host }) {
+  const usage = useHostMemoryUsage(host.id);
+  if (host.status !== "connected") {
+    return <span>Unavailable while offline</span>;
+  }
+  if (usage.data === undefined) {
+    return <span>Loading…</span>;
+  }
+  if (usage.data === null || usage.data.processCount === 0) {
+    return <span>No agent processes running</span>;
+  }
+  return (
+    <span
+      className="tabular-nums"
+      title={`Sampled ${new Date(usage.data.sampledAt).toLocaleTimeString()}`}
+    >
+      {formatMemoryBytes(usage.data.rssBytes)}
+      <span className="text-muted-foreground">{` across ${usage.data.processCount} processes`}</span>
+    </span>
+  );
+}
+
+function MachineMemoryLink({ host }: { host: Host }) {
+  return (
+    <Link
+      to={getSettingsMachineMemoryRoutePath(host.id)}
+      className="inline-flex items-center gap-1 text-sm text-foreground no-underline hover:underline hover:underline-offset-2"
+    >
+      Memory by thread
+      <Icon name="ChevronRight" className="size-3.5" aria-hidden />
+    </Link>
+  );
 }
 
 interface PermissionLimitCardProps {
@@ -400,6 +435,20 @@ export function MachineSettingsView() {
               )
             }
           />
+        </SettingsSection>
+
+        <SettingsSection
+          title="Memory"
+          description="Resident memory of every agent process tree running on this machine, sampled by its host daemon every few seconds."
+        >
+          <SettingsRowList>
+            <SettingsDetailRow label="Agent processes">
+              <MachineMemoryUsageValue host={host} />
+            </SettingsDetailRow>
+            <SettingsDetailRow label="Per thread">
+              <MachineMemoryLink host={host} />
+            </SettingsDetailRow>
+          </SettingsRowList>
         </SettingsSection>
 
         <SettingsSection title="Provider CLIs">
