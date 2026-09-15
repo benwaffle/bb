@@ -1,5 +1,6 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { SESSION_HIDDEN_REASONS } from "./session-visibility.js";
 
 const machineChoiceSchema = z
   .object({
@@ -18,8 +19,10 @@ const sessionEntrySchema = z
     firstPrompt: z.string().nullable(),
     lastActivityAt: z.number(),
     turnCount: z.number().int().nonnegative(),
+    bbDriven: z.boolean(),
     projectId: z.string().nullable(),
     projectName: z.string().nullable(),
+    hiddenReason: z.enum(SESSION_HIDDEN_REASONS).nullable(),
   })
   .strict();
 
@@ -32,17 +35,26 @@ const projectChoiceSchema = z
   .strict();
 
 export const claudeSessionImportRpcContract = defineRpcContract({
+  listMachines: {
+    input: z.object({}).strict(),
+    output: z
+      .object({
+        machines: z.array(machineChoiceSchema),
+        primaryHostId: z.string().nullable(),
+        defaultHostId: z.string().nullable(),
+      })
+      .strict(),
+  },
   listSessions: {
     input: z
       .object({
-        machine: z.string().min(1).nullable(),
+        hostId: z.string().min(1).nullable(),
         dir: z.string().min(1).nullable(),
       })
       .strict(),
     output: z
       .object({
         machine: machineChoiceSchema,
-        machines: z.array(machineChoiceSchema),
         projects: z.array(projectChoiceSchema),
         sessions: z.array(sessionEntrySchema),
       })
@@ -52,7 +64,7 @@ export const claudeSessionImportRpcContract = defineRpcContract({
     input: z
       .object({
         sessionId: z.string().min(1),
-        machine: z.string().min(1),
+        hostId: z.string().min(1).nullable(),
         projectId: z.string().min(1).nullable(),
       })
       .strict(),
