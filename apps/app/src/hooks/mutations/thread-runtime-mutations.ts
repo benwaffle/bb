@@ -580,6 +580,20 @@ export function cancelThreadPlanMutationOptions(queryClient: QueryClient) {
   });
 }
 
+export function useStopThreadBackgroundCommand() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: { errorMessage: "Failed to stop the background command." },
+    mutationFn: async (args: { threadId: string; taskId: string }) => {
+      await sdk.threads.stopBackgroundCommand(args);
+    },
+    onSuccess: (_data, { threadId }) => {
+      invalidateThreadBannerQueries({ queryClient, threadId });
+    },
+  });
+}
+
 export function useCancelThreadPlan() {
   const queryClient = useQueryClient();
   return useMutation(cancelThreadPlanMutationOptions(queryClient));
