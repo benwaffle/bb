@@ -3,7 +3,12 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { TooltipProvider } from "@bb/shared-ui/tooltip";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { VoiceInputSettingsSectionContent } from "./VoiceInputSettingsSection";
+import { Provider, createStore } from "jotai";
+import {
+  PUSH_TO_TALK_SETTING_LABEL,
+  VoiceInputSettingsSection,
+  VoiceInputSettingsSectionContent,
+} from "./VoiceInputSettingsSection";
 
 const devices = [
   { deviceId: "macbook-mic", label: "MacBook Pro Microphone" },
@@ -12,6 +17,8 @@ const devices = [
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
 });
 
 describe("VoiceInputSettingsSectionContent", () => {
@@ -23,8 +30,10 @@ describe("VoiceInputSettingsSectionContent", () => {
           errorMessage={null}
           isLoading={false}
           isSupported={true}
+          onPushToTalkEnabledChange={() => undefined}
           onRefresh={() => undefined}
           preferredDeviceId={null}
+          pushToTalkEnabled={true}
         />
       </TooltipProvider>,
     );
@@ -45,8 +54,10 @@ describe("VoiceInputSettingsSectionContent", () => {
           errorMessage={null}
           isLoading={false}
           isSupported={true}
+          onPushToTalkEnabledChange={() => undefined}
           onRefresh={() => undefined}
           preferredDeviceId="studio-mic"
+          pushToTalkEnabled={true}
         />
       </TooltipProvider>
     );
@@ -86,8 +97,10 @@ describe("VoiceInputSettingsSectionContent", () => {
           errorMessage="Microphone permission denied"
           isLoading={false}
           isSupported={true}
+          onPushToTalkEnabledChange={() => undefined}
           onRefresh={() => undefined}
           preferredDeviceId={null}
+          pushToTalkEnabled={true}
         />
       </TooltipProvider>,
     );
@@ -103,8 +116,10 @@ describe("VoiceInputSettingsSectionContent", () => {
           errorMessage={null}
           isLoading={false}
           isSupported={true}
+          onPushToTalkEnabledChange={() => undefined}
           onRefresh={onRefresh}
           preferredDeviceId={null}
+          pushToTalkEnabled={true}
         />
       </TooltipProvider>,
     );
@@ -112,5 +127,43 @@ describe("VoiceInputSettingsSectionContent", () => {
       screen.getByRole("button", { name: "Check microphone access" }),
     );
     expect(onRefresh).toHaveBeenCalledExactlyOnceWith(true);
+  });
+
+  it("toggles push-to-talk and disables the switch without microphone support", async () => {
+    vi.stubGlobal("navigator", {
+      mediaDevices: Object.assign(new EventTarget(), {
+        getUserMedia: vi.fn(),
+        enumerateDevices: vi.fn().mockResolvedValue([]),
+      }),
+    });
+    render(
+      <Provider store={createStore()}>
+        <TooltipProvider>
+          <VoiceInputSettingsSection />
+        </TooltipProvider>
+      </Provider>,
+    );
+    const toggle = await screen.findByRole("switch", {
+      name: PUSH_TO_TALK_SETTING_LABEL,
+    });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(window.localStorage.getItem("bb.voiceInput.pushToTalkEnabled")).toBe(
+      "false",
+    );
+
+    cleanup();
+    vi.stubGlobal("navigator", {});
+    render(
+      <Provider store={createStore()}>
+        <TooltipProvider>
+          <VoiceInputSettingsSection />
+        </TooltipProvider>
+      </Provider>,
+    );
+    expect(
+      screen.getByRole("switch", { name: PUSH_TO_TALK_SETTING_LABEL }),
+    ).toHaveProperty("disabled", true);
   });
 });
