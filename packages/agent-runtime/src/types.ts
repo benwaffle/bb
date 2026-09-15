@@ -277,6 +277,15 @@ interface ClearThreadGoalArgs {
   threadId: string;
 }
 
+interface StopBackgroundTaskArgs {
+  threadId: string;
+  taskId: string;
+}
+
+export interface StopBackgroundTaskResult {
+  stopped: boolean;
+}
+
 interface ArchiveThreadArgs {
   bridgeLaunch: AgentRuntimeBridgeLaunch;
   providerId: string;
@@ -336,6 +345,10 @@ export interface AgentRuntime {
   stopThread(args: StopThreadArgs): Promise<StopThreadResult>;
 
   clearThreadGoal(args: ClearThreadGoalArgs): Promise<{ cleared: boolean }>;
+
+  stopBackgroundTask(
+    args: StopBackgroundTaskArgs,
+  ): Promise<StopBackgroundTaskResult>;
 
   renameThread(args: RenameThreadArgs): Promise<void>;
 
