@@ -1,8 +1,10 @@
 import { z } from "zod";
 import {
+  hostMemoryUsageSchema,
   hostTypeSchema,
   jsonValueSchema,
   permissionModeSchema,
+  threadMemoryUsageSchema,
 } from "@bb/domain";
 import {
   pathsExistRequestSchema,
@@ -144,3 +146,17 @@ export const hostListQuerySchema = z.object({
   type: hostTypeSchema.optional(),
 });
 export type HostListQuery = z.input<typeof hostListQuerySchema>;
+
+const hostMemoryUsageSignalFieldsSchema = z.object({
+  type: z.literal("host-memory-usage"),
+  hostId: z.string().min(1),
+  host: hostMemoryUsageSchema.nullable(),
+  threads: z.record(z.string(), threadMemoryUsageSchema),
+});
+
+export const hostMemoryUsageSignalSchema =
+  hostMemoryUsageSignalFieldsSchema.strict();
+export type HostMemoryUsageSignal = z.infer<typeof hostMemoryUsageSignalSchema>;
+
+export const hostMemoryUsageSignalLenientSchema =
+  hostMemoryUsageSignalFieldsSchema;

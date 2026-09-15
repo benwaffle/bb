@@ -3,6 +3,7 @@ import { createInterface, type Interface } from "node:readline";
 import {
   experimental_killPortableProcess,
   experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
   experimental_spawnPortableProcess,
 } from "@get-bb/plugin-sdk/provider-bridge";
 import type { z } from "zod";
@@ -123,6 +124,10 @@ export function createCodexAppServerConnection(
     stdio: ["pipe", "pipe", "pipe"],
   });
   experimental_recordProviderChildIo(child, {
+    threadId: options.recordThreadId,
+  });
+  experimental_reportProviderChildProcess({
+    child,
     threadId: options.recordThreadId,
   });
 
