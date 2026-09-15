@@ -87,6 +87,9 @@ Inspecting:
   experiment on, `usage.compactionOfferAt` is when the provider's prompt cache
   for this context expires (Claude Code and Pi report cache lifetimes); after
   it, `bb thread tell --compact-first` avoids re-reading the context uncached.
+  The `Readout:` line prints the same
+  compact `used/total` string the app shows in the composer status bar, so the
+  two can be compared directly.
 
   `thread commands` lists the slash commands advertised for the current
   session; ACP agents report these live, so the list is empty until the agent
