@@ -310,6 +310,17 @@ Messaging:
   bb thread cancel-plan [id]               Exit the provider's active Plan mode
   bb thread clear-goal [id]                Clear the provider's active Goal
     --self                                 Target current thread
+  bb thread commands [id]                  List running background commands: task id, runtime, command line
+  bb thread commands stop <task> [id]      Stop one background command by task id
+    --self                                 Target current thread
+    --json                                 Machine-readable output
+
+  `thread commands` reads the same rows the Background commands card shows
+  above the composer (Claude Code threads report the exact command line and a
+  live output tail). `commands stop` asks the provider to kill the process and
+  returns once the task settles; the agent sees the stop as a task
+  notification. A command whose agent session has already been released
+  cannot be stopped from here and answers 409.
 
   `thread compact` enqueues the same structured /compact turn used by the
   composer. Follow the thread timeline for the eventual compaction result.

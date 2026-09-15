@@ -208,6 +208,14 @@ export class SdkSession {
     this.options.model = model;
   }
 
+  async stopTask(taskId: string): Promise<boolean> {
+    if (!this.query) {
+      return false;
+    }
+    await this.query.stopTask(taskId);
+    return true;
+  }
+
   async applyMutableSettings(args: {
     effort: ClaudeSdkReasoningEffort | undefined;
     settings: ClaudeMutableFlagSettings;

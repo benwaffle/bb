@@ -208,6 +208,8 @@ move and downloads the new server's bb-app package for its service.
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
+- `bb thread commands`
+- `bb thread commands stop`
 - `bb thread interactions`
 - `bb thread interactions list`
 - `bb thread interactions show`
