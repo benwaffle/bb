@@ -245,6 +245,16 @@ preference again when it reconnects. Select System default to follow system
 microphone changes; it does not change which service
 transcribes.
 
+Push-to-talk is also client-local. Holding the space bar for 200 ms in an empty
+composer, or while nothing interactive has focus, records until the key is
+released; the transcript appears in the composer as muted interim text while
+you speak and is inserted as plain text on release. Escape cancels. The
+composer re-transcribes the accumulated audio about once a second through the
+same voice-transcription route, rotating to a new 20 second segment so each
+request stays inside the ten second transcription budget, and stops after five
+minutes. The "Hold Space to talk" switch in Settings → Voice Input stores
+`bb.voiceInput.pushToTalkEnabled` in localStorage (default on).
+
 The built-in Push notifications plugin uses `expoPushUrl` for its relay URL.
 The default is `https://exp.host/--/api/v2/push/send`. Change it with
 `bb plugin config push-notifications set expoPushUrl <url>`. The plugin reads
