@@ -309,6 +309,9 @@ Context breakdowns are optional snapshots on `contextWindow` deltas:
 - `WorkflowAgentState`
 - `WorkflowPhaseSnapshot`
 - `WorkflowProgressSnapshot`
+- `experimental_sessionCommandsStateSchema` — Standard Schema for the `session-commands` extension state a provider publishes when it declares `experimental_sessionCommandsExtensionKind`
+- `ExperimentalSessionCommand`
+- `ExperimentalSessionCommandsState`
 
 ## `@get-bb/plugin-sdk/provider-bridge/testing`
 

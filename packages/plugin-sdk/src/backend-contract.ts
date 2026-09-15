@@ -1589,6 +1589,18 @@ export interface PluginProviderDeclaration {
    */
   experimental_resolvesNativeRoots?: boolean;
   /**
+   * The local name of an `extensionKinds` entry whose `state` schema is
+   * `experimental_sessionCommandsStateSchema` (`@get-bb/plugin-sdk/provider-bridge`).
+   * The bridge publishes the agent's live slash-command list for a thread as
+   * `extension.state` under that kind, whenever the agent advertises or
+   * changes it. bb reads the latest published list when the composer of a
+   * thread of this provider opens the `/` menu, and offers the commands the
+   * scanned catalog does not already carry (matched by name and alias) as the
+   * agent's own commands. Commands the agent only reaches from a terminal do
+   * not belong in the payload.
+   */
+  experimental_sessionCommandsExtensionKind?: string;
+  /**
    * Derive this provider's opaque per-command options. Called synchronously
    * by the server for every session and turn command on a thread of this
    * provider, with the command's {@link PluginProviderOptionsContext}; the
