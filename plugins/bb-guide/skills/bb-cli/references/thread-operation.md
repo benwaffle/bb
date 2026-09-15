@@ -24,6 +24,11 @@
   plan with `bb thread interactions`; `bb thread cancel-plan` leaves Plan mode
   early. The SDK equivalent is `input: [createBuiltinPlanCommandTextInput(text)]`
   (exported by `@bb/sdk`) on `threads.spawn` / `threads.send`.
+- Use `bb thread commands <thread-id>` to see background shell commands the
+  agent left running (task id, elapsed time, exact command line; `--json` adds
+  the latest output tail) and `bb thread commands stop <task-id> <thread-id>`
+  to kill one. The agent receives the stop as a task notification, so it does
+  not need to be told separately.
 - Use `bb thread edit-message <thread-id> --message "..."` to replace and rerun
   the latest eligible user message in a supporting provider thread. Pass
   `--expected-request-sequence <sequence>` to select an earlier message. Failed
