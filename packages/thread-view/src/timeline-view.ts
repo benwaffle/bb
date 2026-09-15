@@ -813,14 +813,16 @@ function dedupeBundleChildIntents(
       out.push(child);
       continue;
     }
-    if (child.workKind !== "command" || child.activityIntents.length === 0) {
+    const childIntents =
+      child.workKind === "command" ? timelineRowActivityIntents(child) : [];
+    if (child.workKind !== "command" || childIntents.length === 0) {
       lastEmittedKey = null;
       out.push(child);
       continue;
     }
     const wasExploration = hasTimelineExplorationIntent(child);
     const filtered: TimelineActivityIntent[] = [];
-    for (const intent of child.activityIntents) {
+    for (const intent of childIntents) {
       if (intent.type === "unknown") {
         filtered.push(intent);
         continue;
@@ -832,7 +834,7 @@ function dedupeBundleChildIntents(
       filtered.push(intent);
       lastEmittedKey = key;
     }
-    if (filtered.length === child.activityIntents.length) {
+    if (filtered.length === childIntents.length) {
       out.push(child);
       continue;
     }
