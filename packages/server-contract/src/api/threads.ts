@@ -30,6 +30,7 @@ import {
   threadTimelinePendingTodosSchema,
   threadEventSchema,
   threadEventTypeValues,
+  threadMemoryUsageSchema,
   threadVisibilitySchema,
   threadWithRuntimeSchema,
 } from "@bb/domain";
@@ -552,6 +553,7 @@ export type ThreadSearchResponse = z.infer<typeof threadSearchResponseSchema>;
 export const threadResponseSchema = threadWithRuntimeSchema.extend({
   activeBackgroundAgentCount: z.number().int().nonnegative(),
   canSpawnChild: z.boolean(),
+  memoryUsage: threadMemoryUsageSchema.nullable(),
   // How many messages are waiting on this thread's queue right now — waiting on
   // the clock, on the running turn, on provisioning, on an interaction, or on
   // a plugin. The count alone drives the pending-region and thread-row badges;

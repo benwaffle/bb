@@ -46,6 +46,7 @@ import type {
   Environment,
   Experiments,
   Host,
+  HostWithMemoryUsage,
   PendingInteraction,
   ProjectExecutionDefaults,
   ProjectSource,
@@ -832,7 +833,9 @@ export const publicApiRoutes = {
       path: "/hosts/:id",
       method: "get",
       request: noRequest<PathId>(),
-      response: jsonResponse<Host & { connectMachineId: string | null }>(),
+      response: jsonResponse<
+        HostWithMemoryUsage & { connectMachineId: string | null }
+      >(),
     }),
     enrollmentCommand: defineRoute({
       path: "/hosts/:id/enrollment-command",

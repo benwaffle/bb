@@ -100,6 +100,7 @@ Context breakdowns are optional snapshots on `contextWindow` deltas:
 - `experimental_readBoundedLines`
 - `experimental_readCliVersion`
 - `experimental_recordProviderChildIo`
+- `experimental_reportProviderChildProcess`
 - `experimental_resolveExecutablePath`
 - `experimental_searchPresentation`
 - `experimental_toolPresentation`

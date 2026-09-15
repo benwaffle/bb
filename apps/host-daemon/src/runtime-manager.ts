@@ -6,6 +6,7 @@ import {
   type AgentRuntimeOptions,
   type AgentRuntimeSkillRoot,
   type AgentRuntimeProcessExitInfo,
+  type AgentRuntimeProviderProcessInfo,
   type ReapedIdleProviderSession,
 } from "@bb/agent-runtime";
 import type { Logger } from "@bb/logger";
@@ -190,6 +191,11 @@ export interface RuntimeManagerOptions {
   onToolCall?: AgentRuntimeOptions["onToolCall"];
   onStderr?: AgentRuntimeOptions["onStderr"];
   onProcessExit?: AgentRuntimeOptions["onProcessExit"];
+}
+
+export interface RuntimeManagerProviderProcess
+  extends AgentRuntimeProviderProcessInfo {
+  environmentId: string;
 }
 
 export interface RuntimeManagerReapIdleProviderSessionsArgs {
@@ -509,6 +515,16 @@ export class RuntimeManager {
       }
     }
     return activeThreads;
+  }
+
+  listProviderProcesses(): RuntimeManagerProviderProcess[] {
+    const processes: RuntimeManagerProviderProcess[] = [];
+    for (const entry of this.entries.values()) {
+      for (const info of entry.runtime.listProviderProcesses()) {
+        processes.push({ ...info, environmentId: entry.environmentId });
+      }
+    }
+    return processes;
   }
 
   listLoadedEnvironments(): HostDaemonLoadedEnvironment[] {

@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { environmentWorkspaceDisplayKindSchema } from "./environment.js";
 import { gitCheckoutRefSchema } from "./git-checkout.js";
+import { threadMemoryUsageSchema } from "./memory-usage.js";
 import {
   queuedMessageFailureReasonSchema,
   queuedMessagePayloadSchema,
@@ -446,5 +447,6 @@ export const threadListEntrySchema = threadWithRuntimeSchema.extend({
   environmentProviderId: z.string().nullable(),
   environmentIsWorktree: z.boolean().nullable(),
   environmentWorkspaceDisplayKind: environmentWorkspaceDisplayKindSchema,
+  memoryUsage: threadMemoryUsageSchema.nullable(),
 });
 export type ThreadListEntry = z.infer<typeof threadListEntrySchema>;

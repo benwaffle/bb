@@ -153,3 +153,5 @@ and no open terminals; empty machines can use an opted-in provider idle policy.
 suspended state through the provider and waits for completion. It leaves active
 machines and in-progress lifecycle operations alone. Use `machine suspend` to
 request a new pause. Core does not schedule reconciliation polling.
+
+`bb thread list`, `bb thread show`, and `bb machine show` report `memoryUsage`: the resident memory of a thread's agent process tree (every descendant of the process the host daemon spawned for it, such as test runners and dev servers) sampled every few seconds, and the per-machine sum. `null` means no live agent process or a disconnected daemon; `sharedThreadCount > 1` means the provider hosts several threads in one process and the figure is that process tree's total.

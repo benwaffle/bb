@@ -417,6 +417,7 @@ describe("plugin install flows", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -1034,6 +1035,7 @@ describe("plugin install flows", () => {
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginSignal: () => 0,
           notifySystem: () => {},
         },
@@ -1153,6 +1155,7 @@ describe("plugin install flows", () => {
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginSignal: () => 0,
           notifySystem: () => {},
         },

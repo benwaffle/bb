@@ -8,6 +8,8 @@ import type { DynamicTool, InstructionMode, ThreadEvent } from "@bb/domain";
 import type { AdapterCommand } from "./provider-adapter.js";
 import {
   BRIDGE_JSON_RPC_ERRORS,
+  BRIDGE_NOTIFICATION_METHODS,
+  threadProcessNotificationSchema,
   providerHealthResultSchema,
   providerInstallationRunResultSchema,
   providerInstallationStatusSchema,
@@ -212,6 +214,7 @@ interface ThreadRuntimeConfig {
 }
 
 interface RuntimeParsedMessageArgs {
+  method: string;
   parsed: JsonRpcObject;
   proc: ProviderProcess;
 }
@@ -1264,6 +1267,18 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
       }
       return;
     }
+    if (args.method === BRIDGE_NOTIFICATION_METHODS.threadProcess) {
+      const parsed = threadProcessNotificationSchema.safeParse(
+        args.parsed.params,
+      );
+      if (parsed.success) {
+        args.proc.identity.threadPids.set(
+          parsed.data.threadId,
+          parsed.data.pid,
+        );
+      }
+      return;
+    }
     const sourceThreadId = getJsonRpcStringParam(args.parsed, "threadId");
     if (
       sourceThreadId !== undefined &&
@@ -1337,6 +1352,7 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
     }
 
     handleProviderNotification({
+      method: parsedLine.notificationMethod,
       parsed: parsedLine.parsed,
       proc,
     });
@@ -2424,6 +2440,10 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
 
     listRunningProviders() {
       return providerProcesses.listRunningProviders();
+    },
+
+    listProviderProcesses() {
+      return providerProcesses.listProcesses();
     },
 
     getActiveTurnId(threadId) {

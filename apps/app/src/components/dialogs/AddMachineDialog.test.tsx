@@ -160,6 +160,7 @@ it("retrieves the enrollment command after asynchronous access preparation", asy
     vi.mocked(sdk.hosts.get).mockResolvedValue({
       ...reservedHost,
       connectMachineId: null,
+      memoryUsage: null,
     });
   });
   await screen.findByText("delayed enrollment command", {}, { timeout: 3_000 });
@@ -175,6 +176,7 @@ it("accepts a connection before an enrollment command is returned", async () => 
     vi.mocked(sdk.hosts.get).mockResolvedValue({
       ...reservedHost,
       connectMachineId: null,
+      memoryUsage: null,
       status: "connected",
       lifecycle: { ...reservedHost.lifecycle, phase: "active" },
     });
