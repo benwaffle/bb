@@ -229,6 +229,10 @@ export function buildPluginProviderRegistration(args: {
       declaration.experimental_nativeCommandRoots ??
       EMPTY_PROVIDER_NATIVE_ROOTS,
     resolvesNativeRoots: declaration.experimental_resolvesNativeRoots,
+    sessionCommandsExtensionKind:
+      declaration.experimental_sessionCommandsExtensionKind === undefined
+        ? null
+        : `${args.pluginId}/${declaration.experimental_sessionCommandsExtensionKind}`,
     deriveProviderOptions: (context) =>
       deriveValidatedProviderOptions({
         declaration,

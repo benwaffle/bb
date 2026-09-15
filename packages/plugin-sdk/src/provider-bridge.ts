@@ -429,3 +429,8 @@ export {
   type ContextCategory,
   type ContextEntry,
 } from "@bb/domain";
+export {
+  providerSessionCommandsStateSchema as experimental_sessionCommandsStateSchema,
+  type ProviderSessionCommand as ExperimentalSessionCommand,
+  type ProviderSessionCommandsState as ExperimentalSessionCommandsState,
+} from "@bb/domain";

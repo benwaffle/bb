@@ -3789,3 +3789,34 @@ Stabilize after verifying group archive and Undo with descendants, already archi
 Starts a server-owned plugin update and returns its job immediately. `experimental_updateJobs.list/get` exposes queued/running phases and terminal update, rollback, or failure results. Jobs continue across client disconnects; finished jobs remain for ten minutes. Jobs are in memory and do not survive server restarts. `applyUpdate` retains its result contract by polling the job; raw callers without `Prefer: respond-async` retain the synchronous response. Running updates cannot be cancelled during activation or rollback.
 
 Stabilization requires exercising reconnect/reload, concurrent deduplication, rollback delivery, missing jobs after restart, and CLI/SDK parity before dropping the experimental prefix. No host-daemon wire change.
+
+## `PluginProviderDeclaration.experimental_sessionCommandsExtensionKind`
+
+**What it does.** Names one of the provider's `extensionKinds` whose `state`
+schema is `experimental_sessionCommandsStateSchema` from
+`@get-bb/plugin-sdk/provider-bridge` (types `ExperimentalSessionCommand` and
+`ExperimentalSessionCommandsState`). The provider's bridge publishes the
+agent's live slash-command list for a thread as an `extension.state` delta of
+that kind, on session start and whenever the agent changes the list. The
+server stores it as ordinary extension state and also remembers the most
+recent list per machine and provider in `provider-session-commands.json`
+under the server data dir. `GET
+/projects/:id/commands` (SDK `projects.commands`, CLI `bb project commands
+[--thread]`) merges a list into the catalog as `source: "skill", origin:
+"builtin"` entries, skipping any name or alias the scanned catalog already
+has: the thread's own latest list when `threadId` names a thread on this
+provider that has published one, otherwise the machine's remembered list. The
+Claude Code provider is the first caller, publishing Claude Code's bundled,
+user, and plugin skills minus terminal-only ones.
+
+**Audit before stabilizing.**
+
+1. Decide whether the command list belongs on a core thread delta instead of
+   a provider-declared extension kind, now that two layers name the kind.
+2. Confirm `skill`/`builtin` is the right catalog classification, or whether
+   session commands need their own source or origin and a distinct section.
+3. Confirm the 48 KiB bridge-side budget and the 400-entry schema cap against
+   real installs with many skills.
+4. Confirm the per-machine fallback should be the last publish from any
+   thread rather than a per-project or per-workspace list, since project
+   skills differ between checkouts while bundled skills do not.
