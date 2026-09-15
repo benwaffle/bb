@@ -59,6 +59,7 @@ interface UseProjectCommandsArgs {
   providerId: string | undefined;
   environmentId: string | null;
   hostId: string | null;
+  threadId: string | null;
 }
 
 const PROJECT_SOURCE_BRANCHES_LIMIT = 50;
@@ -297,12 +298,14 @@ export function projectCommandsQueryOptions(args: UseProjectCommandsArgs) {
       args.providerId,
       args.environmentId,
       args.hostId,
+      args.threadId,
     ),
     queryFn: ({ signal }: { signal: AbortSignal }) =>
       sdk.projects.commands({
         projectId: requireProjectId(args.projectId, "useProjectCommands"),
         provider: requireProviderId(args.providerId, "useProjectCommands"),
         signal,
+        ...(args.threadId !== null ? { threadId: args.threadId } : {}),
         ...(args.environmentId !== null
           ? { environmentId: args.environmentId }
           : args.hostId !== null

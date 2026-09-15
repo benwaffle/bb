@@ -16,6 +16,24 @@ with `bb plugin config provider-claude-code set <key> <value>`.
   corresponding `bb thread` commands. Unlisted model IDs are accepted by the
   provider; verify actual availability on the target host.
 
+## Slash commands in the composer
+
+The composer's `/` menu offers the skills Claude Code advertises beside the
+scanned catalog: bundled skills such as `/code-review`, `/simplify`, `/loop`,
+`/batch`, `/debug`, and `/claude-api`, plus user and plugin skills the scan did
+not find. Claude Code CLI state commands (`/model`, `/config`, `/mcp`, and the
+like) and terminal-only skills (`/doctor`) are left out because bb owns that
+state. A running thread uses the list its own session published; the
+new-thread composer, and a thread whose session has not started, use the most
+recent list any Claude Code session published on that machine, which bb
+persists across restarts. `bb project commands <project> --provider claude-code
+[--thread <thread>]` lists the same merged catalog. The list refreshes when
+Claude Code reports a change, for example after `/reload-skills`.
+
+Picking a skill inserts it as a pill followed by its argument hint as
+placeholder text; typing after the pill replaces the hint, and the prompt
+reaches Claude Code as the literal line, for example `/code-review low`.
+
 ## Importing terminal sessions
 
 `bb claude-code sessions [--dir <path>] [--limit <n>] [--json]` lists the

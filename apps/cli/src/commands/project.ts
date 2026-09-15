@@ -53,6 +53,7 @@ interface ProjectDiscoveryCommandOptions {
   limit?: string;
   provider?: string;
   query?: string;
+  thread?: string;
 }
 
 function addProjectWorkspaceRoutingOptions(command: Command): Command {
@@ -422,6 +423,10 @@ export function registerProjectCommands(
   addProjectWorkspaceRoutingOptions(project.command("commands <id>"))
     .description("List provider commands and skills available to a project")
     .requiredOption("--provider <id>", "Provider ID")
+    .option(
+      "--thread <id>",
+      "Include the commands the agent advertises in this thread's live session",
+    )
     .option("--json", "Print machine-readable JSON output")
     .action(
       action(async (id: string, opts: ProjectDiscoveryCommandOptions) => {
@@ -429,6 +434,7 @@ export function registerProjectCommands(
         const result = await createCliBbSdk(getUrl()).projects.commands({
           projectId: id,
           provider: opts.provider ?? "",
+          ...(opts.thread ? { threadId: opts.thread } : {}),
           ...(await resolveMachineEnvironmentRouting(opts, serverUrl)),
         });
         if (outputJson(opts, result)) return;

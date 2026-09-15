@@ -5,6 +5,10 @@ import { Plugin } from "@tiptap/pm/state";
 import { Decoration, DecorationSet } from "@tiptap/pm/view";
 import { ReactNodeViewRenderer } from "@tiptap/react";
 import { PromptMentionPillNodeView } from "./PromptMentionPillNodeView";
+import {
+  createCommandArgumentPlaceholderElement,
+  findCommandArgumentPlaceholders,
+} from "./command-argument-placeholder";
 import { parsePromptEditorMentionAttrs } from "./prompt-editor-serialization";
 import {
   PROMPT_MENTION_PILL_CLASS,
@@ -78,6 +82,23 @@ export const PromptMentionExtension = Mention.extend({
                     );
                   }
                 },
+              );
+            }
+
+            for (const placeholder of findCommandArgumentPlaceholders(
+              state.doc,
+              mentionName,
+            )) {
+              decorations.push(
+                Decoration.widget(
+                  placeholder.position,
+                  () =>
+                    createCommandArgumentPlaceholderElement(placeholder.hint),
+                  {
+                    side: 1,
+                    key: `command-argument-placeholder:${placeholder.position}:${placeholder.hint}`,
+                  },
+                ),
               );
             }
 

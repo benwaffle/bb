@@ -1,4 +1,4 @@
-import { PERSONAL_PROJECT_ID } from "@bb/domain";
+import { PERSONAL_PROJECT_ID, threadScope } from "@bb/domain";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type {
@@ -7,6 +7,7 @@ import type {
   HostDaemonOnlineRpcRequestMessage,
 } from "@bb/host-daemon-contract";
 import { commandListResponseSchema } from "@bb/server-contract";
+import { rememberProviderSessionCommands } from "../../src/services/threads/provider-session-commands-store.js";
 import type { ExperimentalNativeRootsResolveAnswer } from "@get-bb/plugin-sdk/host";
 import { describe, expect, it, vi } from "vitest";
 import { COMMAND_TIMEOUT_MS } from "../../src/constants.js";
@@ -19,10 +20,12 @@ import {
 import { readJson } from "../helpers/json.js";
 import {
   seedEnvironment,
+  seedEvent,
   seedHost,
   seedHostSession,
   seedPrimaryHost,
   seedProjectWithSource,
+  seedThread,
 } from "../helpers/seed.js";
 import { withTestHarness } from "../helpers/test-app.js";
 import type { PluginProviderDeclaration } from "@get-bb/plugin-sdk";
@@ -1040,6 +1043,374 @@ describe("public project command typeahead route", () => {
         "charlie",
         "delta",
       ]);
+    });
+  });
+
+  describe("thread session commands", () => {
+    const SESSION_COMMANDS_KIND = "provider-claude-code/session-commands";
+
+    function seedSessionCommands(
+      deps: Parameters<typeof seedEvent>[0],
+      args: {
+        threadId: string;
+        sequence: number;
+        commands: {
+          name: string;
+          description: string | null;
+          argumentHint: string | null;
+          aliases: string[];
+        }[];
+      },
+    ): void {
+      seedEvent(deps, {
+        threadId: args.threadId,
+        sequence: args.sequence,
+        type: "thread/extensionState/updated",
+        scope: threadScope(),
+        providerThreadId: "claude-session",
+        data: {
+          providerThreadId: "claude-session",
+          kind: SESSION_COMMANDS_KIND,
+          payload: { commands: args.commands },
+        },
+      });
+    }
+
+    it("merges the thread's latest session commands, skipping catalog names and aliases", async () => {
+      await withTestHarness(async (harness) => {
+        const { host, session } = seedHostSession(harness.deps, {
+          id: "host-session-commands",
+        });
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+          path: "/tmp/session-commands-project",
+        });
+        const environment = seedEnvironment(harness.deps, {
+          hostId: host.id,
+          projectId: project.id,
+          path: "/tmp/session-commands-env",
+        });
+        const thread = seedThread(harness.deps, {
+          projectId: project.id,
+          environmentId: environment.id,
+          providerId: "claude-code",
+        });
+        seedSessionCommands(harness.deps, {
+          threadId: thread.id,
+          sequence: 1,
+          commands: [
+            {
+              name: "stale-skill",
+              description: "Replaced by a later publish",
+              argumentHint: null,
+              aliases: [],
+            },
+          ],
+        });
+        seedSessionCommands(harness.deps, {
+          threadId: thread.id,
+          sequence: 2,
+          commands: [
+            {
+              name: "code-review",
+              description: "Review the current diff",
+              argumentHint: "[low|medium|high]",
+              aliases: ["review"],
+            },
+            {
+              name: "review-db-change",
+              description: "Duplicate of a catalog skill by name",
+              argumentHint: null,
+              aliases: [],
+            },
+            {
+              name: "cape:nucleus",
+              description: "Duplicate of a catalog skill by alias",
+              argumentHint: null,
+              aliases: ["nucleus"],
+            },
+            {
+              name: "compact",
+              description: "Duplicate of a bb built-in",
+              argumentHint: null,
+              aliases: [],
+            },
+          ],
+        });
+        registerCommandRpc(harness, {
+          hostId: host.id,
+          sessionId: session.id,
+          commands: [
+            skill("review-db-change", "user", {
+              description: "Catalog copy",
+            }),
+            skill("nucleus", "user", { description: "Catalog copy" }),
+          ],
+        });
+
+        const response = await harness.app.request(
+          `/api/v1/projects/${project.id}/commands?provider=claude-code&environmentId=${environment.id}&threadId=${thread.id}`,
+        );
+
+        expect(response.status).toBe(200);
+        const body = commandListResponseSchema.parse(await readJson(response));
+        expect(body.commands.map((command) => command.name)).toEqual([
+          "clear",
+          "code-review",
+          "compact",
+          "nucleus",
+          "review-db-change",
+        ]);
+        expect(body.commands[1]).toEqual({
+          name: "code-review",
+          source: "skill",
+          origin: "builtin",
+          description: "Review the current diff",
+          argumentHint: "[low|medium|high]",
+        });
+        expect(
+          body.commands.find((command) => command.name === "compact")
+            ?.description,
+        ).toBe("Compact context");
+        expect(
+          body.commands.find((command) => command.name === "review-db-change")
+            ?.description,
+        ).toBe("Catalog copy");
+
+        const withoutThread = await harness.app.request(
+          `/api/v1/projects/${project.id}/commands?provider=claude-code&environmentId=${environment.id}`,
+        );
+        const plain = commandListResponseSchema.parse(
+          await readJson(withoutThread),
+        );
+        expect(plain.commands.map((command) => command.name)).toEqual([
+          "clear",
+          "compact",
+          "nucleus",
+          "review-db-change",
+        ]);
+      });
+    });
+
+    it("ignores session commands when the thread runs another provider", async () => {
+      await withTestHarness(async (harness) => {
+        const { host, session } = seedHostSession(harness.deps, {
+          id: "host-session-commands-other-provider",
+        });
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+          path: "/tmp/session-commands-other",
+        });
+        const environment = seedEnvironment(harness.deps, {
+          hostId: host.id,
+          projectId: project.id,
+          path: "/tmp/session-commands-other-env",
+        });
+        const thread = seedThread(harness.deps, {
+          projectId: project.id,
+          environmentId: environment.id,
+          providerId: "codex",
+        });
+        seedSessionCommands(harness.deps, {
+          threadId: thread.id,
+          sequence: 1,
+          commands: [
+            {
+              name: "code-review",
+              description: null,
+              argumentHint: null,
+              aliases: [],
+            },
+          ],
+        });
+        registerCommandRpc(harness, {
+          hostId: host.id,
+          sessionId: session.id,
+          commands: [],
+        });
+
+        const response = await harness.app.request(
+          `/api/v1/projects/${project.id}/commands?provider=claude-code&environmentId=${environment.id}&threadId=${thread.id}`,
+        );
+
+        expect(response.status).toBe(200);
+        const body = commandListResponseSchema.parse(await readJson(response));
+        expect(body.commands.map((command) => command.name)).toEqual([
+          "clear",
+          "compact",
+        ]);
+      });
+    });
+
+    it("falls back to the machine's last published list when no thread is given or the thread has none", async () => {
+      await withTestHarness(async (harness) => {
+        const { host, session } = seedHostSession(harness.deps, {
+          id: "host-session-commands-fallback",
+        });
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+          path: "/tmp/session-commands-fallback",
+        });
+        const environment = seedEnvironment(harness.deps, {
+          hostId: host.id,
+          projectId: project.id,
+          path: "/tmp/session-commands-fallback-env",
+        });
+        const silentThread = seedThread(harness.deps, {
+          projectId: project.id,
+          environmentId: environment.id,
+          providerId: "claude-code",
+        });
+        const liveThread = seedThread(harness.deps, {
+          projectId: project.id,
+          environmentId: environment.id,
+          providerId: "claude-code",
+        });
+        seedSessionCommands(harness.deps, {
+          threadId: liveThread.id,
+          sequence: 1,
+          commands: [
+            {
+              name: "live-only",
+              description: "From the live session",
+              argumentHint: null,
+              aliases: [],
+            },
+          ],
+        });
+        rememberProviderSessionCommands(harness.deps.config.dataDir, {
+          hostId: host.id,
+          providerId: "claude-code",
+          kind: SESSION_COMMANDS_KIND,
+          state: {
+            commands: [
+              {
+                name: "remembered",
+                description: "From the last session on this machine",
+                argumentHint: "<arg>",
+                aliases: [],
+              },
+            ],
+          },
+          updatedAt: 1,
+        });
+        registerCommandRpc(harness, {
+          hostId: host.id,
+          sessionId: session.id,
+          commands: [],
+        });
+
+        const namesFor = async (suffix: string) => {
+          const response = await harness.app.request(
+            `/api/v1/projects/${project.id}/commands?provider=claude-code&environmentId=${environment.id}${suffix}`,
+          );
+          expect(response.status).toBe(200);
+          return commandListResponseSchema
+            .parse(await readJson(response))
+            .commands.map((command) => command.name);
+        };
+
+        expect(await namesFor("")).toEqual(["clear", "compact", "remembered"]);
+        expect(await namesFor(`&threadId=${silentThread.id}`)).toEqual([
+          "clear",
+          "compact",
+          "remembered",
+        ]);
+        expect(await namesFor(`&threadId=${liveThread.id}`)).toEqual([
+          "clear",
+          "compact",
+          "live-only",
+        ]);
+      });
+    });
+
+    it("keeps remembered lists apart per machine and provider", async () => {
+      await withTestHarness(async (harness) => {
+        const { host, session } = seedHostSession(harness.deps, {
+          id: "host-session-commands-scoped",
+        });
+        const other = seedHost(harness.deps, {
+          id: "host-session-commands-other-machine",
+        });
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+          path: "/tmp/session-commands-scoped",
+        });
+        rememberProviderSessionCommands(harness.deps.config.dataDir, {
+          hostId: other.id,
+          providerId: "claude-code",
+          kind: SESSION_COMMANDS_KIND,
+          state: {
+            commands: [
+              {
+                name: "elsewhere",
+                description: null,
+                argumentHint: null,
+                aliases: [],
+              },
+            ],
+          },
+          updatedAt: 1,
+        });
+        rememberProviderSessionCommands(harness.deps.config.dataDir, {
+          hostId: host.id,
+          providerId: "codex",
+          kind: SESSION_COMMANDS_KIND,
+          state: {
+            commands: [
+              {
+                name: "other-provider",
+                description: null,
+                argumentHint: null,
+                aliases: [],
+              },
+            ],
+          },
+          updatedAt: 1,
+        });
+        registerCommandRpc(harness, {
+          hostId: host.id,
+          sessionId: session.id,
+          commands: [],
+        });
+
+        const response = await harness.app.request(
+          `/api/v1/projects/${project.id}/commands?provider=claude-code&hostId=${host.id}`,
+        );
+
+        expect(response.status).toBe(200);
+        const body = commandListResponseSchema.parse(await readJson(response));
+        expect(body.commands.map((command) => command.name)).toEqual([
+          "clear",
+          "compact",
+        ]);
+      });
+    });
+
+    it("rejects a thread that belongs to another project", async () => {
+      await withTestHarness(async (harness) => {
+        const { host } = seedHostSession(harness.deps, {
+          id: "host-session-commands-foreign-thread",
+        });
+        const { project } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+          path: "/tmp/session-commands-foreign",
+        });
+        const { project: otherProject } = seedProjectWithSource(harness.deps, {
+          hostId: host.id,
+          path: "/tmp/session-commands-foreign-other",
+        });
+        const thread = seedThread(harness.deps, {
+          projectId: otherProject.id,
+          providerId: "claude-code",
+        });
+
+        const response = await harness.app.request(
+          `/api/v1/projects/${project.id}/commands?provider=claude-code&threadId=${thread.id}`,
+        );
+
+        expect(response.status).toBe(404);
+      });
     });
   });
 });

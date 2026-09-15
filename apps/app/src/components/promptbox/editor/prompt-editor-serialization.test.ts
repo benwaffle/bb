@@ -694,6 +694,38 @@ describe("prompt editor serialization", () => {
     });
   });
 
+  it("serializes arguments typed after a command pill as the literal slash command line", () => {
+    const resource = {
+      kind: "command" as const,
+      trigger: "/" as const,
+      name: "code-review",
+      source: "skill" as const,
+      origin: "builtin" as const,
+      label: "code-review",
+      argumentHint: "[low|medium|high]",
+    };
+    const doc = Node.fromJSON(schema, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "mention",
+              attrs: { resource, serializedText: "/code-review" },
+            },
+            { type: "text", text: " low --fix" },
+          ],
+        },
+      ],
+    });
+
+    expect(promptEditorValueFromDoc(doc)).toEqual({
+      text: "/code-review low --fix",
+      mentions: [{ start: 0, end: "/code-review".length, resource }],
+    });
+  });
+
   it("serializes a selected skill as a pill without materializing argument hint text", () => {
     const text = "/review ";
     const mentions: PromptTextMention[] = [

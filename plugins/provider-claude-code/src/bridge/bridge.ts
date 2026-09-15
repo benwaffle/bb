@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 import { ClaudeContextUsageCollector } from "./context-usage.js";
+import {
+  buildClaudeSessionCommandsState,
+  claudeSessionCommandFilterFromInit,
+  CLAUDE_SESSION_COMMANDS_EXTENSION_KIND,
+  type ClaudeSessionCommandFilter,
+} from "../session-commands.js";
 
 import {
   type PendingInteractionGrantedPermissionProfile,
@@ -36,6 +42,7 @@ import {
   type HookCallback,
   type PermissionResult,
   type SDKMessage,
+  type SlashCommand,
 } from "@anthropic-ai/claude-agent-sdk";
 import { z } from "zod";
 import {
@@ -202,6 +209,7 @@ interface ClaudeSessionRestart {
 
 interface ThreadSession {
   contextUsageCollector: ClaudeContextUsageCollector;
+  sessionCommandFilter: ClaudeSessionCommandFilter | null;
   session: SdkSession;
   attachment: ThreadAttachment;
   sessionSerial: number;
@@ -935,6 +943,7 @@ function createThreadSession(attachment: ThreadAttachment): ThreadSession {
   );
   const threadSession: ThreadSession = {
     contextUsageCollector: new ClaudeContextUsageCollector(),
+    sessionCommandFilter: null,
     session,
     attachment,
     sessionSerial,
@@ -1260,13 +1269,13 @@ async function getWritableThreadSession(
     return undefined;
   }
   const replacement: ClaudeSessionRestart | null = threadSession.streamEnded
-      ? {
-          reason: "Thread session replaced after Claude SDK stream ended",
-          showRuntimeNote: false,
-        }
-      : intent === "new-turn"
-        ? threadSession.restartBeforeNextTurn
-        : null;
+    ? {
+        reason: "Thread session replaced after Claude SDK stream ended",
+        showRuntimeNote: false,
+      }
+    : intent === "new-turn"
+      ? threadSession.restartBeforeNextTurn
+      : null;
   if (replacement === null) {
     return threadSession;
   }
@@ -1382,6 +1391,18 @@ function createOnSdkMessage(
         });
       }
     }
+    if (message.type === "system" && message.subtype === "init") {
+      threadSession.sessionCommandFilter =
+        claudeSessionCommandFilterFromInit(message);
+      void publishSessionCommands(threadSession, args, () =>
+        threadSession.session.supportedCommands(),
+      );
+    }
+    if (message.type === "system" && message.subtype === "commands_changed") {
+      void publishSessionCommands(threadSession, args, async () => [
+        ...message.commands,
+      ]);
+    }
     const recoveryKind = getAssistantMessageRecoveryKind(message);
     if (recoveryKind !== null) {
       emitTerminalAccountErrorHint(
@@ -1392,6 +1413,41 @@ function createOnSdkMessage(
       );
     }
   };
+}
+
+async function publishSessionCommands(
+  threadSession: ThreadSession,
+  args: CreateSdkCallbackArgs,
+  read: () => Promise<SlashCommand[]>,
+): Promise<void> {
+  const filter = threadSession.sessionCommandFilter;
+  if (filter === null) {
+    return;
+  }
+  let payload: ReturnType<typeof buildClaudeSessionCommandsState>;
+  try {
+    payload = buildClaudeSessionCommandsState(await read(), filter);
+  } catch (error) {
+    logBridgeError(
+      `failed to read the session's slash commands: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    return;
+  }
+  const isCurrent =
+    getCurrentThreadSession({
+      sessionSerial: args.sessionSerial,
+      threadId: args.threadIdRef.current,
+    }) === threadSession && !threadSession.streamEnded;
+  if (!isCurrent) {
+    return;
+  }
+  sendThreadDeltas(args.threadIdRef.current, [
+    {
+      kind: "extension.state",
+      extensionKind: CLAUDE_SESSION_COMMANDS_EXTENSION_KIND,
+      payload,
+    },
+  ]);
 }
 
 function createOnSdkDone(
