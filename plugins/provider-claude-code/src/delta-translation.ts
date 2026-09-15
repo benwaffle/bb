@@ -61,6 +61,12 @@ import {
   hasCompletionBlockingClaudeTasks,
   buildInterruptedClaudeTaskDeltas,
   translateClaudeTaskMessage,
+  getClaudeBackgroundTaskState,
+  hasStreamingClaudeBackgroundCommands,
+  noteClaudeBackgroundCommandResult,
+  refreshClaudeBackgroundCommandOutputs,
+  type ClaudeBackgroundCommandOutputReader,
+  type ClaudeBackgroundTaskState,
   type ClaudeTaskMap,
 } from "./task-translation.js";
 import {
@@ -429,6 +435,7 @@ export interface ClaudeDeltaTranslatorOptions {
   cwd?: string | undefined;
   sandboxEnabled: boolean;
   commandDescriptionsEnabled: boolean;
+  readBackgroundCommandOutput?: ClaudeBackgroundCommandOutputReader | undefined;
 }
 
 export function createClaudeDeltaTranslator(
@@ -437,6 +444,7 @@ export function createClaudeDeltaTranslator(
   const sessionCwd = options.cwd;
   let sandboxEnabled = options.sandboxEnabled;
   let commandDescriptionsEnabled = options.commandDescriptionsEnabled;
+  const readBackgroundCommandOutput = options.readBackgroundCommandOutput;
   const statesByThreadId = new Map<string, ClaudeThreadDialectState>();
   let injectedToolsByName = new Map<string, ClaudeInjectedTool>();
 
@@ -781,6 +789,11 @@ export function createClaudeDeltaTranslator(
       tasks: state.tasksById,
       turnStartSuppressed: isTurnStartSuppressed(state),
       hasForwardedToolUse: (toolUseId) => state.startedTools.has(toolUseId),
+      forwardedCommand: (toolUseId) => {
+        const shape = state.startedTools.get(toolUseId)?.shape;
+        return shape?.type === "command" ? shape.command : undefined;
+      },
+      readOutput: readBackgroundCommandOutput,
     });
     if (taskDeltas !== null) {
       return withMirror(state, taskDeltas);
@@ -1057,6 +1070,16 @@ export function createClaudeDeltaTranslator(
         item: terminalToolShape(base.shape, outputText),
         presentation: base.presentation,
       });
+      if (isCommandResult && !result.isError) {
+        deltas.push(
+          ...noteClaudeBackgroundCommandResult({
+            tasks: state.tasksById,
+            toolUseId: result.toolUseId,
+            resultText: extractResultText(result.content),
+            readOutput: readBackgroundCommandOutput,
+          }),
+        );
+      }
       if (resultToolName !== undefined) {
         const planSteps = foldClaudeTaskToolResult({
           state: state.taskPlan,
@@ -1405,6 +1428,40 @@ export function createClaudeDeltaTranslator(
     return statesByThreadId.get(threadId)?.mirror.turnOpen === true;
   }
 
+  function hasOpenOrPendingTurn(threadId: string): boolean {
+    const state = statesByThreadId.get(threadId);
+    return state !== undefined && state.mirror.turnOpen;
+  }
+
+  function hasStreamingBackgroundCommands(threadId: string): boolean {
+    const state = statesByThreadId.get(threadId);
+    return (
+      state !== undefined &&
+      hasStreamingClaudeBackgroundCommands(state.tasksById)
+    );
+  }
+
+  function pollBackgroundCommandOutput(threadId: string): ThreadDelta[] {
+    const state = statesByThreadId.get(threadId);
+    if (!state) {
+      return [];
+    }
+    return refreshClaudeBackgroundCommandOutputs({
+      tasks: state.tasksById,
+      readOutput: readBackgroundCommandOutput,
+    });
+  }
+
+  function getBackgroundTaskState(
+    threadId: string,
+    taskId: string,
+  ): ClaudeBackgroundTaskState {
+    const state = statesByThreadId.get(threadId);
+    return state
+      ? getClaudeBackgroundTaskState(state.tasksById, taskId)
+      : "unknown";
+  }
+
   function setClaudeModelContextWindowHint(
     threadId: string,
     model: string,
@@ -1439,7 +1496,11 @@ export function createClaudeDeltaTranslator(
     configureCommandDescriptions: (enabled: boolean) => {
       commandDescriptionsEnabled = enabled;
     },
+    getBackgroundTaskState,
+    hasOpenOrPendingTurn,
     hasOpenTurn,
+    hasStreamingBackgroundCommands,
+    pollBackgroundCommandOutput,
     setClaudeModelContextWindowHint,
     setClaudeReportedContextWindow,
     translate,
