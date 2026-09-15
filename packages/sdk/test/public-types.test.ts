@@ -399,6 +399,7 @@ type ExpectedThreadsKey =
   | "getPluginMetadata"
   | "updatePluginMetadata"
   | "experimental_import"
+  | "experimental_providerSessions"
   | "context"
   | "archive"
   | "archiveAll"
