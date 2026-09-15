@@ -41,16 +41,117 @@ interface ClaudeTrackedTask {
   summary: string | undefined;
   error: string | undefined;
   outputFile: string | undefined;
+  command: string | undefined;
+  output: string | undefined;
   terminal: boolean;
 }
 
 export type ClaudeTaskMap = Map<string, ClaudeTrackedTask>;
+
+export type ClaudeBackgroundCommandOutputReader = (
+  outputFile: string,
+) => string | undefined;
 
 interface TranslateClaudeTaskMessageArgs {
   event: unknown;
   tasks: ClaudeTaskMap;
   turnStartSuppressed: boolean;
   hasForwardedToolUse: (toolUseId: string) => boolean;
+  forwardedCommand: (toolUseId: string) => string | undefined;
+  readOutput: ClaudeBackgroundCommandOutputReader | undefined;
+}
+
+const BACKGROUND_COMMAND_OUTPUT_FILE_PATTERN =
+  /Output is being written to: (\S+?\.output)(?=[\s.]|$)/;
+
+export function parseClaudeBackgroundCommandOutputFile(
+  resultText: string,
+): string | undefined {
+  return BACKGROUND_COMMAND_OUTPUT_FILE_PATTERN.exec(resultText)?.[1];
+}
+
+function isStreamableBackgroundCommand(task: ClaudeTrackedTask): boolean {
+  return (
+    !task.terminal &&
+    task.taskType === LOCAL_BASH_TASK_TYPE &&
+    task.outputFile !== undefined
+  );
+}
+
+function refreshTaskOutput(
+  task: ClaudeTrackedTask,
+  readOutput: ClaudeBackgroundCommandOutputReader | undefined,
+): boolean {
+  if (task.outputFile === undefined || readOutput === undefined) {
+    return false;
+  }
+  const output = readOutput(task.outputFile);
+  if (output === undefined || output === task.output) {
+    return false;
+  }
+  task.output = output;
+  return true;
+}
+
+export function hasStreamingClaudeBackgroundCommands(
+  tasks: ClaudeTaskMap,
+): boolean {
+  for (const task of tasks.values()) {
+    if (isStreamableBackgroundCommand(task)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function refreshClaudeBackgroundCommandOutputs(args: {
+  tasks: ClaudeTaskMap;
+  readOutput: ClaudeBackgroundCommandOutputReader | undefined;
+}): ThreadDelta[] {
+  const deltas: ThreadDelta[] = [];
+  for (const task of args.tasks.values()) {
+    if (
+      isStreamableBackgroundCommand(task) &&
+      refreshTaskOutput(task, args.readOutput)
+    ) {
+      deltas.push(buildClaudeTaskProgressDelta(task, false));
+    }
+  }
+  return deltas;
+}
+
+export function noteClaudeBackgroundCommandResult(args: {
+  tasks: ClaudeTaskMap;
+  toolUseId: string;
+  resultText: string;
+  readOutput: ClaudeBackgroundCommandOutputReader | undefined;
+}): ThreadDelta[] {
+  const outputFile = parseClaudeBackgroundCommandOutputFile(args.resultText);
+  if (outputFile === undefined) {
+    return [];
+  }
+  for (const task of args.tasks.values()) {
+    if (task.terminal || task.toolUseId !== args.toolUseId) {
+      continue;
+    }
+    task.outputFile = outputFile;
+    refreshTaskOutput(task, args.readOutput);
+    return [buildClaudeTaskProgressDelta(task, false)];
+  }
+  return [];
+}
+
+export type ClaudeBackgroundTaskState = "unknown" | "running" | "settled";
+
+export function getClaudeBackgroundTaskState(
+  tasks: ClaudeTaskMap,
+  taskId: string,
+): ClaudeBackgroundTaskState {
+  const task = tasks.get(taskId);
+  if (!task) {
+    return "unknown";
+  }
+  return task.terminal ? "settled" : "running";
 }
 
 export function hasCompletionBlockingClaudeTasks(
@@ -205,6 +306,8 @@ function buildClaudeTaskShape(
     ...(task.summary !== undefined ? { summary: task.summary } : {}),
     ...(task.error !== undefined ? { error: task.error } : {}),
     ...(task.outputFile !== undefined ? { outputFile: task.outputFile } : {}),
+    ...(task.command !== undefined ? { command: task.command } : {}),
+    ...(task.output !== undefined ? { output: task.output } : {}),
   };
 }
 
@@ -298,6 +401,11 @@ export function translateClaudeTaskMessage(
       summary: undefined,
       error: undefined,
       outputFile: undefined,
+      command:
+        taskType === LOCAL_BASH_TASK_TYPE && message.tool_use_id !== undefined
+          ? args.forwardedCommand(message.tool_use_id)
+          : undefined,
+      output: undefined,
       terminal: false,
     };
     args.tasks.set(message.task_id, task);
@@ -364,6 +472,9 @@ export function translateClaudeTaskMessage(
     }
     if (message.usage) {
       task.usage = toBackgroundTaskUsage(message.usage);
+    }
+    if (task.taskType === LOCAL_BASH_TASK_TYPE) {
+      refreshTaskOutput(task, args.readOutput);
     }
     task.terminal = true;
     return [buildClaudeTaskCloseDelta(task)];
