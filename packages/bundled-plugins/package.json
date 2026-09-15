@@ -13,6 +13,7 @@
     "bb-plugin-automations": "workspace:*",
     "bb-plugin-bb-guide": "workspace:*",
     "bb-plugin-browser-automation": "workspace:*",
+    "bb-plugin-claude-code-session-import": "workspace:*",
     "bb-plugin-concurrency-limit": "workspace:*",
     "bb-plugin-connect": "workspace:*",
     "bb-plugin-custom-instructions": "workspace:*",
