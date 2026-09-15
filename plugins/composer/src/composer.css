@@ -63,6 +63,15 @@
     p.is-editor-empty:first-child::before {
     content: attr(data-placeholder);
   }
+
+  .prompt-voice-interim {
+    color: color-mix(in oklab, var(--foreground) 55%, transparent);
+    font-style: italic;
+    text-decoration: underline dotted;
+    text-decoration-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+    text-underline-offset: 0.2em;
+    user-select: none;
+  }
 }
 
 @container follow-up-composer style(--follow-up-composer-container-compact: true) {
