@@ -214,6 +214,8 @@ move and downloads the new server's bb-app package for its service.
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
+- `bb thread background`
+- `bb thread background stop`
 - `bb thread interactions`
 - `bb thread interactions list`
 - `bb thread interactions show`

@@ -114,6 +114,12 @@ export type AdapterCommand =
       providerThreadId: string;
     }
   | {
+      type: "thread/backgroundTask/stop";
+      threadId: string;
+      providerThreadId: string;
+      taskId: string;
+    }
+  | {
       type: "thread/name/set";
       threadId: string;
       providerThreadId: string;
