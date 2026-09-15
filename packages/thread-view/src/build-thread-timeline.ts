@@ -288,6 +288,7 @@ function buildWorkflowWorkRow(
     workKind: "workflow",
     status: message.status,
     itemId: message.itemId,
+    familyId: message.familyId,
     taskType: message.taskType,
     workflowName: message.workflowName,
     description: message.description,
@@ -297,6 +298,8 @@ function buildWorkflowWorkRow(
     usage: message.usage,
     summary: message.summary,
     error: message.error,
+    command: message.command,
+    output: message.output,
     completedAt: message.completedAt,
     ...rowPresentation(message),
   };

@@ -173,6 +173,7 @@ function createRuntime(): FakeDispatchRuntime {
       return { providerCheckpointId: null };
     }),
     clearThreadGoal: vi.fn(async () => ({ cleared: true })),
+    stopBackgroundTask: vi.fn(async () => ({ stopped: true })),
     renameThread: vi.fn(async () => undefined),
     archiveThread: vi.fn(async () => undefined),
     unarchiveThread: vi.fn(async () => undefined),
@@ -668,6 +669,132 @@ describe("dispatchCommand", () => {
     expect(result).toEqual({ cancelled: true });
     expect(runtime.stopThread).toHaveBeenCalledWith({ threadId: "thread-1" });
     expect(flush).toHaveBeenCalledOnce();
+  });
+
+  it("stops a background task through the thread's provider runtime before flushing events", async () => {
+    const runtime = createRuntime();
+    const manager = new RuntimeManager({
+      createRuntime: () => runtime,
+      provisionWorkspace: async () => createWorkspace(),
+    });
+    await manager.ensureEnvironment({
+      environmentId: "env-1",
+      workspacePath: WORKSPACE_PATH,
+    });
+    runtime.setIdle("thread-1");
+    const flush = vi.fn(async () => undefined);
+
+    const result = await dispatchCommand(
+      {
+        type: "thread.backgroundTask.stop",
+        environmentId: "env-1",
+        threadId: "thread-1",
+        taskId: "task-1",
+      },
+      {
+        dataDir: "/tmp/bb-data",
+        logger: silentLogger,
+        eventSink: { emit: vi.fn(), flush },
+        fetchProjectAttachment: async () => {
+          throw new Error("Unexpected project attachment fetch");
+        },
+        fetchPluginHostArtifact: fetchDispatchTestArtifact,
+        ...unexpectedProviderMaintenance,
+        runtimeManager: manager,
+        threadStorageRootPath: "/tmp/bb-thread-storage",
+      },
+    );
+
+    expect(result).toEqual({ stopped: true });
+    expect(runtime.stopBackgroundTask).toHaveBeenCalledWith({
+      threadId: "thread-1",
+      taskId: "task-1",
+    });
+    expect(flush).toHaveBeenCalledOnce();
+  });
+
+  it("skips a co-owner runtime that cannot stop background tasks", async () => {
+    const codexRuntime = createRuntime();
+    codexRuntime.stopBackgroundTask = vi.fn(async () => {
+      throw new Error('Provider "codex" does not support stopping background commands.');
+    });
+    const claudeRuntime = createRuntime();
+    const runtimes = [codexRuntime, claudeRuntime];
+    const manager = new RuntimeManager({
+      createRuntime: () => runtimes.shift() ?? claudeRuntime,
+      provisionWorkspace: async () => createWorkspace(),
+    });
+    await manager.ensureEnvironment({
+      environmentId: "env-1",
+      workspacePath: WORKSPACE_PATH,
+    });
+    await manager.ensureEnvironment({
+      environmentId: "env-2",
+      workspacePath: WORKSPACE_PATH,
+    });
+    codexRuntime.setIdle("thread-1");
+    claudeRuntime.setIdle("thread-1");
+    const flush = vi.fn(async () => undefined);
+
+    const result = await dispatchCommand(
+      {
+        type: "thread.backgroundTask.stop",
+        environmentId: "env-1",
+        threadId: "thread-1",
+        taskId: "task-1",
+      },
+      {
+        dataDir: "/tmp/bb-data",
+        logger: silentLogger,
+        eventSink: { emit: vi.fn(), flush },
+        fetchProjectAttachment: async () => {
+          throw new Error("Unexpected project attachment fetch");
+        },
+        fetchPluginHostArtifact: fetchDispatchTestArtifact,
+        ...unexpectedProviderMaintenance,
+        runtimeManager: manager,
+        threadStorageRootPath: "/tmp/bb-thread-storage",
+      },
+    );
+
+    expect(result).toEqual({ stopped: true });
+    expect(claudeRuntime.stopBackgroundTask).toHaveBeenCalledOnce();
+  });
+
+  it("rejects a background task stop when no runtime owns the thread", async () => {
+    const runtime = createRuntime();
+    const manager = new RuntimeManager({
+      createRuntime: () => runtime,
+      provisionWorkspace: async () => createWorkspace(),
+    });
+    await manager.ensureEnvironment({
+      environmentId: "env-1",
+      workspacePath: WORKSPACE_PATH,
+    });
+
+    await expect(
+      dispatchCommand(
+        {
+          type: "thread.backgroundTask.stop",
+          environmentId: "env-1",
+          threadId: "thread-unknown",
+          taskId: "task-1",
+        },
+        {
+          dataDir: "/tmp/bb-data",
+          logger: silentLogger,
+          eventSink: { emit: vi.fn(), flush: vi.fn(async () => undefined) },
+          fetchProjectAttachment: async () => {
+            throw new Error("Unexpected project attachment fetch");
+          },
+          fetchPluginHostArtifact: fetchDispatchTestArtifact,
+          ...unexpectedProviderMaintenance,
+          runtimeManager: manager,
+          threadStorageRootPath: "/tmp/bb-thread-storage",
+        },
+      ),
+    ).rejects.toMatchObject({ code: "unknown_thread_runtime" });
+    expect(runtime.stopBackgroundTask).not.toHaveBeenCalled();
   });
 
   it("does not cancel Plan after its turn has already ended", async () => {

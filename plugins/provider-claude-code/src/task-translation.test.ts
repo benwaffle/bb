@@ -594,6 +594,172 @@ describe("claude-code background task translation", () => {
     });
   });
 
+  it("captures the command line and streams output for a backgrounded shell command", () => {
+    const outputFile = "/tmp/claude-502/-workspace/s-1/tasks/bmn5wv33k.output";
+    const outputByFile = new Map<string, string>();
+    const readOutput = vi.fn((file: string) => outputByFile.get(file));
+    const harness = createClaudeDeltaHarness({
+      readBackgroundCommandOutput: readOutput,
+    });
+    const context = { threadId: "bb-thread-1" };
+    const command = "for i in 1 2 3 4 5 6; do echo $i; sleep 1; done";
+
+    harness.translate(
+      spawningToolUseMessage({
+        toolUseId: "toolu_bash_1",
+        toolName: "Bash",
+        input: {
+          command,
+          description: "Count ticks",
+          run_in_background: true,
+        },
+      }),
+      context,
+    );
+    const started = harness.translate(
+      {
+        type: "system",
+        subtype: "task_started",
+        task_id: "bmn5wv33k",
+        tool_use_id: "toolu_bash_1",
+        description: "Count ticks",
+        task_type: "local_bash",
+        uuid: "u-1",
+        session_id: "s-1",
+      },
+      context,
+    );
+    expect(backgroundTaskItem(collectTaskEvents(started)[0]!)).toMatchObject({
+      command,
+      description: "Count ticks",
+    });
+    expect(
+      harness.translator.getBackgroundTaskState("bb-thread-1", "bmn5wv33k"),
+    ).toBe("running");
+    expect(
+      harness.translator.hasStreamingBackgroundCommands("bb-thread-1"),
+    ).toBe(false);
+
+    outputByFile.set(outputFile, "1\n");
+    advanceClock(PROGRESS_THROTTLE_MS + 1);
+    const resulted = harness.translate(
+      {
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_bash_1",
+              content: `Command running in background with ID: bmn5wv33k. Output is being written to: ${outputFile}. You will be notified when it completes. To check interim output, use Read on that file path.`,
+              is_error: false,
+            },
+          ],
+        },
+        session_id: "s-1",
+      },
+      context,
+    );
+    const progress = resulted.filter(
+      (event) => event.type === "item/backgroundTask/progress",
+    );
+    expect(progress).toHaveLength(1);
+    expect(backgroundTaskItem(progress[0]!)).toMatchObject({
+      command,
+      outputFile,
+      output: "1\n",
+      status: "pending",
+    });
+    expect(
+      harness.translator.hasStreamingBackgroundCommands("bb-thread-1"),
+    ).toBe(true);
+
+    advanceClock(PROGRESS_THROTTLE_MS + 1);
+    expect(harness.pollBackgroundCommandOutput("bb-thread-1")).toEqual([]);
+    outputByFile.set(outputFile, "1\n2\n");
+    const polled = harness.pollBackgroundCommandOutput("bb-thread-1");
+    expect(polled).toHaveLength(1);
+    expect(backgroundTaskItem(polled[0]!)).toMatchObject({
+      output: "1\n2\n",
+      status: "pending",
+    });
+
+    outputByFile.set(outputFile, "1\n2\n3\n");
+    advanceClock(PROGRESS_THROTTLE_MS + 1);
+    const notified = harness.translate(
+      {
+        type: "system",
+        subtype: "task_notification",
+        task_id: "bmn5wv33k",
+        tool_use_id: "toolu_bash_1",
+        status: "stopped",
+        output_file: outputFile,
+        summary: "Count ticks",
+        uuid: "u-2",
+        session_id: "s-1",
+      },
+      context,
+    );
+    const completed = notified.filter(
+      (event) => event.type === "item/backgroundTask/completed",
+    );
+    expect(completed).toHaveLength(1);
+    expect(backgroundTaskItem(completed[0]!)).toMatchObject({
+      command,
+      output: "1\n2\n3\n",
+      status: "interrupted",
+      taskStatus: "stopped",
+    });
+    expect(
+      harness.translator.hasStreamingBackgroundCommands("bb-thread-1"),
+    ).toBe(false);
+    expect(
+      harness.translator.getBackgroundTaskState("bb-thread-1", "bmn5wv33k"),
+    ).toBe("settled");
+    expect(
+      harness.translator.getBackgroundTaskState("bb-thread-1", "nope"),
+    ).toBe("unknown");
+    expect(harness.pollBackgroundCommandOutput("bb-thread-1")).toEqual([]);
+  });
+
+  it("ignores foreground command results that name no output file", () => {
+    const readOutput = vi.fn(() => "unexpected");
+    const harness = createClaudeDeltaHarness({
+      readBackgroundCommandOutput: readOutput,
+    });
+    const context = { threadId: "bb-thread-1" };
+    harness.translate(
+      spawningToolUseMessage({
+        toolUseId: "toolu_bash_fg",
+        toolName: "Bash",
+        input: { command: "echo hi" },
+      }),
+      context,
+    );
+    const resulted = harness.translate(
+      {
+        type: "user",
+        message: {
+          role: "user",
+          content: [
+            {
+              type: "tool_result",
+              tool_use_id: "toolu_bash_fg",
+              content: "hi",
+              is_error: false,
+            },
+          ],
+        },
+        session_id: "s-1",
+      },
+      context,
+    );
+    expect(
+      resulted.filter((event) => event.type === "item/backgroundTask/progress"),
+    ).toEqual([]);
+    expect(readOutput).not.toHaveBeenCalled();
+  });
+
   it("ignores tasks spawned by an unforwarded child (workflow agent)", () => {
     const harness = createClaudeDeltaHarness();
     const context = { threadId: "bb-thread-1" };

@@ -1,6 +1,8 @@
+import { isBackgroundCommandTaskType } from "@bb/domain";
 import type { TimelineViewWorkflowWorkRow } from "@bb/thread-view";
 import { WorkflowProgress } from "@bb/shared-ui/workflow-progress";
 import type { DetailScrollSize } from "../../ui/detail-scroll-size.js";
+import { TerminalOutputBlock } from "./TerminalOutputBlock.js";
 import { TimelineDetailScroll } from "./TimelineDetailScroll.js";
 
 export function WorkflowWorkRowBody({
@@ -12,6 +14,17 @@ export function WorkflowWorkRowBody({
   size?: DetailScrollSize;
   collapsiblePhases?: boolean;
 }) {
+  if (isBackgroundCommandTaskType(row.taskType) && row.command !== null) {
+    return (
+      <TerminalOutputBlock
+        commandLine={`$ ${row.command}`}
+        metadataLines={[]}
+        output={row.output ?? ""}
+        exitCode={null}
+        streaming={row.status === "pending"}
+      />
+    );
+  }
   if (!row.workflow) {
     if (!row.summary && !row.error) return null;
     return (

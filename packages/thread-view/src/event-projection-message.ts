@@ -478,6 +478,8 @@ export interface EventProjectionWorkflowMessage
   usage: BackgroundTaskUsage | null;
   summary: string | null;
   error: string | null;
+  command: string | null;
+  output: string | null;
   completedAt: number | null;
 }
 

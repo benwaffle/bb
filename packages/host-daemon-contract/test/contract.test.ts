@@ -546,6 +546,7 @@ const SETTLED_RESPONSE_RESULT_FIXTURES: SettledResponseResultFixtures = {
   "thread.storage.delete": { providerCheckpointId: null },
   "thread.goal.clear": { cleared: true },
   "thread.plan.cancel": { cancelled: true },
+  "thread.backgroundTask.stop": { stopped: true },
   "thread.rename": {},
   "thread.archive": {},
   "thread.unarchive": {},
@@ -1226,6 +1227,37 @@ describe("host-daemon command schemas", () => {
     expect(
       hostDaemonCommandResultSchemaByType["thread.plan.cancel"].safeParse({})
         .success,
+    ).toBe(false);
+  });
+
+  it("binds background task stops to a required task id and typed result", () => {
+    expect(
+      hostDaemonCommandSchema.parse({
+        type: "thread.backgroundTask.stop",
+        environmentId: "env_123",
+        threadId: "thr_123",
+        taskId: "task-123",
+      }),
+    ).toMatchObject({
+      type: "thread.backgroundTask.stop",
+      taskId: "task-123",
+    });
+    expect(
+      hostDaemonCommandSchema.safeParse({
+        type: "thread.backgroundTask.stop",
+        environmentId: "env_123",
+        threadId: "thr_123",
+      }).success,
+    ).toBe(false);
+    expect(
+      hostDaemonCommandResultSchemaByType["thread.backgroundTask.stop"].parse({
+        stopped: false,
+      }),
+    ).toEqual({ stopped: false });
+    expect(
+      hostDaemonCommandResultSchemaByType[
+        "thread.backgroundTask.stop"
+      ].safeParse({}).success,
     ).toBe(false);
   });
 

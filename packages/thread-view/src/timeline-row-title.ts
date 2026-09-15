@@ -1040,7 +1040,7 @@ function mapBackgroundCommandTitle(
   return makeTitle({
     segments: [
       segment(verb.text, { shimmer: verb.shimmer }),
-      segment(row.description, { em: true, truncate: true }),
+      segment(row.command ?? row.description, { em: true, truncate: true }),
     ],
     decorations: filterNull([
       durationDecoration(row.startedAt, row.completedAt),

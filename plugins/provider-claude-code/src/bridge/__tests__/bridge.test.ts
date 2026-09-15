@@ -96,6 +96,7 @@ interface CanUseToolPolicyCase {
 
 interface ControlledClaudeQuery {
   getContextUsage: ReturnType<typeof vi.fn>;
+  stopTask: ReturnType<typeof vi.fn>;
   supportedCommands: ReturnType<typeof vi.fn>;
   applyFlagSettings: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
@@ -311,6 +312,7 @@ function createControlledClaudeQuery(): ControlledClaudeQuery {
       pushResult({ value: undefined, done: true });
     },
     getContextUsage: vi.fn().mockResolvedValue(null),
+    stopTask: vi.fn().mockResolvedValue(undefined),
     supportedCommands: vi.fn().mockResolvedValue([]),
     initializationResult: vi.fn(),
     setModel: vi.fn().mockResolvedValue(undefined),
@@ -593,6 +595,91 @@ function sendResumeThread(args: ResumeBridgeThreadArgs): void {
     }),
     providerThreadId: args.providerThreadId,
     threadId: args.threadId,
+  });
+}
+
+function createBackgroundTaskStartedMessage(args: {
+  sessionId: string;
+  taskId: string;
+}): SDKMessage {
+  return {
+    type: "system",
+    subtype: "task_started",
+    task_id: args.taskId,
+    task_type: "local_bash",
+    description: "Tail the dev server log",
+    is_backgrounded: true,
+    uuid: "00000000-0000-4000-8000-000000000101",
+    session_id: args.sessionId,
+  } as unknown as SDKMessage;
+}
+
+function createBackgroundTaskNotificationMessage(args: {
+  sessionId: string;
+  status: "completed" | "stopped";
+  taskId: string;
+}): SDKMessage {
+  return {
+    type: "system",
+    subtype: "task_notification",
+    task_id: args.taskId,
+    status: args.status,
+    output_file: "",
+    summary:
+      args.status === "stopped"
+        ? 'Background command "Tail the dev server log" was stopped by the user'
+        : 'Background command "Tail the dev server log" completed (exit code 0)',
+    uuid: "00000000-0000-4000-8000-000000000102",
+    session_id: args.sessionId,
+  } as unknown as SDKMessage;
+}
+
+async function startIdleThreadWithBackgroundTasks(args: {
+  bridge: BridgeJsonRpcTestHarness;
+  queries: ControlledClaudeQuery[];
+  taskIds: readonly string[];
+  threadId: string;
+}): Promise<void> {
+  args.bridge.sendRequest(1, "thread/start", {
+    threadId: args.threadId,
+    cwd: "/tmp/worktree",
+    instructionMode: "append",
+    options: {
+      permissionMode: "accept-edits",
+      permissionScope: "workspace",
+      approvalReviewer: "user",
+      permissionEscalation: "ask",
+      instructions: "test",
+      providerOptions: { workflowsEnabled: false },
+    },
+  });
+  await args.bridge.waitForResponse(1);
+  args.bridge.sendRequest(
+    3,
+    "turn/start",
+    canonicalTurnParams({
+      threadId: args.threadId,
+      providerThreadId: args.threadId,
+      input: [{ type: "text", text: "tail the log in the background" }],
+    }),
+  );
+  await readNextPrompt(getLatestQueryCall());
+  await args.bridge.waitForResponse(3);
+  for (const taskId of args.taskIds) {
+    args.queries[0]!.emit(
+      createBackgroundTaskStartedMessage({
+        sessionId: args.threadId,
+        taskId,
+      }),
+    );
+  }
+  args.queries[0]!.emit(createSuccessfulResultMessage(args.threadId));
+  await vi.waitFor(() => {
+    expect(
+      assembleCapturedThreadEvents(args.bridge.messages, "claude-code").filter(
+        (event) => event.type === "turn/completed",
+      ),
+    ).toHaveLength(1);
   });
 }
 
@@ -4949,6 +5036,191 @@ describe("canonical model context-window hint", () => {
       });
     } finally {
       queries[0]?.finish();
+      bridge.restore();
+    }
+  });
+});
+
+describe("background command stop wake", () => {
+  it("wakes an idle thread when a background command is stopped", async () => {
+    const bridge = createBridgeJsonRpcTestHarness(handleLine);
+    const queries: ControlledClaudeQuery[] = [];
+    queryMock.mockImplementation(() => {
+      const query = createControlledClaudeQuery();
+      queries.push(query);
+      return query;
+    });
+    const threadId = "thread-background-stop-wake";
+    const taskId = "task-stop-wake";
+    try {
+      await startIdleThreadWithBackgroundTasks({
+        bridge,
+        queries,
+        taskIds: [taskId],
+        threadId,
+      });
+
+      bridge.sendRequest(4, "thread/backgroundTask/stop", {
+        threadId,
+        providerThreadId: threadId,
+        taskId,
+      });
+      await vi.waitFor(() => {
+        expect(queries[0]!.stopTask).toHaveBeenCalledWith(taskId);
+      });
+      queries[0]!.emit(
+        createBackgroundTaskNotificationMessage({
+          sessionId: threadId,
+          status: "stopped",
+          taskId,
+        }),
+      );
+      expect(await bridge.waitForResponse(4)).toMatchObject({
+        result: { stopped: true },
+      });
+
+      const wakePrompt = await Promise.race([
+        readNextPromptText(getLatestQueryCall()),
+        new Promise<"no-wake">((resolve) =>
+          setTimeout(() => resolve("no-wake"), 1_000),
+        ),
+      ]);
+      expect(wakePrompt).not.toBe("no-wake");
+      expect(wakePrompt).toContain("background command");
+      expect(wakePrompt).toContain("stopped");
+    } finally {
+      await stopBridgeThread({ bridge, queries, threadId });
+      bridge.restore();
+    }
+  });
+
+  it("does not wake a thread whose turn is still running when a background command is stopped", async () => {
+    const bridge = createBridgeJsonRpcTestHarness(handleLine);
+    const queries: ControlledClaudeQuery[] = [];
+    queryMock.mockImplementation(() => {
+      const query = createControlledClaudeQuery();
+      queries.push(query);
+      return query;
+    });
+    const threadId = "thread-background-stop-busy";
+    const taskId = "task-stop-busy";
+    try {
+      await startIdleThreadWithBackgroundTasks({
+        bridge,
+        queries,
+        taskIds: [taskId],
+        threadId,
+      });
+      bridge.sendRequest(
+        5,
+        "turn/start",
+        canonicalTurnParams({
+          threadId,
+          providerThreadId: threadId,
+          input: [{ type: "text", text: "keep working" }],
+        }),
+      );
+      await readNextPromptText(getLatestQueryCall());
+      await bridge.waitForResponse(5);
+      queries[0]!.emit(
+        createAssistantToolUseMessage({
+          parentToolUseId: null,
+          toolInput: { command: "echo working", description: "Work" },
+          toolName: "Bash",
+          toolUseId: "00000000000000000201",
+        }),
+      );
+      await vi.waitFor(() => {
+        expect(
+          assembleCapturedThreadEvents(bridge.messages, "claude-code").filter(
+            (event) => event.type === "turn/started",
+          ).length,
+        ).toBeGreaterThan(1);
+      });
+
+      bridge.sendRequest(6, "thread/backgroundTask/stop", {
+        threadId,
+        providerThreadId: threadId,
+        taskId,
+      });
+      await vi.waitFor(() => {
+        expect(queries[0]!.stopTask).toHaveBeenCalledWith(taskId);
+      });
+      queries[0]!.emit(
+        createBackgroundTaskNotificationMessage({
+          sessionId: threadId,
+          status: "stopped",
+          taskId,
+        }),
+      );
+      await bridge.waitForResponse(6);
+      await bridge.flushWork();
+
+      const pendingPrompt = await Promise.race([
+        readNextPromptText(getLatestQueryCall()),
+        new Promise<"no-wake">((resolve) =>
+          setTimeout(() => resolve("no-wake"), 50),
+        ),
+      ]);
+      expect(pendingPrompt).toBe("no-wake");
+    } finally {
+      await stopBridgeThread({ bridge, queries, threadId });
+      bridge.restore();
+    }
+  });
+  it("pushes a single wake when two background commands are stopped back to back", async () => {
+    const bridge = createBridgeJsonRpcTestHarness(handleLine);
+    const queries: ControlledClaudeQuery[] = [];
+    queryMock.mockImplementation(() => {
+      const query = createControlledClaudeQuery();
+      queries.push(query);
+      return query;
+    });
+    const threadId = "thread-background-stop-twice";
+    const firstTaskId = "task-stop-first";
+    const secondTaskId = "task-stop-second";
+    try {
+      await startIdleThreadWithBackgroundTasks({
+        bridge,
+        queries,
+        taskIds: [firstTaskId, secondTaskId],
+        threadId,
+      });
+
+      for (const [requestId, taskId] of [
+        [7, firstTaskId],
+        [8, secondTaskId],
+      ] as const) {
+        bridge.sendRequest(requestId, "thread/backgroundTask/stop", {
+          threadId,
+          providerThreadId: threadId,
+          taskId,
+        });
+        await vi.waitFor(() => {
+          expect(queries[0]!.stopTask).toHaveBeenCalledWith(taskId);
+        });
+        queries[0]!.emit(
+          createBackgroundTaskNotificationMessage({
+            sessionId: threadId,
+            status: "stopped",
+            taskId,
+          }),
+        );
+        await bridge.waitForResponse(requestId);
+      }
+      await bridge.flushWork();
+
+      const call = getLatestQueryCall();
+      expect(await readNextPromptText(call)).toContain("background command");
+      const secondWake = await Promise.race([
+        readNextPromptText(call),
+        new Promise<"no-second-wake">((resolve) =>
+          setTimeout(() => resolve("no-second-wake"), 100),
+        ),
+      ]);
+      expect(secondWake).toBe("no-second-wake");
+    } finally {
+      await stopBridgeThread({ bridge, queries, threadId });
       bridge.restore();
     }
   });

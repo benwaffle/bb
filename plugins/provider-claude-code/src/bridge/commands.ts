@@ -10,6 +10,7 @@ import {
   threadResumeParamsSchema as canonicalThreadResumeParamsSchema,
   threadStartParamsSchema as canonicalThreadStartParamsSchema,
   threadStopParamsSchema as canonicalThreadStopParamsSchema,
+  threadBackgroundTaskStopParamsSchema as canonicalThreadBackgroundTaskStopParamsSchema,
   turnStartParamsSchema as canonicalTurnStartParamsSchema,
   turnSteerParamsSchema as canonicalTurnSteerParamsSchema,
   skillsConfigureParamsSchema,
@@ -147,6 +148,10 @@ const claudeCodeCommandSchema = z.discriminatedUnion("method", [
     params: canonicalThreadDiscardParamsSchema,
   }),
   z.object({
+    method: z.literal("thread/backgroundTask/stop"),
+    params: canonicalThreadBackgroundTaskStopParamsSchema,
+  }),
+  z.object({
     method: z.literal("skills/configure"),
     params: skillsConfigureParamsSchema,
   }),
@@ -170,6 +175,10 @@ export type TurnStartParams = z.infer<typeof claudeTurnStartParamsSchema>;
 export type TurnSteerParams = z.infer<typeof claudeTurnSteerParamsSchema>;
 
 export type ThreadStopParams = z.infer<typeof canonicalThreadStopParamsSchema>;
+
+export type ThreadBackgroundTaskStopParams = z.infer<
+  typeof canonicalThreadBackgroundTaskStopParamsSchema
+>;
 
 const claudeCodeCommandMethods = new Set<string>(
   claudeCodeCommandSchema.options.map((option) => option.shape.method.value),

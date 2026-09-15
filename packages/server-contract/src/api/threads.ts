@@ -1088,6 +1088,14 @@ export type TimelineTurnSummaryDetailsResponse = z.infer<
   typeof timelineTurnSummaryDetailsResponseSchema
 >;
 
+export const threadBackgroundCommandStopResponseSchema = z.object({
+  ok: z.literal(true),
+  stopped: z.literal(true),
+});
+export type ThreadBackgroundCommandStopResponse = z.infer<
+  typeof threadBackgroundCommandStopResponseSchema
+>;
+
 export const threadTimelineResponseSchema = z.object({
   rows: z.array(timelineRowSchema),
   contextBoundarySeq: z.number().int().nonnegative().nullable(),
