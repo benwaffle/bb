@@ -541,6 +541,7 @@ export const timelineDelegationWorkRowSchema: z.ZodType<TimelineDelegationWorkRo
 export const timelineWorkflowWorkRowSchema = timelineWorkRowBaseSchema.extend({
   workKind: z.literal("workflow"),
   itemId: z.string(),
+  familyId: z.string().nullable(),
   taskType: z.string(),
   workflowName: z.string().nullable(),
   description: z.string(),
@@ -550,6 +551,8 @@ export const timelineWorkflowWorkRowSchema = timelineWorkRowBaseSchema.extend({
   usage: backgroundTaskUsageSchema.nullable(),
   summary: z.string().nullable(),
   error: z.string().nullable(),
+  command: z.string().nullable(),
+  output: z.string().nullable(),
   completedAt: z.number().nullable(),
   ...timelineRowPresentationField,
 });
