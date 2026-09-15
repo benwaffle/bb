@@ -402,6 +402,7 @@ export {
   listOpenTurnInputAcceptedRowsByThreadIds,
   listOpenBackgroundTaskItemRowsForHost,
   listOpenBackgroundTaskItemRowsForThread,
+  listOpenBackgroundTaskStateRowsForThread,
   listOwnerStoppedBackgroundTaskRowsForHost,
   getUnfinishedCommandItemData,
   listCommandItemDataByItemIds,
