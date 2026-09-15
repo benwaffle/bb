@@ -3,47 +3,9 @@ import type { BbPluginApi } from "@get-bb/plugin-sdk";
 import { experimental_sessionCommandsStateSchema } from "@get-bb/plugin-sdk/provider-bridge";
 import { CLAUDE_NATIVE_ROOTS_DECLARATION } from "./src/native-roots.js";
 import { CLAUDE_SESSION_COMMANDS_EXTENSION_NAME } from "./src/session-commands.js";
-import { registerClaudeSessionImportCli } from "./src/session-import-cli.js";
-import { claudeSessionImportRpcContract } from "./src/session-import-rpc.js";
-import {
-  createClaudeSessionImportService,
-  SessionImportError,
-} from "./src/session-import-service.js";
 
 export default function plugin(bb: BbPluginApi) {
   registerUsageSource(bb);
-  const sessionImport = createClaudeSessionImportService(bb);
-  registerClaudeSessionImportCli(bb, sessionImport);
-  bb.rpc.register(claudeSessionImportRpcContract, {
-    listSessions: (input) =>
-      sessionImport.listSessions({
-        machine: input.machine,
-        dir: input.dir,
-        signal: undefined,
-      }),
-    async importSession(input) {
-      try {
-        const result = await sessionImport.importSession({
-          session: input.sessionId,
-          machine: input.machine,
-          projectId: input.projectId,
-          environment: null,
-          title: null,
-          turns: null,
-          fallbackProjectId: undefined,
-          signal: undefined,
-        });
-        return {
-          threadId: result.thread.id,
-          title: result.thread.title,
-          turnCount: result.session.turnCount,
-        };
-      } catch (error) {
-        if (error instanceof SessionImportError) throw new Error(error.message);
-        throw error;
-      }
-    },
-  });
   bb.settings.define({
     memoryEnabled: {
       type: "boolean",
