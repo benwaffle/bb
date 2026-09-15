@@ -80,6 +80,36 @@ describe("bb thread show command output", () => {
     expect(lines.some((line) => line.includes("Archived:"))).toBe(true);
   });
 
+  it("bb thread show prints sampled process memory for the thread", async () => {
+    const thread = {
+      ...fixtures.makeThread({
+        id: "thread-memory-1",
+        projectId: "proj-1",
+        providerId: "codex",
+        status: "active",
+        createdAt: 1,
+        updatedAt: 2,
+      }),
+      memoryUsage: {
+        rssBytes: 2.7 * 1024 * 1024 * 1024,
+        processCount: 40,
+        sharedThreadCount: 2,
+        sampledAt: 1_700_000_000_000,
+      },
+    };
+    stubServerApi({
+      "v1.threads.:id.$get": vi.fn(async () => thread),
+      "v1.threads.:id.timeline.$get": fixtures.makeEmptyTimelineGetMock(),
+    });
+
+    await runCommand(["thread", "show", "thread-memory-1"], register);
+
+    const lines = collectLogLines(vi.mocked(console.log));
+    expect(lines).toContain(
+      "  Memory: 2.7 GB (40 processes, shared by 2 threads)",
+    );
+  });
+
   it("bb thread show prints pinned timestamp for pinned threads", async () => {
     const thread: domain.Thread = fixtures.makeThread({
       id: "thread-pinned-1",
