@@ -183,6 +183,8 @@ function VoiceInputStory() {
       onDeviceChange={state.setPreferredAudioInputDeviceId}
       onRefresh={() => undefined}
       preferredDeviceId={state.preferredAudioInputDeviceId}
+      pushToTalkEnabled={true}
+      onPushToTalkChange={() => undefined}
     />
   );
 }

@@ -21,6 +21,7 @@ import {
   type PromptDecorationExtensionOptions,
 } from "./prompt-decoration-extension";
 import { PromptMentionExtension } from "./prompt-mention-extension";
+import { VoiceInterimExtension } from "./voice-interim-extension";
 
 interface PromptEditorExtensionsOptions extends PromptDecorationExtensionOptions {
   richTextEditing: boolean;
@@ -60,6 +61,7 @@ export function promptEditorExtensions({
       placeholder: () => getPlaceholder(),
     }),
     PromptMentionExtension,
+    VoiceInterimExtension,
     PromptDecorationExtension.configure({
       ...(getDecorationSources !== undefined ? { getDecorationSources } : {}),
       ...(getDraftObservers !== undefined ? { getDraftObservers } : {}),

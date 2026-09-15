@@ -1,7 +1,9 @@
 import { useCallback, useMemo, type RefObject } from "react";
+import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { transcribeVoiceInput } from "@/lib/api";
 import type { PromptDraftState } from "@bb/client-core";
+import { usePushToTalkEnabled } from "@/lib/push-to-talk-preference";
 import type { PromptBoxHandle, PromptVoiceConfig } from "./PromptBoxInternal";
 
 async function requestVoiceTranscription({
@@ -28,6 +30,8 @@ export function usePromptVoice(
     setDraft: (draft: PromptDraftState) => void;
   },
 ): PromptVoiceConfig {
+  const pushToTalkEnabled = usePushToTalkEnabled();
+
   const onTranscript = useCallback(
     (text: string) => {
       if (promptBoxRef.current) {
@@ -38,7 +42,10 @@ export function usePromptVoice(
       const current = draft.getCurrent();
       const separator =
         current.text.length > 0 && !/\s$/.test(current.text) ? " " : "";
-      draft.setDraft({ ...current, text: `${current.text}${separator}${text}` });
+      draft.setDraft({
+        ...current,
+        text: `${current.text}${separator}${text}`,
+      });
     },
     [draft, promptBoxRef],
   );
@@ -66,6 +73,22 @@ export function usePromptVoice(
     getPromptContext,
   });
 
+  const transcribeLive = useCallback(
+    (args: { file: File; prompt?: string; signal: AbortSignal }) =>
+      requestVoiceTranscription({
+        file: args.file,
+        ...(args.prompt === undefined ? {} : { promptContext: args.prompt }),
+        signal: args.signal,
+      }),
+    [],
+  );
+
+  const pushToTalk = usePushToTalk({
+    onFinalTranscript: onTranscript,
+    onTranscribe: transcribeLive,
+    getPromptContext,
+  });
+
   return useMemo<PromptVoiceConfig>(
     () => ({
       state: voiceInput.state,
@@ -74,6 +97,15 @@ export function usePromptVoice(
       start: voiceInput.start,
       stop: voiceInput.stop,
       cancel: voiceInput.cancel,
+      pushToTalk: {
+        enabled: pushToTalkEnabled && pushToTalk.isSupported,
+        state: pushToTalk.state,
+        stream: pushToTalk.stream,
+        transcript: pushToTalk.snapshot,
+        start: pushToTalk.start,
+        stop: pushToTalk.stop,
+        cancel: pushToTalk.cancel,
+      },
     }),
     [
       voiceInput.state,
@@ -82,6 +114,14 @@ export function usePromptVoice(
       voiceInput.start,
       voiceInput.stop,
       voiceInput.cancel,
+      pushToTalkEnabled,
+      pushToTalk.isSupported,
+      pushToTalk.state,
+      pushToTalk.stream,
+      pushToTalk.snapshot,
+      pushToTalk.start,
+      pushToTalk.stop,
+      pushToTalk.cancel,
     ],
   );
 }
