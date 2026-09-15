@@ -196,7 +196,9 @@
       "usage": "optional",
       "summary": "optional",
       "error": "optional",
-      "outputFile": "optional"
+      "outputFile": "optional",
+      "command": "optional",
+      "output": "optional"
     },
     "command": {
       "type": "required",
@@ -297,6 +299,7 @@
     "threadArchive": "default",
     "threadRename": "default",
     "threadGoalClear": "default",
+    "backgroundTaskStop": "default",
     "fork": "default",
     "approvalEnforcedBy": "default",
     "grammarVersions": "default",
@@ -318,6 +321,7 @@
     "provider/usage",
     "skills/configure",
     "thread/archive",
+    "thread/backgroundTask/stop",
     "thread/discard",
     "thread/fork",
     "thread/goal/clear",

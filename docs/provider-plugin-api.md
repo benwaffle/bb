@@ -247,6 +247,8 @@ semantics in [provider-bridge-protocol.md](provider-bridge-protocol.md),
 
 **Runtime → bridge**: `initialize`, `model/list`,
 `thread/{start,resume,fork,stop,discard,archive,unarchive,name/set,goal/clear}`,
+`thread/backgroundTask/stop {taskId}` (only when the handshake declares
+`backgroundTaskStop`; answers `{stopped}` once the task settled),
 `turn/{start,steer}`, `skills/configure {roots}` (only when the handshake
 declares `skills.configure`),
 `provider/{health,usage,installation/status,installation/run}`.
