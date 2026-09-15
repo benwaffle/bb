@@ -675,6 +675,7 @@ describe("mention search time box", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -755,6 +756,7 @@ describe("mention resolve time box", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
