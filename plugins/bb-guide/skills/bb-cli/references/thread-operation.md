@@ -178,7 +178,9 @@ For review or fix pipelines, get the environment ID from
   processes before deleting its storage. Windows does not enumerate process
   working directories.
 - Use `bb voice transcribe <file> [--type <mime>] [--prompt <text>]` without the
-  app composer. The MIME type defaults to `audio/webm`.
+  app composer. The MIME type defaults to `audio/webm`. The app's push-to-talk
+  (hold Space in an empty composer) calls this same transcription route about
+  once a second while the key is held; there is no separate streaming command.
 
 ## Long-Running Commands
 

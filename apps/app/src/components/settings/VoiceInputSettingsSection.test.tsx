@@ -10,7 +10,10 @@ import {
 import { Provider, createStore } from "jotai";
 import { afterEach, expect, it, vi } from "vitest";
 import { MicrophonePreferences } from "./MicrophonePreferences";
-import { VoiceInputSettingsSection } from "./VoiceInputSettingsSection";
+import {
+  PUSH_TO_TALK_SETTING_LABEL,
+  VoiceInputSettingsSection,
+} from "./VoiceInputSettingsSection";
 
 const devices = [
   { kind: "audioinput", deviceId: "built-in", label: "MacBook microphone" },
@@ -131,4 +134,38 @@ it("does not capture audio when visiting settings or choosing a saved input", as
   expect(window.localStorage.getItem("bb.voiceInput.audioInputDeviceId")).toBe(
     "display",
   );
+});
+
+it("toggles push-to-talk and disables the switch without microphone support", async () => {
+  vi.stubGlobal("navigator", {
+    mediaDevices: Object.assign(new EventTarget(), {
+      getUserMedia: vi.fn(),
+      enumerateDevices: vi.fn().mockResolvedValue(devices),
+    }),
+  });
+  render(
+    <Provider store={createStore()}>
+      <VoiceInputSettingsSection />
+    </Provider>,
+  );
+  const toggle = await screen.findByRole("switch", {
+    name: PUSH_TO_TALK_SETTING_LABEL,
+  });
+  expect(toggle.getAttribute("aria-checked")).toBe("true");
+  fireEvent.click(toggle);
+  expect(toggle.getAttribute("aria-checked")).toBe("false");
+  expect(window.localStorage.getItem("bb.voiceInput.pushToTalkEnabled")).toBe(
+    "false",
+  );
+
+  cleanup();
+  vi.stubGlobal("navigator", {});
+  render(
+    <Provider store={createStore()}>
+      <VoiceInputSettingsSection />
+    </Provider>,
+  );
+  expect(
+    screen.getByRole("switch", { name: PUSH_TO_TALK_SETTING_LABEL }),
+  ).toHaveProperty("disabled", true);
 });
