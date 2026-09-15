@@ -300,6 +300,27 @@ export const importThreadRequestSchema = z
   });
 export type ImportThreadRequest = z.infer<typeof importThreadRequestSchema>;
 
+export const threadProviderSessionsQuerySchema = z.object({
+  providerId: z.string().min(1),
+});
+export type ThreadProviderSessionsQuery = z.infer<
+  typeof threadProviderSessionsQuerySchema
+>;
+
+export const threadProviderSessionsResponseSchema = z.object({
+  sessions: z.array(
+    z
+      .object({
+        providerThreadId: z.string().min(1),
+        threadId: z.string().min(1),
+      })
+      .strict(),
+  ),
+});
+export type ThreadProviderSessionsResponse = z.infer<
+  typeof threadProviderSessionsResponseSchema
+>;
+
 const sendMessageRequestFieldsSchema = z.object({
   input: z.array(promptInputSchema).min(1),
   model: z.string().optional(),

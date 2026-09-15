@@ -1,5 +1,6 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { SESSION_HIDDEN_REASONS } from "./session-visibility.js";
 
 const machineChoiceSchema = z
   .object({
@@ -18,8 +19,10 @@ const sessionEntrySchema = z
     firstPrompt: z.string().nullable(),
     lastActivityAt: z.number(),
     turnCount: z.number().int().nonnegative(),
+    bbDriven: z.boolean(),
     projectId: z.string().nullable(),
     projectName: z.string().nullable(),
+    hiddenReason: z.enum(SESSION_HIDDEN_REASONS).nullable(),
   })
   .strict();
 

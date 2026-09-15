@@ -32,13 +32,16 @@ const claudeSessionSummarySchema = z
     firstPrompt: z.string().nullable(),
     lastActivityAt: z.number(),
     turnCount: z.number().int().nonnegative(),
+    bbDriven: z.boolean(),
   })
   .strict();
 
 export const claudeSessionImportHostContract = defineRpcContract({
   listClaudeSessions: {
     input: z.object({ dir: z.string().min(1).optional() }).strict(),
-    output: z.object({ sessions: z.array(claudeSessionSummarySchema) }).strict(),
+    output: z
+      .object({ sessions: z.array(claudeSessionSummarySchema) })
+      .strict(),
   },
   readClaudeSessionTurns: {
     input: z

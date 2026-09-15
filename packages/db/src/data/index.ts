@@ -281,6 +281,8 @@ export {
   resolveStoredProviderSessions,
   type StoredProviderSession,
   type StoredProviderThreadClaimClass,
+  listStoredProviderSessionsByProvider,
+  listStoredStartupContextsByProvider,
   getLastStoredTurnRequestEvent,
   getStoredTurnRequestEventForTurn,
   getLatestThreadOutputEventRow,

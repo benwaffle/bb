@@ -24,6 +24,7 @@ import {
   SparklesIcon,
   TerminalIcon,
   TestTubeIcon,
+  Unarchive03Icon,
   WorkflowCircle03Icon,
   Activity03Icon,
 } from "@hugeicons/core-free-icons";
@@ -44,6 +45,10 @@ const FIRST_PARTY_PLUGINS: Record<string, FirstPartyPlugin> = {
   GitHub: { id: "github", icon: GithubIcon },
   "Inline visualizations": { id: "inline-vis", icon: BrowserIcon },
   "Keep Awake": { id: "keep-awake", icon: Coffee01Icon },
+  "Claude Code session import": {
+    id: "claude-code-session-import",
+    icon: Unarchive03Icon,
+  },
   Memory: { id: "memory", icon: BrainIcon },
   "Provider retry": { id: "provider-retry", icon: ArrowReloadHorizontalIcon },
   "Provider usage": { id: "provider-usage", icon: ChartColumnIcon },

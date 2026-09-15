@@ -55,8 +55,8 @@ worktree` only; a provider takes its branch through `--environment-inputs`.
 - A Claude Code session that was started outside bb (terminal `claude`,
   including `/rename`d sessions) is not a thread and cannot be forked. Run
   `bb claude-code sessions` to find it and `bb claude-code import <id|title>`
-  to create a thread that continues it; the Claude Code provider plugin owns
-  the command's details.
+  to create a thread that continues it; the `claude-code-session-import`
+  builtin plugin owns the command's details.
 - Pass `--visibility hidden` for background/plugin workers that should remain
   out of sidebar organization without contributing unread/pending favicon
   attention. `bb thread list` excludes them by

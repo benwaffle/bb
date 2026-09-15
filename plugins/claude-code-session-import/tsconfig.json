@@ -4,7 +4,7 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "bundler",
-    "lib": ["ES2022", "DOM"],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "noEmit": true,
     "skipLibCheck": true,
     "paths": {
@@ -13,9 +13,16 @@
       ],
       "@get-bb/plugin-sdk/app": [
         "../../packages/plugin-sdk/bundled-types/bb-plugin-sdk-app.d.ts"
+      ],
+      "@get-bb/plugin-sdk/host": [
+        "../../packages/plugin-sdk/bundled-types/bb-plugin-sdk-host.d.ts"
+      ],
+      "@get-bb/plugin-sdk/provider-bridge": [
+        "../../packages/plugin-sdk/bundled-types/bb-plugin-sdk-provider-bridge.d.ts"
       ]
     },
-    "types": ["node"]
+    "types": ["node"],
+    "jsx": "react-jsx"
   },
-  "include": ["server.ts", "src", "vitest.config.ts"]
+  "include": ["server.ts", "host.ts", "app.tsx", "src", "vitest.config.ts"]
 }

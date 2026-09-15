@@ -911,6 +911,25 @@
     "bb-plugin-keep-awake#typecheck": {
       "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"]
     },
+    "bb-plugin-claude-code-session-import#typecheck": {
+      "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/plugins/provider-claude-code/src/**/*.ts",
+        "!$TURBO_ROOT$/plugins/provider-claude-code/src/**/*.test.ts"
+      ]
+    },
+    "bb-plugin-claude-code-session-import#prepare:bundled": {
+      "dependsOn": ["topo", "^build"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!dist/**",
+        "!.bundled-runtime/**",
+        "$TURBO_ROOT$/plugins/provider-claude-code/src/**/*.ts",
+        "!$TURBO_ROOT$/plugins/provider-claude-code/src/**/*.test.ts"
+      ],
+      "outputs": [".bundled-runtime/**"]
+    },
     "bb-plugin-memory#typecheck": {
       "dependsOn": ["@get-bb/plugin-sdk#build:types", "topo"]
     },

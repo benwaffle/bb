@@ -302,6 +302,7 @@ describe("builtin plugin reconciliation", () => {
       ["plugin-api-tester", "Beaker"],
       ["inline-vis", "AppWindow"],
       ["keep-awake", "Coffee"],
+      ["claude-code-session-import", "ArchiveRestore"],
       ["monaco-editor", "Code"],
       ["pdf-preview", "FileText"],
       ["environment-project-checkout", "Laptop"],
