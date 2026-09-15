@@ -37,6 +37,7 @@ const EXPECTED_RUNNING_BUILTIN_PLUGINS = [
   "custom-instructions",
   "inline-vis",
   "keep-awake",
+  "claude-code-session-import",
   "pdf-preview",
   "provider-retry",
   "scheduled-send",

@@ -18,6 +18,7 @@ const UNPREFIXED_BUNDLED_PLUGIN_IDS = [
   "bb-ai",
   "bb-guide",
   "browser-automation",
+  "claude-code-session-import",
   "concurrency-limit",
   "connect",
   "custom-instructions",
