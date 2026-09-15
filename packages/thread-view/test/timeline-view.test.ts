@@ -64,6 +64,7 @@ interface CommandRowOverrides extends WorkRowOverrides {
   callId?: string;
   command?: string;
   durationMs?: number | null;
+  presentation?: TimelineCommandWorkRow["presentation"];
 }
 
 function commandRow({
@@ -72,6 +73,7 @@ function commandRow({
   command = "pnpm test",
   durationMs = 200,
   id = "command-1",
+  presentation,
   sourceSeqEnd = 1,
   sourceSeqStart = 1,
   status = "completed",
@@ -84,6 +86,7 @@ function commandRow({
     status,
     callId,
     command,
+    ...(presentation === undefined ? {} : { presentation }),
     cwd: null,
     source: null,
     output: "",
@@ -547,6 +550,57 @@ describe("buildTimelineViewRows", () => {
       "Explored 1 file, ran 1 command",
     );
     expect(rows[1]?.kind).toBe("conversation");
+  });
+
+  it("counts described commands as commands rather than exploration in step summaries", () => {
+    const label = { pending: "Running command", completed: "Ran command" };
+    const icon = { glyph: "Terminal" };
+    const described = commandRow({
+      activityIntents: [readIntent("src/app.ts")],
+      command: "cat src/app.ts",
+      id: "described-1",
+      presentation: { label, icon, title: "Inspect the app entry point" },
+      sourceSeqStart: 1,
+    });
+    const echoed = commandRow({
+      activityIntents: [readIntent("src/app.ts")],
+      command: "cat src/app.ts",
+      id: "echoed-1",
+      presentation: { label, icon, title: "cat src/app.ts" },
+      sourceSeqStart: 2,
+    });
+
+    const describedOnly = buildTimelineViewRows([
+      described,
+      commandRow({
+        activityIntents: [readIntent("src/main.ts")],
+        command: "cat src/main.ts",
+        id: "described-2",
+        presentation: { label, icon, title: "Inspect the main module" },
+        sourceSeqStart: 2,
+      }),
+      assistantRow({ id: "assistant-1", sourceSeqStart: 3 }),
+    ]);
+    const describedSummary = expectStepSummaryRow(describedOnly[0]);
+    expect(buildTimelineWorkSummaryLabel(describedSummary)).toBe(
+      "Ran 2 commands",
+    );
+    expect(
+      describedSummary.children.map((child) =>
+        child.kind === "work" && child.workKind === "command"
+          ? child.presentation?.title
+          : null,
+      ),
+    ).toEqual(["Inspect the app entry point", "Inspect the main module"]);
+
+    const mixed = buildTimelineViewRows([
+      described,
+      echoed,
+      assistantRow({ id: "assistant-1", sourceSeqStart: 3 }),
+    ]);
+    expect(buildTimelineWorkSummaryLabel(expectStepSummaryRow(mixed[0]))).toBe(
+      "Ran 1 command, explored 1 file",
+    );
   });
 
   it("uses active labels for tool-only bundle summaries", () => {
