@@ -3,6 +3,7 @@ import { Button } from "@bb/shared-ui/button";
 import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { Popover, PopoverTrigger } from "@bb/shared-ui/popover";
+import { Switch } from "@bb/shared-ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
 import {
   SettingsSection,
@@ -16,6 +17,7 @@ import {
   useAudioInputDevicePreferenceValue,
   type PreferredAudioInputDeviceId,
 } from "@/lib/audio-input-device-preference";
+import { usePushToTalkPreference } from "@/lib/push-to-talk-preference";
 import { MicrophonePreferencesSplit } from "@/components/promptbox/MicrophonePreferencesSplit";
 import { MicrophonePreferencesPopoverContent } from "@/components/promptbox/MicrophonePreferencesPopoverContent";
 import { SETTINGS_DROPDOWN_TRIGGER_CLASS } from "./settings-dropdown";
@@ -25,10 +27,13 @@ interface VoiceInputSettingsSectionContentProps {
   errorMessage: string | null;
   isLoading: boolean;
   isSupported: boolean;
+  onPushToTalkEnabledChange: (enabled: boolean) => void;
   onRefresh: (requestPermission: boolean) => void;
   preferredDeviceId: PreferredAudioInputDeviceId;
+  pushToTalkEnabled: boolean;
 }
 
+export const PUSH_TO_TALK_SETTING_LABEL = "Hold Space to talk";
 const SYSTEM_DEFAULT_MICROPHONE_LABEL = "System default";
 const MICROPHONE_SETTING_LABEL = "Microphone";
 
@@ -105,8 +110,10 @@ export function VoiceInputSettingsSectionContent({
   errorMessage,
   isLoading,
   isSupported,
+  onPushToTalkEnabledChange,
   onRefresh,
   preferredDeviceId,
+  pushToTalkEnabled,
 }: VoiceInputSettingsSectionContentProps) {
   const [preferencesOpen, setPreferencesOpen] = useState(false);
   const triggerLabel = selectedMicrophoneLabel({
@@ -188,6 +195,17 @@ export function VoiceInputSettingsSectionContent({
           />
         </Popover>
       </SettingsWithControl>
+      <SettingsWithControl
+        label={PUSH_TO_TALK_SETTING_LABEL}
+        description="Hold the space bar in an empty composer, or with nothing focused, to dictate. The transcript appears while you speak and is inserted when you release."
+      >
+        <Switch
+          checked={pushToTalkEnabled}
+          onCheckedChange={onPushToTalkEnabledChange}
+          disabled={!isSupported}
+          aria-label={PUSH_TO_TALK_SETTING_LABEL}
+        />
+      </SettingsWithControl>
     </SettingsSection>
   );
 }
@@ -196,6 +214,7 @@ export function VoiceInputSettingsSection() {
   const preferredDeviceId = useAudioInputDevicePreferenceValue();
   const { devices, errorMessage, isLoading, isSupported, refresh } =
     useAudioInputDevices();
+  const [pushToTalkEnabled, setPushToTalkEnabled] = usePushToTalkPreference();
 
   return (
     <VoiceInputSettingsSectionContent
@@ -203,10 +222,12 @@ export function VoiceInputSettingsSection() {
       errorMessage={errorMessage}
       isLoading={isLoading}
       isSupported={isSupported}
+      onPushToTalkEnabledChange={setPushToTalkEnabled}
       onRefresh={(requestPermission) => {
         void refresh({ requestPermission });
       }}
       preferredDeviceId={preferredDeviceId}
+      pushToTalkEnabled={pushToTalkEnabled}
     />
   );
 }
