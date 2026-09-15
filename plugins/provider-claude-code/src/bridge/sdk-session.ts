@@ -7,6 +7,7 @@ import {
   type Query,
   type SDKMessage,
   type SDKUserMessage,
+  type SlashCommand,
   type SpawnedProcess,
   type SpawnOptions,
 } from "@anthropic-ai/claude-agent-sdk";
@@ -192,6 +193,12 @@ export class SdkSession {
 
   async getContextUsage(): Promise<unknown> {
     return this.query ? this.query.getContextUsage() : null;
+  }
+
+  async supportedCommands(): Promise<SlashCommand[]> {
+    if (!this.query) return [];
+    const commands: unknown = await this.query.supportedCommands();
+    return Array.isArray(commands) ? (commands as SlashCommand[]) : [];
   }
 
   async setModel(model: string | undefined): Promise<void> {

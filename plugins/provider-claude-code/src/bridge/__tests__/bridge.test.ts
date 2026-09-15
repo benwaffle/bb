@@ -96,6 +96,7 @@ interface CanUseToolPolicyCase {
 
 interface ControlledClaudeQuery {
   getContextUsage: ReturnType<typeof vi.fn>;
+  supportedCommands: ReturnType<typeof vi.fn>;
   applyFlagSettings: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   emit(message: SDKMessage): void;
@@ -310,6 +311,7 @@ function createControlledClaudeQuery(): ControlledClaudeQuery {
       pushResult({ value: undefined, done: true });
     },
     getContextUsage: vi.fn().mockResolvedValue(null),
+    supportedCommands: vi.fn().mockResolvedValue([]),
     initializationResult: vi.fn(),
     setModel: vi.fn().mockResolvedValue(undefined),
     setPermissionMode: vi.fn().mockResolvedValue(undefined),
@@ -704,6 +706,132 @@ describe("bridge", () => {
     vi.useRealTimers();
     for (const tempDir of tempDirs.splice(0)) {
       rmSync(tempDir, { recursive: true, force: true });
+    }
+  });
+
+  it("publishes the session's skill commands as extension state on init and on commands_changed", async () => {
+    const bridge = createBridgeJsonRpcTestHarness(handleLine);
+    const queries: ControlledClaudeQuery[] = [];
+    queryMock.mockImplementation(() => {
+      const query = createControlledClaudeQuery();
+      query.supportedCommands.mockResolvedValue([
+        {
+          name: "code-review",
+          description: "Review the current diff",
+          argumentHint: "[low|medium|high]",
+          aliases: ["review"],
+        },
+        { name: "doctor", description: "Health-check", argumentHint: "" },
+        { name: "model", description: "Set the AI model", argumentHint: "" },
+      ]);
+      queries.push(query);
+      return query;
+    });
+    const threadId = "thread-session-commands";
+    const sessionCommandEvents = () =>
+      assembleCapturedThreadEvents(bridge.messages, "claude-code").filter(
+        (
+          event,
+        ): event is Extract<
+          ThreadEvent,
+          { type: "thread/extensionState/updated" }
+        > =>
+          event.type === "thread/extensionState/updated" &&
+          event.kind === "provider-claude-code/session-commands",
+      );
+    try {
+      bridge.sendRequest(1, "thread/start", {
+        threadId,
+        cwd: "/tmp/worktree",
+        instructionMode: "append",
+        options: {
+          permissionMode: "accept-edits",
+          permissionScope: "workspace",
+          approvalReviewer: "user",
+          permissionEscalation: "ask",
+          instructions: "test",
+          providerOptions: { workflowsEnabled: false },
+        },
+      });
+      await bridge.waitForResponse(1);
+      bridge.sendRequest(
+        2,
+        "turn/start",
+        canonicalTurnParams({
+          threadId,
+          providerThreadId: threadId,
+          input: [{ type: "text", text: "hello" }],
+        }),
+      );
+      await readNextPrompt(getLatestQueryCall());
+      await bridge.waitForResponse(2);
+      queries[0].emit({
+        type: "system",
+        subtype: "init",
+        apiKeySource: "none",
+        claude_code_version: "2.0.0",
+        cwd: "/tmp/worktree",
+        tools: [],
+        mcp_servers: [],
+        model: "claude-test",
+        permissionMode: "acceptEdits",
+        slash_commands: ["code-review", "doctor", "model"],
+        terminal_slash_commands: ["doctor"],
+        output_style: "default",
+        skills: ["code-review", "doctor"],
+        plugins: [],
+        uuid: "00000000-0000-4000-8000-000000000010",
+        session_id: threadId,
+      });
+      await vi.waitFor(() => {
+        expect(sessionCommandEvents()).toHaveLength(1);
+      });
+      expect(queries[0].supportedCommands).toHaveBeenCalledTimes(1);
+      expect(sessionCommandEvents()[0]?.payload).toEqual({
+        commands: [
+          {
+            name: "code-review",
+            description: "Review the current diff",
+            argumentHint: "[low|medium|high]",
+            aliases: ["review"],
+          },
+        ],
+      });
+
+      queries[0].emit({
+        type: "system",
+        subtype: "commands_changed",
+        commands: [
+          {
+            name: "code-review",
+            description: "Review the current diff",
+            argumentHint: "[low|medium|high]",
+            aliases: ["review"],
+          },
+          {
+            name: "fresh-skill",
+            description: "Discovered mid-session",
+            argumentHint: "",
+          },
+          { name: "model", description: "Set the AI model", argumentHint: "" },
+        ],
+        uuid: "00000000-0000-4000-8000-000000000011",
+        session_id: threadId,
+      });
+      await vi.waitFor(() => {
+        expect(sessionCommandEvents()).toHaveLength(2);
+      });
+      expect(queries[0].supportedCommands).toHaveBeenCalledTimes(1);
+      expect(
+        (
+          sessionCommandEvents()[1]?.payload as {
+            commands: { name: string }[];
+          }
+        ).commands.map((command) => command.name),
+      ).toEqual(["code-review", "fresh-skill"]);
+    } finally {
+      await stopBridgeThread({ bridge, queries, threadId });
+      bridge.restore();
     }
   });
 

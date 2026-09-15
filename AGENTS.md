@@ -99,6 +99,7 @@ If a rebase goes badly, reset `fork/main` to the pre-sync tag.
 - Keep each commit on `fork/main` a coherent, single-purpose change. Squash fixups into the commit they fix rather than adding "fix" commits on top.
 - Order commits by churn: removals of upstream code first, additive features last.
 - Prefer additive changes (plugins, config layers, new files) over edits to upstream files.
+- Fork features must not add Drizzle migrations. Drizzle's SQLite migrator compares each journal entry's timestamp only against the last applied row, so a fork migration renumbered behind new upstream migrations by a sync re-runs itself and skips the upstream ones forever. Keep fork state in a JSON file under the server data dir or in an existing upstream table.
 - When a fork feature is something upstream would accept, upstream it. Every merged feature is one fewer commit to carry.
 - Avoid merging `main` into `fork/main`; that hides the fork's diff behind merge commits. `git log main..fork/main` should always show exactly what the fork changes.
 

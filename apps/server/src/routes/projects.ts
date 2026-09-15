@@ -53,6 +53,7 @@ import {
   requireProject,
   requirePublicProject,
   requirePublicStandardProject,
+  requirePublicThread,
 } from "../services/lib/entity-lookup.js";
 import { PROMPT_HISTORY_ENTRY_LIMIT } from "@bb/domain";
 import { toThreadListEntryResponses } from "../services/threads/thread-runtime-display.js";
@@ -79,6 +80,10 @@ import {
   buildCommandListResponse,
   providerHasCommandSurface,
 } from "../services/threads/provider-command-typeahead.js";
+import {
+  resolveHostSessionCommands,
+  resolveThreadSessionCommands,
+} from "../services/threads/provider-session-commands.js";
 import {
   beginProjectDeletion,
   requestProjectDeletionAdvance,
@@ -733,6 +738,14 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
     return context.json({ paths: result.paths, truncated: result.truncated });
   });
 
+  const requireProjectThread = (projectId: string, threadId: string) => {
+    const thread = requirePublicThread(deps.db, threadId);
+    if (thread.projectId !== projectId) {
+      throw new ApiError(404, "thread_not_found", "Thread not found");
+    }
+    return thread;
+  };
+
   get(routes.commands, async (context, query) => {
     const projectId = context.req.param("id");
     requirePublicProject(deps.db, projectId);
@@ -741,12 +754,31 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
     if (registration === null || !providerHasCommandSurface(registration)) {
       return context.json({ commands: [] });
     }
-
+    const sessionCommandsThread =
+      query.threadId === undefined
+        ? null
+        : requireProjectThread(projectId, query.threadId);
     const workspace = resolveProjectCommandWorkspace(deps, {
       projectId,
       environmentId: query.environmentId,
       hostId: query.hostId,
     });
+    const threadSessionCommands =
+      sessionCommandsThread === null
+        ? []
+        : resolveThreadSessionCommands(deps.db, {
+            threadId: sessionCommandsThread.id,
+            threadProviderId: sessionCommandsThread.providerId,
+            requestedProviderId: query.provider,
+            registration,
+          });
+    const sessionCommands =
+      threadSessionCommands.length > 0
+        ? threadSessionCommands
+        : resolveHostSessionCommands(deps, {
+            hostId: workspace.hostId,
+            registration,
+          });
     const listProviderCommands = async () => {
       if (!providerHasNativeRootSurface(registration)) {
         return { commands: [] };
@@ -782,6 +814,7 @@ export function registerProjectRoutes(app: Hono, deps: AppDeps): void {
           query.provider,
         ),
         skillCatalog,
+        sessionCommands,
       }),
     );
   });
