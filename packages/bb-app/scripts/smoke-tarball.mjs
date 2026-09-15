@@ -37,7 +37,6 @@ const EXPECTED_RUNNING_BUILTIN_PLUGINS = [
   "custom-instructions",
   "inline-vis",
   "keep-awake",
-  "voice-whisper-local",
   "pdf-preview",
   "provider-retry",
   "scheduled-send",

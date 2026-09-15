@@ -41,7 +41,6 @@
     "bb-plugin-simple-notes": "workspace:*",
     "bb-plugin-tasks": "workspace:*",
     "bb-plugin-theme-preview": "workspace:*",
-    "bb-plugin-voice-whisper-local": "workspace:*",
     "bb-plugin-workflows": "workspace:*"
   }
 }

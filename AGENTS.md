@@ -102,6 +102,36 @@ If a rebase goes badly, reset `fork/main` to the pre-sync tag.
 - When a fork feature is something upstream would accept, upstream it. Every merged feature is one fewer commit to carry.
 - Avoid merging `main` into `fork/main`; that hides the fork's diff behind merge commits. `git log main..fork/main` should always show exactly what the fork changes.
 
+### Plugins And Extensions Kept Outside The Fork
+
+Features that a third-party plugin or a browser extension can deliver live in
+[benwaffle/bb-plugins](https://github.com/benwaffle/bb-plugins) rather than
+here, so they cost the fork no commits to rebase.
+
+- `voice-whisper-local` installs with
+  `bb plugin install git:https://github.com/benwaffle/bb-plugins.git@main --plugin voice-whisper-local`.
+- `chrome-github-bb-button` loads unpacked from that repository's
+  `extensions/` directory.
+
+Prefer that repository for a new plugin. A plugin belongs here only when it
+needs a bb change that is not released in `@get-bb/plugin-sdk` on npm, because
+an external plugin builds against the published SDK.
+
+`claude-code-session-import` stays here for that reason. It reuses the Claude
+provider's stream translator and `@bb/shared-ui`, which are the right shape
+beside the provider plugin, and it calls
+`sdk.threads.experimental_providerSessions`, a fork-only route that upstream
+does not have; an external copy would work on no other bb.
+
+Two limits shape what an external plugin can do. bb aliases only the bare
+`@get-bb/plugin-sdk` specifier when it loads a server entry, and it never
+installs a git-sourced plugin's dependencies, so a server entry that imports an
+SDK subpath fails to build on install; mirror the subpath's exports in the
+plugin instead, and keep type-only imports on the SDK because `import type` is
+erased before bundling. A bundled plugin id is also reserved, so a builtin has
+to leave the registry here before the external copy of the same plugin can
+install.
+
 ### Running The Fork
 
 The fork is used through the packaged desktop app at `apps/desktop/release/mac-arm64/bb.app`. That bundle embeds its own copy of the server and host daemon, so source changes do nothing until the app is rebuilt and relaunched. After landing any feature on `fork/main`, or after an upstream sync:

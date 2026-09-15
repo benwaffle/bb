@@ -3,8 +3,10 @@ import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { isBbManagedWorkspacePath } from "../threads/workspace-paths.js";
 import {
+  deleteInstalledPlugin,
   getInstalledPlugin,
   getInstalledPluginRegistration,
+  listInstalledPlugins,
   listUnnormalizedPluginRegistrations,
   normalizeInstalledPluginRegistration,
   setInstalledPluginSourceClassification,
@@ -19,6 +21,7 @@ import {
 import {
   BUNDLED_PLUGINS,
   builtinPluginSource,
+  isRegisteredBuiltinName,
   type BundledPluginRegistration,
 } from "./builtin-registry.js";
 import { BUNDLED_MARKETPLACE_NAME } from "../plugin-catalog/marketplace-manifest.js";
@@ -637,6 +640,33 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     });
   }
 
+  /**
+   * A builtin that leaves the registry would otherwise leave its `plugins` row
+   * behind forever: it cannot load, `bb plugin remove` refused it, and the row
+   * kept reserving the id against an external copy of the same plugin. Dropping
+   * the row frees the id. `plugin_kv` and `plugin_settings` are keyed by plugin
+   * id and have no foreign key onto `plugins`, so they survive and a later
+   * install under the same id inherits them.
+   *
+   * The name has to be absent from both the shipped registrations and the
+   * compiled-in registry. A packaging fault that hides the plugin directories
+   * empties the former while the latter still lists the plugin, and that must
+   * read as a plugin to leave alone rather than a registration to drop.
+   */
+  function pruneStrandedBuiltinRegistrations(): void {
+    for (const row of listInstalledPlugins(deps.db)) {
+      if (row.sourceKind !== "builtin") continue;
+      if (isRegisteredBuiltinName(row.sourceBuiltinName, bundledPlugins)) {
+        continue;
+      }
+      if (!deleteInstalledPlugin(deps.db, row.id)) continue;
+      forgetMutableRoot(row.rootDir);
+      logger.info(
+        `plugin ${row.id} left the builtin registry; dropped its registration and freed the id, keeping its settings and stored data for a re-install`,
+      );
+    }
+  }
+
   async function reconcileBundled(): Promise<void> {
     for (const bundled of bundledPlugins) {
       const source = builtinPluginSource(bundled.name);
@@ -768,6 +798,7 @@ export function createPluginRegistration(context: PluginRegistrationContext) {
     backfillNormalizedPluginRegistrations,
     emptyPluginUpdateState,
     installBuiltinSource,
+    pruneStrandedBuiltinRegistrations,
     installPathSource,
     installedUpdateVersion,
     npmIntentForRow,

@@ -15,7 +15,11 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createConnection,
   getInstalledPluginRegistration,
+  getPluginKvValue,
+  getPluginSettingsValues,
   migrate,
+  setPluginKvValue,
+  setPluginSettingsValues,
   type DbConnection,
 } from "@bb/db";
 import { PLUGIN_SDK_MAJOR, PLUGIN_SDK_VERSION } from "@bb/domain";
@@ -267,7 +271,6 @@ describe("builtin plugin reconciliation", () => {
       ["plugin-api-tester", "Beaker"],
       ["inline-vis", "AppWindow"],
       ["keep-awake", "Coffee"],
-      ["voice-whisper-local", "Mic"],
       ["monaco-editor", "Code"],
       ["pdf-preview", "FileText"],
       ["environment-project-checkout", "Laptop"],
@@ -335,10 +338,12 @@ describe("builtin plugin reconciliation", () => {
     );
   });
 
-  it("marks a persisted builtin as orphaned after it leaves the registry", async () => {
+  it("prunes a persisted builtin's registration once it leaves the registry, keeping its stored data", async () => {
     service = createService({ db, dataDir: join(workDir, "data") });
     await service.start();
     expect(service.list()[0]?.isOrphanedBuiltin).toBe(false);
+    setPluginKvValue(db, "builtin-fixture", "cursor", "42");
+    setPluginSettingsValues(db, "builtin-fixture", { model: "base.en" });
     await service.stop();
 
     service = createService({
@@ -348,9 +353,58 @@ describe("builtin plugin reconciliation", () => {
     });
     await service.start();
 
-    expect(service.list()).toMatchObject([
-      { id: "builtin-fixture", isOrphanedBuiltin: true },
-    ]);
+    expect(service.list()).toEqual([]);
+    expect(getInstalledPluginRegistration(db, "builtin-fixture")).toBeUndefined();
+    // Kept so a re-install under the same id — the external copy of a plugin
+    // that used to be bundled — inherits the user's data.
+    expect(getPluginKvValue(db, "builtin-fixture", "cursor")).toBe("42");
+    expect(getPluginSettingsValues(db, "builtin-fixture")).toEqual({
+      model: "base.en",
+    });
+  });
+
+  it("keeps a registered builtin's registration when the app ships no plugin directories", async () => {
+    service = createService({ db, dataDir: join(workDir, "data") });
+    await service.start();
+    await service.stop();
+
+    // A packaging fault hides the directories while the compiled-in registry
+    // still lists the plugin. That must not read as a removal.
+    const registered = BUILTIN_PLUGINS[0]?.name;
+    expect(registered).toBeDefined();
+    db.$client
+      .prepare(`UPDATE plugins SET source_builtin_name = ? WHERE id = ?`)
+      .run(registered, "builtin-fixture");
+
+    service = createService({
+      db,
+      dataDir: join(workDir, "data"),
+      includeBuiltin: false,
+    });
+    await service.start();
+
+    expect(
+      getInstalledPluginRegistration(db, "builtin-fixture"),
+    ).toBeDefined();
+  });
+
+  it("removes a stranded builtin registration instead of refusing it", async () => {
+    service = createService({ db, dataDir: join(workDir, "data") });
+    await service.start();
+    expect(service.isBuiltin("builtin-fixture")).toBe(true);
+    await service.stop();
+
+    service = createService({
+      db,
+      dataDir: join(workDir, "data"),
+      includeBuiltin: false,
+    });
+
+    // start() would prune the row first; remove() is reached without it, which
+    // is the path the route's refusal guard used to answer 409 for.
+    expect(service.isBuiltin("builtin-fixture")).toBe(false);
+    expect(await service.remove("builtin-fixture")).toBe(true);
+    expect(getInstalledPluginRegistration(db, "builtin-fixture")).toBeUndefined();
   });
 
   it("backfills every legacy source form once while preserving registration state", async () => {

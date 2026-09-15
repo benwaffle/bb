@@ -237,8 +237,7 @@ Host files and voice transcription
 
 Voice transcription uses the `BB_TRANSCRIPTION` model, which defaults to
 `codex/gpt-transcribe`. Override it with
-`bb-app config set BB_TRANSCRIPTION <provider/model>`. For fully local
-transcription with whisper.cpp, use `whisper/<model>` and see `bb whisper`.
+`bb-app config set BB_TRANSCRIPTION <provider/model>`.
 
 In the app, holding Space in an empty composer (or with nothing focused)
 records push-to-talk: interim text appears while speaking and is inserted on
