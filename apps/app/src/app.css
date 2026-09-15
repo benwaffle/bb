@@ -269,6 +269,15 @@
     content: attr(data-placeholder);
   }
 
+  .prompt-voice-interim {
+    color: color-mix(in oklab, var(--foreground) 55%, transparent);
+    font-style: italic;
+    text-decoration: underline dotted;
+    text-decoration-color: color-mix(in oklab, var(--foreground) 30%, transparent);
+    text-underline-offset: 0.2em;
+    user-select: none;
+  }
+
   /*
    * Light up the `ultracode` keyword in the prompt editor with animated purple
    * sparkles (mirrors Claude Code). The wrapping span is added as a ProseMirror

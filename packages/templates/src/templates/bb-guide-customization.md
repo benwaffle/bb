@@ -291,6 +291,11 @@ to 20 MB. These limits apply to the app, SDK, and CLI. If transcription fails
 in the app, the error toast offers a download of the original recording until
 dismissed.
 
+In the app, holding Space in an empty composer (or with nothing focused)
+records push-to-talk: interim text appears while speaking and is inserted on
+release; Escape cancels. The "Hold Space to talk" switch in Settings → Voice
+Input turns this off per browser.
+
 `bb file` supports `--host` for remote machines and `--root` on mutating
 commands to confine access beneath an absolute directory. `bb file list` and
 `bb file paths` include dot-prefixed entries; pass `--no-hidden` to skip them.
