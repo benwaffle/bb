@@ -9,6 +9,7 @@ import {
 } from "@bb/shared-ui/dropdown-menu";
 import { Icon } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
+import { Switch } from "@bb/shared-ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@bb/shared-ui/tooltip";
 import {
   SettingsSection,
@@ -22,6 +23,7 @@ import {
   useAudioInputDevicePreference,
   type PreferredAudioInputDeviceId,
 } from "@/lib/audio-input-device-preference";
+import { usePushToTalkPreference } from "@/lib/push-to-talk-preference";
 import {
   SETTINGS_DROPDOWN_CONTENT_CLASS,
   SETTINGS_DROPDOWN_TRIGGER_CLASS,
@@ -35,7 +37,11 @@ interface VoiceInputSettingsSectionContentProps {
   onDeviceChange: (deviceId: PreferredAudioInputDeviceId) => void;
   onRefresh: (requestPermission: boolean) => void;
   preferredDeviceId: PreferredAudioInputDeviceId;
+  pushToTalkEnabled: boolean;
+  onPushToTalkChange: (enabled: boolean) => void;
 }
+
+export const PUSH_TO_TALK_SETTING_LABEL = "Hold Space to talk";
 
 const SYSTEM_DEFAULT_MICROPHONE_LABEL = "System default";
 const MICROPHONE_SETTING_LABEL = "Microphone";
@@ -103,6 +109,8 @@ export function VoiceInputSettingsSectionContent({
   onDeviceChange,
   onRefresh,
   preferredDeviceId,
+  pushToTalkEnabled,
+  onPushToTalkChange,
 }: VoiceInputSettingsSectionContentProps) {
   const triggerLabel = selectedMicrophoneLabel({
     devices,
@@ -208,6 +216,17 @@ export function VoiceInputSettingsSectionContent({
           </DropdownMenuContent>
         </DropdownMenu>
       </SettingsWithControl>
+      <SettingsWithControl
+        label={PUSH_TO_TALK_SETTING_LABEL}
+        description="Hold the space bar in an empty composer, or with nothing focused, to dictate. The transcript appears while you speak and is inserted when you release."
+      >
+        <Switch
+          checked={pushToTalkEnabled}
+          onCheckedChange={onPushToTalkChange}
+          disabled={!isSupported}
+          aria-label={PUSH_TO_TALK_SETTING_LABEL}
+        />
+      </SettingsWithControl>
     </SettingsSection>
   );
 }
@@ -217,6 +236,7 @@ export function VoiceInputSettingsSection() {
     useAudioInputDevicePreference();
   const { devices, errorMessage, isLoading, isSupported, refresh } =
     useAudioInputDevices();
+  const [pushToTalkEnabled, setPushToTalkEnabled] = usePushToTalkPreference();
 
   return (
     <VoiceInputSettingsSectionContent
@@ -229,6 +249,8 @@ export function VoiceInputSettingsSection() {
         void refresh({ requestPermission });
       }}
       preferredDeviceId={preferredDeviceId}
+      pushToTalkEnabled={pushToTalkEnabled}
+      onPushToTalkChange={setPushToTalkEnabled}
     />
   );
 }
