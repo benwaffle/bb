@@ -85,7 +85,7 @@ function sanitizeErrorMessage(raw: string): string | null {
   return normalized;
 }
 
-function resolveRecordingErrorMessage(
+export function resolveRecordingErrorMessage(
   error: unknown,
   hasPreferredAudioInput = false,
 ): string {
