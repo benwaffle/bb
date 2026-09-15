@@ -599,6 +599,7 @@ const handlers: Record<string, RequestHandler> = {
         threadArchive: false,
         threadRename: false,
         threadGoalClear: false,
+        backgroundTaskStop: false,
         fork: "none",
         approvalEnforcedBy: "runtime",
         steerMode: "queue",
