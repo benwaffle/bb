@@ -25,10 +25,16 @@ Listing:
 
   Like `bb thread count`, the list leaves out archived threads unless you
   pass --archived, --include-archived, or --thread IDs. The table prints ID,
-  Title, Project, and Status. Title uses the thread title, then the fallback
-  title from the first prompt, then "-". Long titles are cut at 60
+  Title, Project, Status, and Memory. Title uses the thread title, then the
+  fallback title from the first prompt, then "-". Long titles are cut at 60
   characters. Project shows the project name; the personal project shows
-  "-". Use --json for the full thread records.
+  "-". Memory is the resident memory of the thread's agent process tree as
+  last sampled by its machine's host daemon (every few seconds while the
+  agent process is alive), "-" when no process is running, and "(shared by
+  N)" when the provider hosts N threads in one process and cannot split the
+  total between them. Use --json for the full thread records; the same value
+  is the `memoryUsage` field with `rssBytes`, `processCount`,
+  `sharedThreadCount`, and `sampledAt`.
 
   bb thread search <query> [--limit <1-50>]
                                              Search threads and messages
@@ -75,6 +81,9 @@ Inspecting:
   The deprecated `--work-status`, `--git-diff`, `--diff-target`, `--diff-sha`
   and `--diff-merge-base` flags still run and print the `bb git` command that
   replaces them.
+  Prints a Memory line (resident memory and process count of the thread's
+  agent process tree) while the thread has a live agent process; `--json`
+  carries it as `thread.memoryUsage`.
 
   `thread context` reads the latest stored context measurement without starting
   a provider request; `--json` prints `{ usage: ... }` (`null` when unavailable).
