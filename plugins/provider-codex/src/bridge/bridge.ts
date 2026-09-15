@@ -1435,6 +1435,7 @@ function handleInitialize(id: string | number): void {
       threadArchive: true,
       threadRename: true,
       threadGoalClear: true,
+      backgroundTaskStop: false,
       fork: "checkpoint",
       approvalEnforcedBy: "runtime",
       grammarVersions: [THREAD_DELTA_GRAMMAR_V3, THREAD_DELTA_GRAMMAR_V3],
