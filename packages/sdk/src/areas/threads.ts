@@ -47,6 +47,7 @@ import type {
   PluginThreadMetadataListResponse,
   ThreadAncestorsListResponse,
   ThreadDescendantsListResponse,
+  ThreadProviderSessionsResponse,
   ThreadPluginMetadataResponse,
   ThreadSearchResponse,
   ThreadStorageFileListResponse,
@@ -276,6 +277,12 @@ export interface ThreadImportArgs extends Omit<ImportThreadRequest, "origin"> {
   origin?: ImportThreadRequest["origin"];
 }
 export type ThreadImportResult = ThreadResponse;
+
+export interface ThreadProviderSessionsArgs {
+  providerId: string;
+  signal?: AbortSignal;
+}
+export type ThreadProviderSessionsResult = ThreadProviderSessionsResponse;
 
 export interface ThreadUpdateArgs extends UpdateThreadRequest {
   threadId: string;
@@ -655,6 +662,9 @@ export interface ThreadsArea {
   events: ThreadEventsArea;
   fork(args: ThreadForkArgs): Promise<ThreadForkResult>;
   experimental_import(args: ThreadImportArgs): Promise<ThreadImportResult>;
+  experimental_providerSessions(
+    args: ThreadProviderSessionsArgs,
+  ): Promise<ThreadProviderSessionsResult>;
   get(args: ThreadGetArgs): Promise<ThreadGetResult>;
   getPluginMetadata(
     args: ThreadPluginMetadataArgs,
@@ -1340,6 +1350,14 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
         transport.api.v1.threads.import.$post({
           json: importJson(input),
         }),
+      );
+    },
+    async experimental_providerSessions(input) {
+      return transport.readJson(
+        transport.api.v1.threads["provider-sessions"].$get(
+          { query: { providerId: input.providerId } },
+          ...signalRequestArgs(input.signal),
+        ),
       );
     },
     get: getThread,
