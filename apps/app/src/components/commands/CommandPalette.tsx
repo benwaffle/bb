@@ -12,6 +12,7 @@ import {
   pluginCommandId,
   pluginCommandIdSchema,
   type KeyboardCommandId,
+  type Host,
 } from "@bb/domain";
 import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useNavigate } from "react-router-dom";
@@ -41,12 +42,14 @@ import {
   readPaletteRecents,
   recordPaletteRecent,
 } from "@/lib/command-palette/palette-recents";
+import { buildMachinePaletteActions } from "@/lib/command-palette/palette-machine-actions";
 import { buildPluginPaletteActions } from "@/lib/command-palette/palette-plugin-actions";
 import { usePluginSlots } from "@/lib/plugin-slots";
 import { getActiveThreadPanelOpener } from "@/components/plugin/plugin-thread-panel-navigation";
 import { buildSettingsPaletteActions } from "@/lib/command-palette/palette-settings-actions";
 import { buildPluginPagePaletteActions } from "@/lib/command-palette/palette-plugin-page-actions";
 import { pluginListQueryOptions } from "@/hooks/queries/plugin-settings-queries";
+import { hostListQueryOptions, selectHosts } from "@/hooks/queries/host-queries";
 import {
   buildPluginSettingsEntries,
   type PluginSettingsCandidate,
@@ -103,6 +106,7 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
   const [recents, setRecents] = useState<readonly string[]>(() =>
     readPaletteRecents(),
   );
+  const [hosts, setHosts] = useState<readonly Host[]>([]);
   const pluginSlots = usePluginSlots();
   const pluginCommandIds = useMemo(
     () =>
@@ -151,6 +155,16 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
       }),
     [navigate, pluginSlots.navPanels],
   );
+  const machineActions = useMemo(
+    () =>
+      buildMachinePaletteActions({
+        hosts: selectHosts(hosts, "persistent"),
+        navigate: (path) => {
+          void navigate(path);
+        },
+      }),
+    [hosts, navigate],
+  );
   const openTargetRef = useRef<EventTarget | null>(null);
   const pendingRunRef = useRef<(() => void) | null>(null);
 
@@ -193,6 +207,9 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
       void appQueryClient
         .fetchQuery(pluginListQueryOptions({ enabled: true }))
         .then(setInstalledPlugins, () => {});
+      void appQueryClient
+        .fetchQuery(hostListQueryOptions())
+        .then(setHosts, () => {});
     },
     [buildActions, open],
   );
@@ -218,8 +235,13 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
   );
 
   const availableActions = useMemo<readonly PaletteAction[]>(
-    () => [...actions, ...settingsActions, ...pluginPageActions],
-    [actions, pluginPageActions, settingsActions],
+    () => [
+      ...actions,
+      ...settingsActions,
+      ...machineActions,
+      ...pluginPageActions,
+    ],
+    [actions, machineActions, pluginPageActions, settingsActions],
   );
   const shortcutActions = useMemo(() => {
     const byId = new Map(availableActions.map((action) => [action.id, action]));

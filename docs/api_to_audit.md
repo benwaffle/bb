@@ -1104,6 +1104,25 @@ value. Plugins can read it before the server starts to listen.
 connect URL should supply this value when `BB_APP_URL` is empty. Confirm that
 one public URL has clear behavior when a server has several access paths.
 
+## `experimental_reportProviderChildProcess` (`@get-bb/plugin-sdk/provider-bridge`)
+
+**What it does.** A bridge that spawns a provider child for one bb thread
+calls `experimental_reportProviderChildProcess({ child, threadId })` right
+after `spawn()`. The helper writes a `thread/process` JSON-RPC notification
+(`{ threadId, pid }`) to the bridge's stdout so the runtime can attribute the
+child's process tree to that thread when the host daemon samples resident
+memory. It is a no-op when `threadId` is `null` or the child has no pid. See
+[provider-bridge-protocol.md](provider-bridge-protocol.md), "Child
+processes".
+
+**Audit before stabilizing.** Decide whether this should merge with
+`experimental_recordProviderChildIo` into one post-spawn hook (both take the
+same `child` and thread scope, and every first-party bridge calls them
+together); confirm the `write` override is the right test seam versus routing
+through the bridge's own `send`; and settle whether a bridge should also
+report the child's exit so the runtime can drop the pid before the next
+sample.
+
 ## Bridge record mode (`experimental_recordProviderChildIo` and `experimental_isProviderBridgeRecording`)
 
 **Kept experimental (2026-08-22).** the recording entry shape is now consumed by the public testing kit, so it is a de-facto fixture format that must be frozen together with `experimental_readBridgeRecording` / `replayRecording`; the `{ threadId | null }` scope is untested against a multiplexing bridge.

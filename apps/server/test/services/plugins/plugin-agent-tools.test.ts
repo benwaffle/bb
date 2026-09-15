@@ -75,6 +75,7 @@ describe("bb.agents.registerTool", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -578,6 +579,7 @@ describe("bb.agents.experimental_registerProvider (removed in SDK 0.4.16)", () =
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -657,6 +659,7 @@ describe("bb.agents.contributeInstructions", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },

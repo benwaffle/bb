@@ -167,10 +167,16 @@ Listing:
     --unsectioned                          Show only threads outside sections
     --include-hidden                       Include hidden threads
 
-  The table prints ID, Title, Project, and Status. Title uses the thread
-  title, then the fallback title from the first prompt, then "-". Long
+  The table prints ID, Title, Project, Status, and Memory. Title uses the
+  thread title, then the fallback title from the first prompt, then "-". Long
   titles are cut at 60 characters. Project shows the project name; the
-  personal project shows "-". Use --json for the full thread records.
+  personal project shows "-". Memory is the resident memory of the thread's
+  agent process tree as last sampled by its machine's host daemon (every few
+  seconds while the agent process is alive), "-" when no process is running,
+  and "(shared by N)" when the provider hosts N threads in one process and
+  cannot split the total between them. Use --json for the full thread
+  records; the same value is the `memoryUsage` field with `rssBytes`,
+  `processCount`, `sharedThreadCount`, and `sampledAt`.
 
   bb thread search <query> [--limit <1-50>]
                                              Search threads and messages
@@ -209,6 +215,9 @@ Inspecting:
     --diff-merge-base <branch>             Override merge-base branch for diff
 
   Shows pull request status for the attached environment branch when available.
+  Prints a Memory line (resident memory and process count of the thread's
+  agent process tree) while the thread has a live agent process; `--json`
+  carries it as `thread.memoryUsage`.
 
   bb thread log [id]                       Show thread event log
     --self                                 Target current thread
