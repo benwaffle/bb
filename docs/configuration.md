@@ -340,6 +340,11 @@ pane shortcuts follow Slack's browser-safe convention: web uses
 uses `Mod+1…9`. The web aliases leave native browser `Mod+1…9` tab switching
 untouched. Previous and next thread use `Mod+Shift+[/]` on desktop and
 `Control+Shift+[/]` on the web.
+Go back and go forward retrace the app's own page history, the same history
+the sidebar arrow buttons walk, with `Mod+[` and `Mod+]` on every client. They
+stay available from the composer and other text fields, since the chord has no
+text-editing meaning there, and the caret keeps its place. A focused terminal
+or embedded browser declines them so the chord reaches the guest instead.
 
 
 Plugin commands use `plugin:<plugin-id>/<command-id>` as their stable binding
@@ -375,6 +380,7 @@ delayed shortcut badges without disabling any shortcuts.
 | Layout    | Maximize / restore chat pane              | `Mod+Shift+E`                     | While split              |
 | Layout    | Close focused chat pane                   | `Mod+Shift+X`                     | While split              |
 | Window    | New window                                | `Mod+Shift+N`                     | Desktop                  |
+| Window    | Go back / go forward                      | `Mod+[` / `Mod+]`                 | All clients              |
 | Window    | Settings                                  | `Mod+,`                           | All clients              |
 | Layout    | Toggle sidebar                            | `Mod+\`                           | All clients              |
 | Panel     | New tab / close tab / toggle              | `Mod+T` / `Mod+W` / `Mod+J`       | All clients              |

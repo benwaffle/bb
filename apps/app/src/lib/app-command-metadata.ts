@@ -86,6 +86,16 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Back to app",
         "Return from Settings, Plugins, or Skills to the app.",
       ),
+      command(
+        "history.back",
+        "Go back",
+        "Return to the previously viewed page, like the sidebar back button.",
+      ),
+      command(
+        "history.forward",
+        "Go forward",
+        "Advance to the next page in history, like the sidebar forward button.",
+      ),
       command("settings.open", "Open settings", "Open bb settings."),
       command(
         "settings.openServers",

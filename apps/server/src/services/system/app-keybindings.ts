@@ -116,6 +116,11 @@ const composerWithoutModal = {
   none: ["modalOpen", "terminalFocus", "browserFocus"],
 } as const;
 
+const historyNavigation = {
+  all: ["mainSurface"],
+  none: ["modalOpen", "terminalFocus", "browserFocus"],
+} as const;
+
 const pickerOpenOnly = {
   all: ["mainSurface", "modelPickerOpen"],
   none: [],
@@ -147,6 +152,8 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
   unassignedBinding("thread.rename", mainWithoutModal),
   unassignedBinding("thread.archive", mainWithoutModal),
   binding("app.back", "Escape", {}, mainWithoutModal),
+  binding("history.back", "[", { mod: true }, historyNavigation),
+  binding("history.forward", "]", { mod: true }, historyNavigation),
   binding("settings.open", ",", { mod: true }, mainWithoutModal),
   binding("sidebar.toggle", "\\", { mod: true }, mainWithoutModal),
   unassignedBinding("notifications.open", mainWithoutModal),
