@@ -492,6 +492,45 @@ describe("claude item presentation", () => {
     });
   });
 
+  it("titles a Bash call with its description when the agent supplies one", () => {
+    const harness = createClaudeDeltaHarness();
+    const events = harness.translate({
+      type: "assistant",
+      message: {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "b-1",
+            name: "Bash",
+            input: {
+              command: "f=/tmp/out.txt\ngrep -n '^====' $f",
+              description: "Find section headers in the saved output",
+            },
+          },
+          {
+            type: "tool_use",
+            id: "b-2",
+            name: "Bash",
+            input: { command: "ls -la", description: "   " },
+          },
+        ],
+      },
+      session_id: "sess-1",
+    });
+    const started = startedItems(events);
+    expect(presentationOf(started[0])).toEqual({
+      label: { pending: "Running command", completed: "Ran command" },
+      icon: { glyph: "Terminal" },
+      title: "Find section headers in the saved output",
+    });
+    expect(presentationOf(started[1])).toEqual({
+      label: { pending: "Running command", completed: "Ran command" },
+      icon: { glyph: "Terminal" },
+      title: "ls -la",
+    });
+  });
+
   it("badges a Bash call that opts out of the session sandbox", () => {
     const harness = createClaudeDeltaHarness({ sandboxEnabled: true });
     const events = harness.translate({

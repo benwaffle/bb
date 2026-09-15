@@ -37,6 +37,7 @@ import {
   formatDiffStatsText,
 } from "./format-helpers.js";
 import {
+  commandHasProviderSummary,
   formatTimelineActivityIntentDetailParts,
   getTimelineActivityIntentDetailDedupeKey,
   hasTimelineExplorationIntent,
@@ -63,7 +64,11 @@ type TimelineStatusDecorationStatus = "denied" | "error" | "interrupted";
 
 export type TimelineTitleLink = { kind: "thread"; threadId: string };
 
-export type TimelineTitleSegmentAccent = "muted" | "subtle" | "file";
+export type TimelineTitleSegmentAccent =
+  | "muted"
+  | "subtle"
+  | "file"
+  | "prominent";
 
 export interface TimelineTitleSegment {
   text: string;
@@ -396,6 +401,7 @@ interface PresentedTitleArgs {
   content?: string | null;
   plainContent?: string;
   em?: boolean;
+  contentAccent?: TimelineTitleSegmentAccent;
 }
 
 function presentedTitle({
@@ -406,6 +412,7 @@ function presentedTitle({
   content,
   plainContent,
   em = true,
+  contentAccent,
 }: PresentedTitleArgs): TimelineTitle {
   const resolvedContent = content === undefined ? presentation.title : content;
   const segments: TimelineTitleSegment[] = [
@@ -420,6 +427,7 @@ function presentedTitle({
         em,
         truncate: true,
         ...(plainContent === undefined ? {} : { plainText: plainContent }),
+        ...(contentAccent === undefined ? {} : { accent: contentAccent }),
       }),
     );
   }
@@ -445,13 +453,16 @@ function mapExecutionTitle(row: TimelineExecutionWorkRow): TimelineTitle {
     row.presentation &&
     status !== "waiting" &&
     status !== "denied" &&
-    !isCommand
+    (row.workKind !== "command" || commandHasProviderSummary(row))
   ) {
     return presentedTitle({
       presentation: row.presentation,
       status,
       startedAt: row.startedAt,
       completedAt: row.completedAt,
+      ...(row.workKind === "command"
+        ? { em: false, contentAccent: "prominent" as const }
+        : {}),
     });
   }
   const content = isCommand
