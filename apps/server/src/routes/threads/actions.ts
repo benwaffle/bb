@@ -65,6 +65,10 @@ import { acceptThreadSendRequest } from "../../services/threads/thread-send-requ
 import { editThreadMessage } from "../../services/threads/thread-edit-message.js";
 import { clearThreadContext } from "../../services/threads/thread-context-clear.js";
 import {
+  findRunningBackgroundCommand,
+  listRunningBackgroundCommands,
+} from "../../services/threads/background-commands.js";
+import {
   buildExecutionOptions,
   dispatchThreadUnarchiveCommand,
   prepareTurnSubmitCommandPayload,
@@ -216,7 +220,7 @@ export function registerThreadActionRoutes(
   deps: AppDeps,
   plugins: { resolveRpcCaller: ResolvePluginRpcCaller },
 ): void {
-  const { post, patch, del } = typedRoutes<PublicApiSchema>(app, {
+  const { get, post, patch, del } = typedRoutes<PublicApiSchema>(app, {
     onValidationError: (msg) => new ApiError(400, "invalid_request", msg),
   });
   const routes = publicApiRoutes.threads;
@@ -501,6 +505,66 @@ export function registerThreadActionRoutes(
       );
     }
     return context.json({ ok: true });
+  });
+
+  get(routes.backgroundCommands, (context) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    return context.json({
+      commands: listRunningBackgroundCommands(deps.db, thread),
+    });
+  });
+
+  post(routes.stopBackgroundCommand, async (context) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    const taskId = context.req.param("taskId");
+    const task = findRunningBackgroundCommand(deps.db, {
+      threadId: thread.id,
+      taskId,
+    });
+    if (task === null) {
+      throw new ApiError(
+        404,
+        "background_command_not_found",
+        "No running background command with that task id",
+      );
+    }
+    const environment = requireThreadHostCommandEnvironment({
+      db: deps.db,
+      thread,
+    });
+    let result: { stopped: boolean };
+    try {
+      result = await runLiveHostCommand(deps, {
+        command: {
+          type: "thread.backgroundTask.stop",
+          environmentId: environment.id,
+          threadId: thread.id,
+          taskId,
+        },
+        hostId: environment.hostId,
+        timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
+      });
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.body.code === "unknown_thread_runtime"
+      ) {
+        throw new ApiError(
+          409,
+          "invalid_request",
+          "The agent session that started this command is no longer loaded, so it cannot be stopped from here",
+        );
+      }
+      throw error;
+    }
+    if (!result.stopped) {
+      throw new ApiError(
+        409,
+        "invalid_request",
+        "The provider did not confirm that the background command stopped",
+      );
+    }
+    return context.json({ ok: true, stopped: true });
   });
 
   post(routes.clearGoal, async (context) => {
