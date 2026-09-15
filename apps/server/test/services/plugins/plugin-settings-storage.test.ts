@@ -90,6 +90,7 @@ describe("plugin settings + storage", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         notifyPluginSignal: () => 0,
         notifySystem: (kinds) => {

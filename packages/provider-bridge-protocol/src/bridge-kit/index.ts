@@ -11,6 +11,7 @@ export * from "./pending-tool-call-tracker.js";
 export * from "./permission-policy.js";
 export * from "./presentation.js";
 export * from "./provider-bridge-entry.js";
+export * from "./provider-child-process.js";
 export * from "./provider-maintenance-kit.js";
 export * from "./provider-tool-call-contract.js";
 export * from "./provider-visibility.js";

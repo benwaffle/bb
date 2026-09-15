@@ -99,6 +99,7 @@ Read the installed declarations for exact current signatures.
 - `experimental_readBoundedLines`
 - `experimental_readCliVersion`
 - `experimental_recordProviderChildIo`
+- `experimental_reportProviderChildProcess`
 - `experimental_resolveExecutablePath`
 - `experimental_searchPresentation`
 - `experimental_spawnPortableProcess`

@@ -67,6 +67,7 @@ import type {
   ExperimentUpdates,
   Experiments,
   Host,
+  HostWithMemoryUsage,
   PendingInteraction,
   ProjectExecutionDefaults,
   ProjectSource,
@@ -904,7 +905,7 @@ export const publicApiRoutes = {
       method: "get",
       request: noRequest<PathId>(),
       response: jsonResponse<
-        Host & {
+        HostWithMemoryUsage & {
           connectMachineId: string | null;
           threadStorageRootPath: string | null;
         }
