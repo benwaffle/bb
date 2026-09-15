@@ -211,3 +211,5 @@ new turns, and `bb provider enable ID` to restore it (enabling its plugin if
 needed). These preserve the CLI and thread history. Individual opt-outs survive
 plugin off/on. Install provider plugins in Settings → Plugins; configure custom
 ACP agents in the ACP providers plugin settings.
+
+`bb thread list`, `bb thread show`, and `bb machine show` report `memoryUsage`: the resident memory of a thread's agent process tree (every descendant of the process the host daemon spawned for it, such as test runners and dev servers) sampled every few seconds, and the per-machine sum. `null` means no live agent process or a disconnected daemon; `sharedThreadCount > 1` means the provider hosts several threads in one process and the figure is that process tree's total.
