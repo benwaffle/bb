@@ -128,6 +128,11 @@ export const BUILTIN_PLUGINS = [
     defaultEnabled: true,
   },
   {
+    name: "claude-code-session-import",
+    pluginId: "claude-code-session-import",
+    defaultEnabled: true,
+  },
+  {
     name: "plugin-api-docs",
     pluginId: "plugin-api-docs",
     defaultEnabled: false,

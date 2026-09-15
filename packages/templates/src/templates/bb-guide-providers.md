@@ -93,16 +93,25 @@ default. Enable them with
 the Chrome extension and a claude.ai login. A change restarts the thread's
 Claude process before its next turn and keeps the conversation.
 
-Existing Claude Code sessions from the terminal can become bb threads. The
-home screen's "Import a Claude Code session" section lists them, as does
-`bb claude-code sessions [--dir <path>]` (id, title, directory, last
-activity); `bb claude-code import <session-id|title|session.jsonl>` imports
-one. The import reads the
+Existing Claude Code sessions from the terminal can become bb threads through
+the `claude-code-session-import` builtin plugin. The home screen's "Claude Code
+sessions" card opens a session browser, and
+`bb claude-code sessions [--dir <path>]` lists the same sessions (id, title,
+directory, last activity); `bb claude-code import <session-id|title|session.jsonl>`
+imports one. The import reads the
 transcript on the machine that holds it, replays every turn into a new thread
 in the project whose source matches the session's directory, and forks the
 Claude session at the last imported turn when the thread's next message is
 sent, so the conversation continues with its context intact and a terminal
-that is still using the session is never disturbed. `--project`, `--environment`, `--machine`,
+that is still using the session is never disturbed. Sessions that belong to bb
+are left out of both lists and counted instead: ones already imported, ones
+whose Claude session id a claude-code thread holds or once held, and ones that
+ran in a workspace bb provisioned, recognized either by an environment row
+naming that directory or by a directory in the path named after one of bb's
+threads, and ones whose transcript carries bb's own bridge tool or plugin
+instructions, which covers sessions another bb instance ran. Sessions bb itself
+started never appear, even when the thread behind them is gone. Press Show in the browser, or pass
+`--all` to the command, to see them. `--project`, `--environment`, `--machine`,
 `--title`, and `--turns A-B` override what the command infers; `--json` prints
 the thread.
 

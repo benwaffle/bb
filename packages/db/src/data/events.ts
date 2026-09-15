@@ -3877,6 +3877,67 @@ export function classifyStoredProviderThreadClaim(
   );
 }
 
+export interface StoredProviderSessionRow {
+  providerThreadId: string;
+  threadId: string;
+}
+
+export function listStoredProviderSessionsByProvider(
+  db: DbQueryConnection,
+  args: { providerId: string },
+): StoredProviderSessionRow[] {
+  return db
+    .selectDistinct({
+      providerThreadId: events.providerThreadId,
+      threadId: events.threadId,
+    })
+    .from(events)
+    .innerJoin(threads, eq(threads.id, events.threadId))
+    .where(
+      and(
+        isNotNull(events.providerThreadId),
+        eq(threads.providerId, args.providerId),
+      ),
+    )
+    .all()
+    .flatMap((row) =>
+      row.providerThreadId === null
+        ? []
+        : [
+            {
+              providerThreadId: row.providerThreadId,
+              threadId: row.threadId,
+            },
+          ],
+    );
+}
+
+export interface StoredThreadStartupContextRow {
+  startupContext: string;
+  threadId: string;
+}
+
+export function listStoredStartupContextsByProvider(
+  db: DbQueryConnection,
+  args: { providerId: string },
+): StoredThreadStartupContextRow[] {
+  return db
+    .select({ startupContext: threads.startupContext, threadId: threads.id })
+    .from(threads)
+    .where(
+      and(
+        isNotNull(threads.startupContext),
+        eq(threads.providerId, args.providerId),
+      ),
+    )
+    .all()
+    .flatMap((row) =>
+      row.startupContext === null
+        ? []
+        : [{ startupContext: row.startupContext, threadId: row.threadId }],
+    );
+}
+
 export function listThreadTurnInterruptionEventStates(
   db: DbQueryConnection,
   args: ListThreadTurnInterruptionEventStatesArgs,

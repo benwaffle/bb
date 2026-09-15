@@ -60,6 +60,11 @@
     "icon": "Coffee"
   },
   {
+    "id": "claude-code-session-import",
+    "name": "Claude Code session import",
+    "icon": "ArchiveRestore"
+  },
+  {
     "id": "memory",
     "name": "Memory",
     "icon": "Brain"

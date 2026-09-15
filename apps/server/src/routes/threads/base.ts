@@ -52,6 +52,7 @@ import { requestThreadStorageDeletion } from "../../services/threads/thread-life
 import { createThreadFromRequest } from "../../services/threads/thread-create.js";
 import { createThreadForkFromRequest } from "../../services/threads/thread-fork.js";
 import { createThreadImportFromRequest } from "../../services/threads/thread-import.js";
+import { listProviderSessionIdentities } from "../../services/threads/provider-sessions.js";
 import { requireChildThreadsConfirmation } from "../../services/threads/child-thread-confirmation.js";
 import {
   toThreadListEntryResponses,
@@ -358,6 +359,14 @@ export function registerThreadBaseRoutes(app: Hono, deps: AppDeps): void {
     const thread = await createThreadImportFromRequest(deps, payload);
     return context.json(toThreadResponseFromThread(deps, { thread }), 201);
   });
+
+  get(routes.providerSessions, (context, query) =>
+    context.json({
+      sessions: listProviderSessionIdentities(deps, {
+        providerId: query.providerId,
+      }),
+    }),
+  );
 
   get(routes.get, (context, query) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));

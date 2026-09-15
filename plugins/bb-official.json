@@ -62,6 +62,10 @@
     "category": "utilities",
     "screenshots": []
   },
+  "claude-code-session-import": {
+    "category": "utilities",
+    "screenshots": []
+  },
   "plugin-api-docs": {
     "category": "plugin-development",
     "screenshots": [
