@@ -121,6 +121,7 @@ import {
   useCancelThreadPlan,
   useClearThreadGoal,
   useStopThread,
+  useStopThreadBackgroundCommand,
 } from "@/hooks/mutations/thread-runtime-mutations";
 import {
   useRestoreThreadEnvironment,
@@ -528,6 +529,7 @@ export function ThreadDetailPromptArea({
   const stopThread = useStopThread();
   const cancelThreadPlan = useCancelThreadPlan();
   const clearThreadGoal = useClearThreadGoal();
+  const stopBackgroundCommand = useStopThreadBackgroundCommand();
   const unarchiveThread = useUnarchiveThread();
   const restoreThreadEnvironment = useRestoreThreadEnvironment();
   const createThread = useCreateThread();
@@ -989,6 +991,16 @@ export function ThreadDetailPromptArea({
   const handleClearGoal = useCallback(() => {
     clearThreadGoal.mutate(thread.id);
   }, [clearThreadGoal, thread.id]);
+  const handleStopBackgroundCommand = useCallback(
+    (row: TimelineWorkflowWorkRow) => {
+      if (row.familyId === null) return;
+      stopBackgroundCommand.mutate({ threadId: thread.id, taskId: row.familyId });
+    },
+    [stopBackgroundCommand, thread.id],
+  );
+  const stoppingBackgroundCommandTaskId = stopBackgroundCommand.isPending
+    ? (stopBackgroundCommand.variables?.taskId ?? null)
+    : null;
   const submitMode = useMemo<FollowUpSubmitMode>(() => {
     if (isHandoffSelection && !isStopRequested) {
       if (effectiveSelectedModel.length > 0) {
@@ -2192,6 +2204,8 @@ export function ThreadDetailPromptArea({
           commands={activeBackgroundCommands}
           isExpanded={isBackgroundCommandsExpanded}
           onToggle={() => setIsBackgroundCommandsExpanded((value) => !value)}
+          onStopCommand={handleStopBackgroundCommand}
+          stoppingTaskId={stoppingBackgroundCommandTaskId}
         />
         {shouldHideComposer ? null : activePromptModeCard}
         {shouldHideComposer ? null : activeGoalCard}
@@ -2322,6 +2336,8 @@ export function ThreadDetailPromptArea({
       toggleWorkflowExpanded,
       activeBackgroundCommands,
       isBackgroundCommandsExpanded,
+      handleStopBackgroundCommand,
+      stoppingBackgroundCommandTaskId,
       modelFallback,
       parentThreadSection,
       childThreadsSection,

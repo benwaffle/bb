@@ -34,7 +34,10 @@ import {
   type ReasoningProjectionState,
 } from "./reasoning-lifecycle-projection.js";
 import { shouldPreservePendingMessages } from "./user-message-parsing.js";
-import type { BackgroundTaskProjectionState } from "./background-task-projection.js";
+import {
+  mirrorBackgroundCommandOutputsToSpawningCalls,
+  type BackgroundTaskProjectionState,
+} from "./background-task-projection.js";
 
 export interface CompactionTurnFinalization {
   status: CompactionTurnFinalizationStatus;
@@ -320,4 +323,5 @@ export function finalizeProjectionState(
 ): void {
   finalizeInterruptedTurnPendingMessages(args.state);
   finalizePendingMessages(args);
+  mirrorBackgroundCommandOutputsToSpawningCalls(args.state);
 }
