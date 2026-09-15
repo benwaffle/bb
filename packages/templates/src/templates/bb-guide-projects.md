@@ -51,6 +51,10 @@ Discovery:
                                           --json reports contentEncoding)
   bb project commands <id> --provider <id>
                                           List commands and skills
+    --thread <id>                         Prefer the agent's own commands from
+                                          that thread's live session; without
+                                          one, the machine's last published
+                                          list is used
     --machine <id-or-name>                Target project source machine
     --host <id-or-name>                   Alias for --machine
     --environment <id>                    Target environment workspace
