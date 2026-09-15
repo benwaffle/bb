@@ -1301,6 +1301,7 @@ describe("server-contract canonical schemas", () => {
           environmentIsWorktree: true,
           environmentWorkspaceDisplayKind: "managed-worktree",
           queuedWork: "none",
+          memoryUsage: null,
         },
       ]),
     ).toMatchObject([

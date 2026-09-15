@@ -255,7 +255,9 @@ cases.
 **Recorded replay.** Record a real session: start the host daemon with
 `BB_PROVIDER_BRIDGE_RECORD_DIR=<dir>` in its environment and run a thread on
 your provider (a bridge that spawns a CLI also calls
-`experimental_recordProviderChildIo` right after `spawn()`); the layout is in
+`experimental_recordProviderChildIo` right after `spawn()`, and
+`experimental_reportProviderChildProcess({ child, threadId })` so bb can
+attribute that child's process-tree memory to the thread); the layout is in
 `docs/provider-bridge-protocol.md`, "Record mode". Redact and commit the lanes
 under your plugin, then replay them in a test:
 `experimental_resolveProviderBridgeLaunch({ modulePath, pluginId })` builds
