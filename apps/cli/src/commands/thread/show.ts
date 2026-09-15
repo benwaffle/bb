@@ -5,11 +5,13 @@ import {
   type ThreadTimelineTextFormat,
 } from "@bb/thread-view";
 import {
+  formatThreadMemoryUsage,
   resolveEnvironmentMergeBaseBranch,
   type Environment,
   type Thread,
   type ThreadEventRow,
   type ThreadGitDiffResponse,
+  type ThreadMemoryUsage,
   type ThreadPullRequest,
   type ThreadTimelinePendingTodos,
   type WorkspaceStatus,
@@ -62,7 +64,7 @@ interface ThreadOutputCommandOptions {
 }
 
 interface ThreadStatusPayload {
-  thread: Thread;
+  thread: Thread & { memoryUsage?: ThreadMemoryUsage | null };
 }
 
 type ThreadShowEnvironmentJsonPayload = Environment & {
@@ -550,6 +552,9 @@ function printThreadStatus(
   }
   if (thread.pinnedAt !== null) {
     console.log(`  Pinned: ${new Date(thread.pinnedAt).toLocaleString()}`);
+  }
+  if (thread.memoryUsage) {
+    console.log(`  Memory: ${formatThreadMemoryUsage(thread.memoryUsage)}`);
   }
   if (environmentInfo) {
     printEnvironmentInfo(environmentInfo);

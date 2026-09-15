@@ -123,6 +123,7 @@ describe("plugin service", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -141,6 +142,7 @@ describe("plugin service", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -640,6 +642,7 @@ describe("plugin service", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -693,6 +696,7 @@ describe("plugin service", () => {
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginSignal: () => 0,
           notifySystem: () => {},
         },
@@ -783,6 +787,7 @@ describe("plugin service", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -812,6 +817,7 @@ describe("plugin service", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -1273,6 +1279,7 @@ describe("plugin service", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -1537,6 +1544,7 @@ describe("plugins-changed broadcast", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem,
       },

@@ -4,6 +4,7 @@ import {
   pluginCommandId,
   pluginCommandIdSchema,
   type KeyboardCommandId,
+  type Host,
 } from "@bb/domain";
 import { Dialog, DialogContent, DialogTitle } from "@bb/shared-ui/dialog";
 import {
@@ -29,6 +30,7 @@ import {
 import { usePluginSlots } from "@/lib/plugin-slots";
 import { getActiveThreadPanelOpener } from "@/components/plugin/plugin-thread-panel-navigation";
 import { pluginListQueryOptions } from "@/hooks/queries/plugin-settings-queries";
+import { hostListQueryOptions, selectHosts } from "@/hooks/queries/host-queries";
 import type { PluginSettingsCandidate } from "@/components/settings/plugin-settings-entries";
 import { appQueryClient } from "@/lib/app-query-client";
 import { LazyCommandPaletteBody } from "./LazyCommandPaletteBody";
@@ -70,6 +72,11 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
   >([]);
   const [recents, setRecents] = useState<readonly string[]>(() =>
     readPaletteRecents(),
+  );
+  const [hosts, setHosts] = useState<readonly Host[]>([]);
+  const persistentHosts = useMemo(
+    () => selectHosts(hosts, "persistent"),
+    [hosts],
   );
   const pluginSlots = usePluginSlots();
   const pluginCommandIds = useMemo(
@@ -165,6 +172,9 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
       void appQueryClient
         .fetchQuery(pluginListQueryOptions({ enabled: true }))
         .then(setInstalledPlugins, () => {});
+      void appQueryClient
+        .fetchQuery(hostListQueryOptions())
+        .then(setHosts, () => {});
     },
     [buildActions, open],
   );
@@ -283,6 +293,7 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
           <LazyCommandPaletteBody
             key={openCount}
             actions={actions}
+            hosts={persistentHosts}
             installedPlugins={installedPlugins}
             recents={recents}
             query={query}
