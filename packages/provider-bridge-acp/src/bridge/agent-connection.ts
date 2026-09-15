@@ -3,7 +3,10 @@ import {
   isClosedProcessStdinError,
 } from "@bb/process-utils";
 import { createInterface } from "node:readline";
-import { experimental_recordProviderChildIo } from "@bb/provider-bridge-protocol/bridge-kit";
+import {
+  experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
+} from "@bb/provider-bridge-protocol/bridge-kit";
 import type { z } from "zod";
 import { ACP_PROTOCOL_VERSION, acpInitializeResultSchema } from "../wire.js";
 
@@ -140,6 +143,10 @@ export function createAcpAgentConnection(
   });
   const { child } = managed;
   experimental_recordProviderChildIo(child, {
+    threadId: options.recordThreadId,
+  });
+  experimental_reportProviderChildProcess({
+    child,
     threadId: options.recordThreadId,
   });
 

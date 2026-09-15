@@ -4,12 +4,15 @@ export type {
   ContextCategory,
   ContextEntry,
   GitBranchSelection,
+  HostMemoryUsage,
+  HostWithMemoryUsage,
   JsonValue,
   PermissionMode,
   PromptInput,
   PromptTextMention,
   ReasoningLevel,
   ServiceTier,
+  ThreadMemoryUsage,
   ThreadStatus,
 } from "@bb/domain";
 export type {
