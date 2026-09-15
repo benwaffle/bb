@@ -94,6 +94,7 @@ describe("plugin load that fails after the factory ran", () => {
       db: createMigratedConnection(),
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,

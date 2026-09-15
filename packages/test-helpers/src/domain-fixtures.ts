@@ -190,6 +190,7 @@ export function makeThreadListEntry(
       activePlanModeCount: 0,
     },
     hasPendingInteraction: false,
+    memoryUsage: null,
     environmentHostId: null,
     environmentName: null,
     environmentBranchName: null,

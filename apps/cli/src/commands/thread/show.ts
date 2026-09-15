@@ -1,11 +1,13 @@
 import { outputJson, printJsonResult } from "../../command-result.js";
 import {
+  formatThreadMemoryUsage,
   GIT_PLUGIN_ID,
   type WorkspaceDiffTarget,
   resolveEnvironmentMergeBaseBranch,
   type Environment,
   type Thread,
   type ThreadEventRow,
+  type ThreadMemoryUsage,
   type ThreadTimelinePendingTodos,
 } from "@bb/domain";
 import {
@@ -73,7 +75,7 @@ interface ThreadOutputCommandOptions {
 }
 
 interface ThreadStatusPayload {
-  thread: Thread;
+  thread: Thread & { memoryUsage?: ThreadMemoryUsage | null };
 }
 
 type ThreadShowEnvironmentJsonPayload = Environment & {
@@ -645,6 +647,9 @@ function printThreadStatus(
   }
   if (thread.pinnedAt !== null) {
     console.log(`  Pinned: ${new Date(thread.pinnedAt).toLocaleString()}`);
+  }
+  if (thread.memoryUsage) {
+    console.log(`  Memory: ${formatThreadMemoryUsage(thread.memoryUsage)}`);
   }
   if (environmentInfo) {
     printEnvironmentInfo(environmentInfo);

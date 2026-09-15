@@ -495,6 +495,7 @@ describe("plugin instance lifecycle without cooperation", () => {
       db: createMigratedConnection(),
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,

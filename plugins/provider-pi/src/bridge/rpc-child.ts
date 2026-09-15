@@ -5,6 +5,7 @@ import {
   experimental_killPortableProcess,
   experimental_readBoundedLines,
   experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
   experimental_spawnPortableProcess,
 } from "@get-bb/plugin-sdk/provider-bridge";
 
@@ -131,6 +132,10 @@ export class PiRpcChild {
       throw error;
     }
     experimental_recordProviderChildIo(this.child, {
+      threadId: args.recordThreadId,
+    });
+    experimental_reportProviderChildProcess({
+      child: this.child,
       threadId: args.recordThreadId,
     });
     this.channelRecorder = createChannelRecorder(args.recordThreadId);
