@@ -284,6 +284,7 @@ import {
   type ThreadStoragePathsQuery,
   type ThreadTimelineQuery,
   type ThreadTimelineReadResponse,
+  type ThreadBackgroundCommandsResponse,
   type ThreadContextResponse,
   type ThreadHeadStateResponse,
   type ThreadWithIncludesResponse,
@@ -451,6 +452,9 @@ type PathProjectSourceFolderId = {
 type PathThreadMessage = { param: { id: string; seq: string } };
 type PathThreadInteractionId = {
   param: { id: string; interactionId: string };
+};
+type PathThreadBackgroundCommandTaskId = {
+  param: { id: string; taskId: string };
 };
 
 export const publicApiRoutes = {
@@ -1705,6 +1709,18 @@ export const publicApiRoutes = {
       path: "/threads/:id/goal/clear",
       method: "post",
       request: noRequest<PathId>(),
+      response: jsonResponse<OperationResponse>(),
+    }),
+    backgroundCommands: defineRoute({
+      path: "/threads/:id/background-commands",
+      method: "get",
+      request: noRequest<PathId>(),
+      response: jsonResponse<ThreadBackgroundCommandsResponse>(),
+    }),
+    stopBackgroundCommand: defineRoute({
+      path: "/threads/:id/background-commands/:taskId/stop",
+      method: "post",
+      request: noRequest<PathThreadBackgroundCommandTaskId>(),
       response: jsonResponse<OperationResponse>(),
     }),
     open: defineRoute({
