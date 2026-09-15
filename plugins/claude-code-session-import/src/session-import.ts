@@ -9,7 +9,8 @@ import {
 import {
   createClaudeDeltaTranslator,
   type ClaudeDeltaTranslator,
-} from "./delta-translation.js";
+} from "../../provider-claude-code/src/delta-translation.js";
+import { recordShowsBbSession } from "./bb-session-marker.js";
 import {
   convertClaudeTranscript,
   isRecord,
@@ -54,6 +55,7 @@ export interface ClaudeSessionSummary {
   firstPrompt: string | null;
   lastActivityAt: number;
   turnCount: number;
+  bbDriven: boolean;
 }
 
 export interface ListClaudeSessionsOptions {
@@ -73,7 +75,8 @@ export interface ReadClaudeSessionTurnsOptions {
 const CLIENT_REQUEST_ID_ALPHABET = "23456789abcdefghijkmnpqrstuvwxyz";
 const CLIENT_REQUEST_ID_LENGTH = 10;
 const IMPORT_THREAD_ID = "claude-session-import";
-const SESSION_ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
+const SESSION_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/iu;
 
 export function looksLikeSessionPath(session: string): boolean {
   return session.endsWith(".jsonl") || session.includes("/");
@@ -89,7 +92,9 @@ export function claudeConfigDir(args: {
     : join(args.homeDir, ".claude");
 }
 
-function summarizeClaudeSession(sessionPath: string): ClaudeSessionSummary | null {
+function summarizeClaudeSession(
+  sessionPath: string,
+): ClaudeSessionSummary | null {
   let raw: string;
   try {
     raw = readFileSync(sessionPath, "utf8");
@@ -107,16 +112,23 @@ function summarizeClaudeSession(sessionPath: string): ClaudeSessionSummary | nul
     }
   }
   const summary: ClaudeSessionSummary = {
-    sessionId: sessionPath.slice(sessionPath.lastIndexOf("/") + 1, -".jsonl".length),
+    sessionId: sessionPath.slice(
+      sessionPath.lastIndexOf("/") + 1,
+      -".jsonl".length,
+    ),
     sessionPath,
     cwd: null,
     title: null,
     firstPrompt: null,
     lastActivityAt: 0,
     turnCount: 0,
+    bbDriven: false,
   };
   let sawConversation = false;
   for (const record of records) {
+    if (!summary.bbDriven && recordShowsBbSession(record)) {
+      summary.bbDriven = true;
+    }
     if (summary.cwd === null && typeof record.cwd === "string") {
       summary.cwd = record.cwd;
     }
@@ -183,9 +195,10 @@ function resolveClaudeSessionPathByTitle(args: {
   env: NodeJS.ProcessEnv;
 }): string {
   const wanted = args.title.toLowerCase();
-  const matches = listClaudeSessions({ homeDir: args.homeDir, env: args.env }).filter(
-    (session) => session.title?.toLowerCase() === wanted,
-  );
+  const matches = listClaudeSessions({
+    homeDir: args.homeDir,
+    env: args.env,
+  }).filter((session) => session.title?.toLowerCase() === wanted);
   const [only] = matches;
   if (matches.length === 1 && only !== undefined) return only.sessionPath;
   if (matches.length === 0) {
@@ -326,7 +339,10 @@ export function buildImportedTurns(args: {
     );
   }
   const lastAt = current?.events.at(-1)?.at ?? current?.at ?? 0;
-  push(lastAt, assemble(translator.buildSessionSettlementDeltas(IMPORT_THREAD_ID)));
+  push(
+    lastAt,
+    assemble(translator.buildSessionSettlementDeltas(IMPORT_THREAD_ID)),
+  );
   return turns;
 }
 
