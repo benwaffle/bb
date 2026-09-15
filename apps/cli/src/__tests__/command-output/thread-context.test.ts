@@ -7,6 +7,7 @@ import {
 } from "../helpers/command-output-harness.js";
 import type { CommandRegistrar } from "../helpers/command-output-harness.js";
 import { registerThreadCommands } from "../../commands/thread/index.js";
+import { formatContextWindowReadout } from "@bb/thread-view";
 
 describe("bb thread context", () => {
   setupCommandOutputTestEnvironment();
@@ -55,6 +56,31 @@ describe("bb thread context", () => {
     expect(collectLogLines(vi.mocked(console.log))).toContain(
       "Future tools (deferred): 500",
     );
+  });
+
+  it("prints the same used/total readout the composer status bar shows", async () => {
+    stubServerApi({
+      "v1.threads.:id.context.$get": vi.fn(async () => ({
+        usage: {
+          usedTokens: 370_000,
+          modelContextWindow: 1_000_000,
+          estimated: false,
+        },
+      })),
+    });
+
+    await runCommand(["thread", "context", "thread-1"], register);
+
+    const lines = collectLogLines(vi.mocked(console.log));
+    expect(lines).toContain("Context window: 370,000 / 1,000,000 tokens");
+    expect(lines).toContain(
+      `Readout: ${formatContextWindowReadout({
+        usedTokens: 370_000,
+        modelContextWindow: 1_000_000,
+        estimated: false,
+      })}`,
+    );
+    expect(lines).toContain("Readout: 370k/1m");
   });
 
   it("returns explicit missing usage in JSON", async () => {
