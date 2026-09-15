@@ -178,6 +178,7 @@ import {
 } from "../thread-info-groups.js";
 import {
   collectPluginAppRegistrations,
+  type CollectedPluginCommandRegistration,
   type CollectedPluginProviderIconRegistration,
   type CollectedExperimentalSidebarFooterItem,
 } from "../internal/plugin-app-collector.js";
@@ -2114,6 +2115,7 @@ export interface CapturedPluginApp {
   codeFenceRenderers: ExperimentalCodeFenceRendererRegistration[];
   messageActions: PluginMessageActionRegistration[];
   messageMetadata: ExperimentalMessageMetadataRegistration[];
+  commandPaletteActions: CollectedPluginCommandRegistration[];
   providerIcons: CollectedPluginProviderIconRegistration[];
   icons: ExperimentalIconRegistration[];
   timelineRenderers: PluginTimelineRendererRegistration[];

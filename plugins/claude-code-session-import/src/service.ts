@@ -1,5 +1,9 @@
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
-import { claudeSessionImportHostContract } from "./session-import-contract.js";
+import { claudeSessionImportHostContract } from "./host-contract.js";
+import {
+  sessionHiddenReason,
+  type SessionHiddenReason,
+} from "./session-visibility.js";
 
 type ImportArgs = Parameters<
   BbPluginApi["sdk"]["threads"]["experimental_import"]
@@ -22,9 +26,14 @@ export interface ProjectChoice {
   kind: "standard" | "personal";
 }
 
+export interface MachineChoices {
+  machines: MachineChoice[];
+  primaryHostId: string | null;
+  defaultHostId: string | null;
+}
+
 export interface SessionListing {
   machine: SelectedMachine;
-  machines: MachineChoice[];
   projects: ProjectChoice[];
   sessions: SessionListEntry[];
 }
@@ -37,8 +46,10 @@ export interface SessionListEntry {
   firstPrompt: string | null;
   lastActivityAt: number;
   turnCount: number;
+  bbDriven: boolean;
   projectId: string | null;
   projectName: string | null;
+  hiddenReason: SessionHiddenReason | null;
 }
 
 export interface ImportSessionRequest {
@@ -74,6 +85,14 @@ export class SessionImportError extends Error {
 
 const INITIAL_TURN_BATCH = 8;
 const HOST_CALL_TIMEOUT_MS = 5 * 60 * 1000;
+const IMPORTED_SESSION_PREFIX = "imported-session:";
+const HELD_SESSION_PREFIX = "held-session:";
+export const CLAUDE_CODE_PROVIDER_ID = "claude-code";
+
+interface ImportedSessionRecord {
+  threadId: string;
+  importedAt: number;
+}
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -89,6 +108,17 @@ function callOptions(hostId: string, signal: AbortSignal | undefined) {
     timeoutMs: HOST_CALL_TIMEOUT_MS,
     ...(signal ? { signal } : {}),
   };
+}
+
+export function defaultMachine(
+  machines: readonly MachineChoice[],
+  primaryHostId: string | null,
+): MachineChoice | null {
+  const connected = machines.filter((candidate) => candidate.connected);
+  const primary = connected.find((candidate) => candidate.id === primaryHostId);
+  if (primary !== undefined) return primary;
+  const [only] = connected;
+  return connected.length === 1 && only !== undefined ? only : null;
 }
 
 export function createClaudeSessionImportService(bb: BbPluginApi) {
@@ -107,12 +137,26 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     }));
   }
 
+  async function listMachineChoices(
+    signal: AbortSignal | undefined,
+  ): Promise<MachineChoices> {
+    const [machines, config] = await Promise.all([
+      listMachines(signal),
+      bb.sdk.system.config(signal ? { signal } : undefined),
+    ]);
+    return {
+      machines,
+      primaryHostId: config.primaryHostId,
+      defaultHostId: defaultMachine(machines, config.primaryHostId)?.id ?? null,
+    };
+  }
+
   async function selectMachine(
     machine: string | null,
     signal: AbortSignal | undefined,
-  ): Promise<{ selected: SelectedMachine; machines: MachineChoice[] }> {
-    const machines = await listMachines(signal);
+  ): Promise<SelectedMachine> {
     if (machine !== null) {
+      const machines = await listMachines(signal);
       const selected = machines.find(
         (candidate) => candidate.id === machine || candidate.name === machine,
       );
@@ -124,20 +168,22 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
           `Machine ${selected.name} (${selected.id}) is not connected`,
         );
       }
-      return { selected, machines };
+      return selected;
     }
+    const { machines, primaryHostId } = await listMachineChoices(signal);
+    const selected = defaultMachine(machines, primaryHostId);
+    if (selected !== null) return selected;
     const connected = machines.filter((candidate) => candidate.connected);
-    const [only] = connected;
-    if (connected.length === 1 && only !== undefined) {
-      return { selected: only, machines };
-    }
     if (connected.length === 0) {
       throw new SessionImportError(
         "No connected machine can read Claude Code sessions",
       );
     }
+    const primary = machines.find(
+      (candidate) => candidate.id === primaryHostId,
+    );
     throw new SessionImportError(
-      `Several machines are connected; pick the one holding the session with --machine:\n${connected
+      `${primary === undefined ? "bb does not know which machine is local" : `The local machine ${primary.name} (${primary.id}) is not connected`}; pick the one holding the session with --machine:\n${connected
         .map((candidate) => `  ${candidate.id}  ${candidate.name}`)
         .join("\n")}`,
     );
@@ -158,31 +204,142 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     }));
   }
 
+  async function liveProviderSessionIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const result = await bb.sdk.threads.experimental_providerSessions({
+      providerId: CLAUDE_CODE_PROVIDER_ID,
+      ...(signal ? { signal } : {}),
+    });
+    return new Set(result.sessions.map((entry) => entry.providerThreadId));
+  }
+
+  async function rememberProviderSessionIds(
+    sessionIds: Iterable<string>,
+    known: ReadonlySet<string>,
+  ): Promise<void> {
+    for (const sessionId of sessionIds) {
+      if (known.has(sessionId)) continue;
+      await bb.storage.kv.set(`${HELD_SESSION_PREFIX}${sessionId}`, {
+        heldAt: Date.now(),
+      });
+    }
+  }
+
+  async function heldProviderSessionIds(): Promise<Set<string>> {
+    const keys = await bb.storage.kv.list(HELD_SESSION_PREFIX);
+    return new Set(keys.map((key) => key.slice(HELD_SESSION_PREFIX.length)));
+  }
+
+  async function ownedWorkspacePaths(
+    hostId: string,
+    signal: AbortSignal | undefined,
+  ): Promise<string[]> {
+    const environments = await bb.sdk.environments.list({
+      hostId,
+      ...(signal ? { signal } : {}),
+    });
+    const paths: string[] = [];
+    for (const environment of environments) {
+      if (environment.managed && environment.path !== null) {
+        paths.push(environment.path);
+      }
+    }
+    return paths;
+  }
+
+  async function knownThreadIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const threads = await bb.sdk.threads.list({
+      includeHidden: true,
+      ...(signal ? { signal } : {}),
+    });
+    return new Set(threads.map((thread) => thread.id));
+  }
+
+  async function providerSessionIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const [live, held] = await Promise.all([
+      liveProviderSessionIds(signal),
+      heldProviderSessionIds(),
+    ]);
+    await rememberProviderSessionIds(live, held);
+    for (const sessionId of held) live.add(sessionId);
+    return live;
+  }
+
+  async function recordHeldProviderSessions(): Promise<void> {
+    const [live, held] = await Promise.all([
+      liveProviderSessionIds(undefined),
+      heldProviderSessionIds(),
+    ]);
+    await rememberProviderSessionIds(live, held);
+  }
+
+  async function importedSessionIds(
+    signal: AbortSignal | undefined,
+  ): Promise<Set<string>> {
+    const keys = await bb.storage.kv.list(IMPORTED_SESSION_PREFIX);
+    if (keys.length === 0) return new Set();
+    const threads = await bb.sdk.threads.list({
+      originPluginId: bb.pluginId,
+      includeHidden: true,
+      ...(signal ? { signal } : {}),
+    });
+    const liveThreadIds = new Set(threads.map((thread) => thread.id));
+    const imported = new Set<string>();
+    for (const key of keys) {
+      const record = await bb.storage.kv.get<ImportedSessionRecord>(key);
+      if (record === undefined) continue;
+      if (liveThreadIds.has(record.threadId)) {
+        imported.add(key.slice(IMPORTED_SESSION_PREFIX.length));
+        continue;
+      }
+      await bb.storage.kv.delete(key);
+    }
+    return imported;
+  }
+
   async function listSessions(args: {
     machine: string | null;
     dir: string | null;
     signal: AbortSignal | undefined;
   }): Promise<SessionListing> {
-    const { selected, machines } = await selectMachine(args.machine, args.signal);
-    const [result, projects] = await Promise.all([
+    const selected = await selectMachine(args.machine, args.signal);
+    const [
+      result,
+      projects,
+      providerSessions,
+      imported,
+      ownedPaths,
+      threadIds,
+    ] = await Promise.all([
       host.call(
         "listClaudeSessions",
         args.dir === null ? {} : { dir: args.dir },
         callOptions(selected.id, args.signal),
       ),
       listProjects(args.signal),
+      providerSessionIds(args.signal),
+      importedSessionIds(args.signal),
+      ownedWorkspacePaths(selected.id, args.signal),
+      knownThreadIds(args.signal),
     ]);
     const projectByPath = new Map<string, { id: string; name: string }>();
     for (const project of projects) {
       for (const source of project.sources) {
         if (source.hostId === selected.id) {
-          projectByPath.set(source.path, { id: project.id, name: project.name });
+          projectByPath.set(source.path, {
+            id: project.id,
+            name: project.name,
+          });
         }
       }
     }
     return {
       machine: selected,
-      machines,
       projects: projects.map((project) => ({
         id: project.id,
         name: project.name,
@@ -195,6 +352,12 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
           ...session,
           projectId: project?.id ?? null,
           projectName: project?.name ?? null,
+          hiddenReason: sessionHiddenReason(session, {
+            importedSessionIds: imported,
+            providerSessionIds: providerSessions,
+            ownedWorkspacePaths: ownedPaths,
+            threadIds,
+          }),
         };
       }),
     };
@@ -323,7 +486,7 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
   async function importSession(
     request: ImportSessionRequest,
   ): Promise<ImportSessionResult> {
-    const { selected } = await selectMachine(request.machine, request.signal);
+    const selected = await selectMachine(request.machine, request.signal);
     const session = await readAllTurns({
       hostId: selected.id,
       session: request.session,
@@ -365,13 +528,21 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     const title = request.title ?? session.title ?? undefined;
     const thread = await bb.sdk.threads.experimental_import({
       projectId,
-      providerId: "claude-code",
+      providerId: CLAUDE_CODE_PROVIDER_ID,
       environment,
       sourceProviderThreadId: session.sessionId,
       turns,
       ...(title === undefined ? {} : { title }),
       ...(session.model === null ? {} : { model: session.model }),
     });
+    const importedRecord: ImportedSessionRecord = {
+      threadId: thread.id,
+      importedAt: Date.now(),
+    };
+    await bb.storage.kv.set(
+      `${IMPORTED_SESSION_PREFIX}${session.sessionId}`,
+      importedRecord,
+    );
     return {
       thread,
       session: {
@@ -384,7 +555,12 @@ export function createClaudeSessionImportService(bb: BbPluginApi) {
     };
   }
 
-  return { importSession, listMachines, listSessions };
+  return {
+    importSession,
+    listMachineChoices,
+    listSessions,
+    recordHeldProviderSessions,
+  };
 }
 
 export type ClaudeSessionImportService = ReturnType<
