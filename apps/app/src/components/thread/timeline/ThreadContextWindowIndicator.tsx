@@ -6,6 +6,7 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import {
   calculateContextWindowUsagePercent,
   formatCompactTokenCount,
+  formatContextWindowReadout,
 } from "./thread-context-window-usage.js";
 
 import {
@@ -172,11 +173,7 @@ export function ThreadContextWindowIndicator({
   const open = defaultOpen || hoverOpen;
 
   const usedPercent = calculateContextWindowUsagePercent(usage);
-  const visualPercent = Math.min(Math.max(usedPercent, 0), 100);
-
-  const radius = 6.5;
-  const circumference = 2 * Math.PI * radius;
-  const dashOffset = circumference * (1 - visualPercent / 100);
+  const readout = formatContextWindowReadout(usage);
 
   const toneClass =
     usedPercent >= 90
@@ -193,35 +190,13 @@ export function ThreadContextWindowIndicator({
         <button
           type="button"
           {...triggerHoverProps}
-          className="-m-1 inline-flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-state-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label={`Context window ${usedPercent}% used`}
+          className={cn(
+            "-mx-1 inline-flex h-8 cursor-pointer items-center justify-center rounded-full px-1 text-xs tabular-nums transition-colors hover:bg-state-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            toneClass,
+          )}
+          aria-label={`${titleLabel} ${readout} tokens, ${usedPercent}% used`}
         >
-          <svg
-            viewBox="0 0 16 16"
-            className={cn("size-4", toneClass)}
-            aria-hidden="true"
-          >
-            <circle
-              cx="8"
-              cy="8"
-              r={radius}
-              fill="none"
-              strokeWidth="3"
-              className="stroke-border-hairline"
-            />
-            <circle
-              cx="8"
-              cy="8"
-              r={radius}
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={dashOffset}
-              transform="rotate(-90 8 8)"
-            />
-          </svg>
+          {readout}
         </button>
       </PopoverTrigger>
       <PopoverContent
