@@ -57,6 +57,7 @@ import {
 } from "./session-state.js";
 import { getAuthenticatedDaemon } from "./auth.js";
 import { validateExtensionPayloads } from "./extension-payloads.js";
+import { rememberPublishedSessionCommands } from "../services/threads/provider-session-commands.js";
 import { validatePresentationIcons } from "./presentation-icons.js";
 
 interface ToStoredEventArgs {
@@ -1014,6 +1015,14 @@ export function registerInternalEventRoutes(app: Hono, deps: AppDeps): void {
       notifyInsertedEventThreads(deps, {
         eventInputs,
         insertedInputIndexes: appendResult.insertedInputIndexes,
+      });
+      rememberPublishedSessionCommands(deps, {
+        hostId: session.hostId,
+        envelopes: appendResult.insertedInputIndexes.flatMap((index) => {
+          const envelope = postableEvents[index];
+          return envelope === undefined ? [] : [envelope];
+        }),
+        now: Date.now(),
       });
 
       const followUps = await applyEventEffects(
