@@ -3709,3 +3709,34 @@ with third-party providers.
 `bb.sdk.experimental_promptHistory.list({ cursor?, limit?, signal? })` returns `{ entries, nextCursor }`: every accepted user prompt across projects and threads, newest first, each with `id`, `createdAt`, `input`, `projectId`, and `threadId`. `limit` is a digit string, defaulting to 100 and capped at 1000. `nextCursor` is an opaque string, or null on the last page. A page can hold fewer than `limit` entries while `nextCursor` is set, because stored rows whose input no longer parses are skipped. Prompts from a deleted thread remain listed until the thread row is removed, which cascades to its prompt history. The same route backs `bb prompt-history list`.
 
 Before stabilization, audit whether `limit` should be a number, whether the cursor format needs versioning, whether project or thread filters belong on this call rather than on `projects.promptHistory` and `threads.promptHistory`, and whether skipped rows should fill the page.
+
+## `PluginProviderDeclaration.experimental_sessionCommandsExtensionKind`
+
+**What it does.** Names one of the provider's `extensionKinds` whose `state`
+schema is `experimental_sessionCommandsStateSchema` from
+`@get-bb/plugin-sdk/provider-bridge` (types `ExperimentalSessionCommand` and
+`ExperimentalSessionCommandsState`). The provider's bridge publishes the
+agent's live slash-command list for a thread as an `extension.state` delta of
+that kind, on session start and whenever the agent changes the list. The
+server stores it as ordinary extension state and also remembers the most
+recent list per machine and provider in `provider-session-commands.json`
+under the server data dir. `GET
+/projects/:id/commands` (SDK `projects.commands`, CLI `bb project commands
+[--thread]`) merges a list into the catalog as `source: "skill", origin:
+"builtin"` entries, skipping any name or alias the scanned catalog already
+has: the thread's own latest list when `threadId` names a thread on this
+provider that has published one, otherwise the machine's remembered list. The
+Claude Code provider is the first caller, publishing Claude Code's bundled,
+user, and plugin skills minus terminal-only ones.
+
+**Audit before stabilizing.**
+
+1. Decide whether the command list belongs on a core thread delta instead of
+   a provider-declared extension kind, now that two layers name the kind.
+2. Confirm `skill`/`builtin` is the right catalog classification, or whether
+   session commands need their own source or origin and a distinct section.
+3. Confirm the 48 KiB bridge-side budget and the 400-entry schema cap against
+   real installs with many skills.
+4. Confirm the per-machine fallback should be the last publish from any
+   thread rather than a per-project or per-workspace list, since project
+   skills differ between checkouts while bundled skills do not.
