@@ -99,7 +99,7 @@ describe("bb thread list command output", () => {
     });
     expect(collectLogPayloads(vi.mocked(console.log))).toEqual([
       "",
-      "ID                 Title  Project  Status         \n-----------------  -----  -------  ---------------\nthread-archived-1  -      Alpha    idle (archived)",
+      "ID                 Title  Project  Status           Memory\n-----------------  -----  -------  ---------------  ------\nthread-archived-1  -      Alpha    idle (archived)  -     ",
       "",
     ]);
   });
@@ -152,7 +152,7 @@ describe("bb thread list command output", () => {
     });
     expect(collectLogPayloads(vi.mocked(console.log))).toEqual([
       "",
-      "ID                 Title  Project  Status      \n-----------------  -----  -------  ------------\nthread-personal-1  -      -        idle        ",
+      "ID                 Title  Project  Status        Memory\n-----------------  -----  -------  ------------  ------\nthread-personal-1  -      -        idle          -     ",
       "",
     ]);
   });
@@ -211,6 +211,55 @@ describe("bb thread list command output", () => {
       /thr_a9niqhjj9c\s+Investigate flaky login test\s+qa\s+idle/,
     );
     expect(output).toMatch(/thr_unknownproj\s+x+…\s+proj_missing\s+idle/);
+  });
+
+  it("bb thread list prints sampled memory and marks shared attribution", async () => {
+    const list = vi.fn(async () => [
+      {
+        ...fixtures.makeThread({
+          id: "thread-mem-exact",
+          projectId: "proj-1",
+          providerId: "codex",
+          status: "active",
+          createdAt: 1,
+          updatedAt: 1,
+        }),
+        memoryUsage: {
+          rssBytes: 2.7 * 1024 * 1024 * 1024,
+          processCount: 40,
+          sharedThreadCount: 1,
+          sampledAt: 1_700_000_000_000,
+        },
+      },
+      {
+        ...fixtures.makeThread({
+          id: "thread-mem-shared",
+          projectId: "proj-1",
+          providerId: "codex",
+          status: "idle",
+          createdAt: 1,
+          updatedAt: 1,
+        }),
+        memoryUsage: {
+          rssBytes: 512 * 1024 * 1024,
+          processCount: 3,
+          sharedThreadCount: 2,
+          sampledAt: 1_700_000_000_000,
+        },
+      },
+    ]);
+    stubServerApi({
+      "v1.threads.$get": list,
+      "v1.projects.$get": async () => [],
+    });
+
+    await runCommand(["thread", "list"], register);
+
+    const output = collectLogPayloads(vi.mocked(console.log)).join("\n");
+    expect(output).toMatch(/thread-mem-exact\s+-\s+proj-1\s+active\s+2\.7 GB/);
+    expect(output).toMatch(
+      /thread-mem-shared\s+-\s+proj-1\s+idle\s+512 MB \(shared by 2\)/,
+    );
   });
 
   it("bb thread list --json does not fetch projects", async () => {

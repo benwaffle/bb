@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { hostMemoryUsageSchema } from "./memory-usage.js";
 import { permissionModeSchema } from "./shared-types.js";
 
 const hostStatusValues = ["connected", "disconnected"] as const;
@@ -40,3 +41,8 @@ export const hostSchema = z.object({
   updatedAt: z.number(),
 });
 export type Host = z.infer<typeof hostSchema>;
+
+export const hostWithMemoryUsageSchema = hostSchema.extend({
+  memoryUsage: hostMemoryUsageSchema.nullable(),
+});
+export type HostWithMemoryUsage = z.infer<typeof hostWithMemoryUsageSchema>;

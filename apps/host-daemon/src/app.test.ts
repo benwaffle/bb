@@ -294,6 +294,9 @@ function createFakeRuntime(): AgentRuntime {
     listRunningProviders() {
       return [];
     },
+    listProviderProcesses() {
+      return [];
+    },
     getActiveTurnId() {
       return null;
     },
