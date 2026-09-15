@@ -2,6 +2,7 @@ import { registerContextCommand } from "./context.js";
 import { registerSessionStateCommands } from "./session-state.js";
 import { Command } from "commander";
 import { registerActionsCommands } from "./actions.js";
+import { registerBackgroundCommands } from "./background.js";
 import { registerCountCommand } from "./count.js";
 import { registerInteractionCommands } from "./interactions.js";
 import { registerListCommand } from "./list.js";
@@ -30,5 +31,6 @@ export function registerThreadCommands(
   registerPaneCommand(thread, getUrl);
   registerOrganizationCommands(thread, getUrl);
   registerActionsCommands(thread, getUrl);
+  registerBackgroundCommands(thread, getUrl);
   registerInteractionCommands(thread, getUrl);
 }

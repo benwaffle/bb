@@ -57,6 +57,8 @@ import type {
   ThreadTabsResponse,
   ThreadTimelineReadResponse,
   ThreadTimelineResponse,
+  ThreadBackgroundCommandStopResponse,
+  ThreadBackgroundCommandsResponse,
   ThreadContextResponse,
   ThreadHeadStateResponse,
   ThreadWithIncludesResponse,
@@ -213,6 +215,9 @@ export type ThreadEditMessageResult = EditMessageResponse;
 export type ThreadStopResult = { ok: true };
 export type ThreadCompactResult = { ok: true };
 export type ThreadBannerActionResult = { ok: true };
+export type ThreadBackgroundCommandStopResult =
+  ThreadBackgroundCommandStopResponse;
+export type ThreadBackgroundCommandsResult = ThreadBackgroundCommandsResponse;
 export type ThreadUnarchiveResult = { ok: true };
 export type ThreadArchiveAllResult = ThreadArchiveAllResponse;
 export type ThreadReadStateResult = ThreadResponse;
@@ -354,6 +359,10 @@ export interface ThreadActionArgs {
 
 export interface ThreadStatusArgs extends ThreadActionArgs {
   signal?: AbortSignal;
+}
+
+export interface ThreadBackgroundCommandStopArgs extends ThreadActionArgs {
+  taskId: string;
 }
 
 export interface ThreadPromptHistoryArgs extends PromptHistoryQuery {
@@ -633,9 +642,25 @@ export interface ThreadsArea {
   archiveAll(args: ThreadActionArgs): Promise<ThreadArchiveAllResult>;
   childSummary(args: ThreadStatusArgs): Promise<ThreadChildSummaryResult>;
   compact(args: ThreadActionArgs): Promise<ThreadCompactResult>;
+  /**
+   * List the background commands still running for a thread. Each row carries
+   * the harness task id (`familyId`), the exact command line when the provider
+   * reported it, and the latest output tail.
+   */
+  backgroundCommands(
+    args: ThreadStatusArgs,
+  ): Promise<ThreadBackgroundCommandsResult>;
   cancelPlan(args: ThreadActionArgs): Promise<ThreadBannerActionResult>;
   clearContext(args: ThreadActionArgs): Promise<ThreadBannerActionResult>;
   clearGoal(args: ThreadActionArgs): Promise<ThreadBannerActionResult>;
+  /**
+   * Stop one running background command by its harness task id. Resolves once
+   * the provider confirms the command settled; the agent learns about the stop
+   * through its own task notification.
+   */
+  stopBackgroundCommand(
+    args: ThreadBackgroundCommandStopArgs,
+  ): Promise<ThreadBackgroundCommandStopResult>;
   conversationOutline(
     args: ThreadConversationOutlineArgs,
   ): Promise<ThreadConversationOutlineResult>;
@@ -1690,6 +1715,26 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
         }),
       );
       return { ok: true };
+    },
+    async backgroundCommands(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"]["background-commands"].$get(
+          { param: { id: input.threadId } },
+          ...signalRequestArgs(input.signal),
+        ),
+      );
+    },
+    async stopBackgroundCommand(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"]["background-commands"][
+          ":taskId"
+        ].stop.$post(
+          {
+            param: { id: input.threadId, taskId: input.taskId },
+          },
+          ...signalRequestArgs(input.signal),
+        ),
+      );
     },
     tabs,
     async context(input) {
