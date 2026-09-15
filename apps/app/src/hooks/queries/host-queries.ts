@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { keepPreviousData, skipToken, useQuery } from "@tanstack/react-query";
-import type { Host } from "@bb/domain";
+import type { Host, HostMemoryUsage } from "@bb/domain";
 import type { HostDirectoryListing } from "@bb/server-contract";
 import { sdk } from "@/lib/sdk";
 import { useHostListRealtimeSubscription } from "@/hooks/useRealtimeSubscription";
@@ -8,9 +8,37 @@ import { useSystemConfig } from "@/hooks/queries/system-queries";
 import {
   hostCloneDefaultPathQueryKey,
   hostDirectoryQueryKey,
+  hostMemoryUsageQueryKey,
   hostsQueryKey,
 } from "./query-keys";
 import type { QueryOptions } from "./query-helpers";
+
+export function useHostMemoryUsage(hostId: string | null) {
+  return useQuery<HostMemoryUsage | null>({
+    queryKey: hostMemoryUsageQueryKey(hostId),
+    queryFn:
+      hostId === null
+        ? skipToken
+        : async ({ signal }) =>
+            (await sdk.hosts.get({ hostId, signal })).memoryUsage,
+    staleTime: 15_000,
+  });
+}
+
+/**
+ * Host list for callers that fetch imperatively through `appQueryClient`
+ * instead of subscribing with {@link useHosts}, so they need no
+ * `QueryClientProvider` above them.
+ */
+export function hostListQueryOptions(args?: { includeCreating?: boolean }) {
+  const includeCreating = args?.includeCreating ?? false;
+  return {
+    queryKey: hostsQueryKey(includeCreating),
+    queryFn: ({ signal }: { signal?: AbortSignal }): Promise<Host[]> =>
+      sdk.hosts.list({ signal, includeCreating }),
+    staleTime: 60_000,
+  };
+}
 
 export function useHosts(
   options?: QueryOptions & { includeCreating?: boolean },
