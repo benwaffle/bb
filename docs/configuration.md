@@ -425,6 +425,16 @@ near-silent audio produces a warning in the open preview or an accessible
 status in the recording row. Silence warnings clear when audio returns and
 never stop recording or switch microphones automatically.
 
+Push-to-talk is also client-local. Holding the space bar for 200 ms in an empty
+composer, or while nothing interactive has focus, records until the key is
+released; the transcript appears in the composer as muted interim text while
+you speak and is inserted as plain text on release. Escape cancels. The
+composer re-transcribes the accumulated audio about once a second through the
+same voice-transcription route, rotating to a new 20 second segment so each
+request stays inside the ten second transcription budget, and stops after five
+minutes. The "Hold Space to talk" switch in Settings → Voice Input stores
+`bb.voiceInput.pushToTalkEnabled` in localStorage (default on).
+
 ## Themes
 
 `bb theme` controls CSS-variable overrides for the app palette and typography

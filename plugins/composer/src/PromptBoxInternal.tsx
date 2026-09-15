@@ -134,10 +134,18 @@ import {
 } from "./ComposerEditorSlot";
 import { isModifierSubmitKeyEvent } from "./modifier-submit-key";
 import { composerSubmittingBlockedReason } from "./composer-submit-gate";
+import {
+  OPEN_OVERLAY_SELECTOR,
+  isSpaceKey,
+  shouldStartPushToTalk,
+} from "./push-to-talk-keys";
+import { setVoiceInterimText } from "./editor/voice-interim-extension";
 
 import { ComposerSendMenu } from "./ComposerSendMenu";
 
 const PROMPTBOX_MIN_HEIGHT = 68;
+const PUSH_TO_TALK_HOLD_DELAY_MS = 200;
+const PUSH_TO_TALK_HINT = "Release Space to finish";
 const DEFAULT_MENTION_TRIGGER = "@";
 const PROMPTBOX_SELECTION_REVEAL_MARGIN = 12;
 const COMPACT_PROMPT_ACTION_BUTTON_CLASS =
@@ -1219,8 +1227,15 @@ export function PromptBoxInternal({
   const [recalledHistoryDraft, setRecalledHistoryDraft] =
     useState<ComposerDraftSnapshot | null>(null);
   const hasActiveHistorySessionRef = useRef(false);
-  const isVoiceRecording = voice?.state === "recording";
-  const isVoiceProcessing = voice?.state === "transcribing";
+  const pushToTalk = voice?.pushToTalk;
+  const isPushToTalkRecording =
+    pushToTalk?.state === "starting" || pushToTalk?.state === "recording";
+  const isPushToTalkFinalizing = pushToTalk?.state === "finalizing";
+  const isPushToTalkActive = isPushToTalkRecording || isPushToTalkFinalizing;
+  const isVoiceRecording =
+    voice?.state === "recording" || isPushToTalkRecording;
+  const isVoiceProcessing =
+    voice?.state === "transcribing" || isPushToTalkFinalizing;
   const showVoiceActionGroup = isVoiceRecording || isVoiceProcessing;
   const voiceActionState = isVoiceRecording
     ? "recording"
@@ -2904,6 +2919,10 @@ export function PromptBoxInternal({
       voiceActionRevealFrameRef.current = null;
     }
     setVoiceActionTransition("exiting");
+    if (voice?.pushToTalk && voice.pushToTalk.state !== "idle") {
+      voice.pushToTalk.cancel();
+      return;
+    }
     voice?.cancel();
   }, [voice]);
   const attachmentUploadTitle = "Uploading attachments...";
@@ -3277,6 +3296,119 @@ export function PromptBoxInternal({
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [cancelVoiceInput, showVoiceActionGroup, voice]);
 
+  const pushToTalkHoldTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const pushToTalkHeldRef = useRef(false);
+  const pushToTalkEnabled = pushToTalk?.enabled === true;
+  const pushToTalkStart = pushToTalk?.start;
+  const pushToTalkStop = pushToTalk?.stop;
+  const pushToTalkCancel = pushToTalk?.cancel;
+  const pushToTalkGateRef = useRef({
+    composerInputLocked,
+    composerIsEmpty: !hasSubmittableInput,
+    isSubmitting,
+    showVoiceActionGroup,
+  });
+  useLayoutEffect(() => {
+    pushToTalkGateRef.current = {
+      composerInputLocked,
+      composerIsEmpty: !hasSubmittableInput,
+      isSubmitting,
+      showVoiceActionGroup,
+    };
+  }, [
+    composerInputLocked,
+    hasSubmittableInput,
+    isSubmitting,
+    showVoiceActionGroup,
+  ]);
+
+  useEffect(() => {
+    if (!pushToTalkEnabled || !pushToTalkStart || !pushToTalkStop) return;
+    const clearHoldTimer = () => {
+      if (pushToTalkHoldTimerRef.current !== null) {
+        clearTimeout(pushToTalkHoldTimerRef.current);
+        pushToTalkHoldTimerRef.current = null;
+      }
+    };
+    const release = () => {
+      clearHoldTimer();
+      if (!pushToTalkHeldRef.current) return;
+      pushToTalkHeldRef.current = false;
+      void pushToTalkStop();
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (
+        pushToTalkHeldRef.current ||
+        pushToTalkHoldTimerRef.current !== null
+      ) {
+        if (isSpaceKey(event)) event.preventDefault();
+        return;
+      }
+      const gate = pushToTalkGateRef.current;
+      if (gate.showVoiceActionGroup || gate.isSubmitting) return;
+      const composerElement = editorRef.current?.view.dom ?? null;
+      const shouldStart = shouldStartPushToTalk(event, {
+        enabled: true,
+        composerElement,
+        composerIsEmpty: gate.composerIsEmpty,
+        composerLocked: gate.composerInputLocked,
+        hasOpenOverlay: document.querySelector(OPEN_OVERLAY_SELECTOR) !== null,
+      });
+      if (!shouldStart) return;
+      if (
+        composerElement !== null &&
+        composerElement.contains(event.target as Node)
+      ) {
+        event.preventDefault();
+      }
+      pushToTalkHoldTimerRef.current = setTimeout(() => {
+        pushToTalkHoldTimerRef.current = null;
+        pushToTalkHeldRef.current = true;
+        void pushToTalkStart();
+      }, PUSH_TO_TALK_HOLD_DELAY_MS);
+    };
+    const handleKeyUp = (event: KeyboardEvent) => {
+      if (!isSpaceKey(event)) return;
+      if (pushToTalkHeldRef.current) event.preventDefault();
+      release();
+    };
+    const handleBlur = () => release();
+    const handleVisibility = () => {
+      if (document.visibilityState === "hidden") release();
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
+    window.addEventListener("blur", handleBlur);
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
+      window.removeEventListener("blur", handleBlur);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      clearHoldTimer();
+      if (pushToTalkHeldRef.current) {
+        pushToTalkHeldRef.current = false;
+        pushToTalkCancel?.();
+      }
+    };
+  }, [pushToTalkCancel, pushToTalkEnabled, pushToTalkStart, pushToTalkStop]);
+
+  useEffect(() => {
+    if (pushToTalk?.state === "idle" && pushToTalkHeldRef.current) {
+      pushToTalkHeldRef.current = false;
+    }
+  }, [pushToTalk?.state]);
+
+  const pushToTalkTranscript = pushToTalk?.transcript;
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    const text =
+      isPushToTalkActive && pushToTalkTranscript ? pushToTalkTranscript : null;
+    setVoiceInterimText(editor, text);
+  }, [editor, isPushToTalkActive, pushToTalkTranscript]);
+
   return (
     <form
       ref={formRef}
@@ -3501,10 +3633,19 @@ export function PromptBoxInternal({
                     isCompact={showCompactLayout}
                     state={renderedVoiceActionState}
                     delivery={voice.delivery}
-                    stream={voice.stream}
+                    stream={
+                      isPushToTalkActive
+                        ? (voice.pushToTalk?.stream ?? null)
+                        : voice.stream
+                    }
+                    hint={isPushToTalkRecording ? PUSH_TO_TALK_HINT : undefined}
                     microphoneWarning={voice.microphoneWarning}
                     submitIcon={submitIcon ?? "CornerDownLeft"}
-                    onConfirm={voice.stop}
+                    onConfirm={
+                      isPushToTalkActive
+                        ? () => void voice.pushToTalk?.stop()
+                        : voice.stop
+                    }
                     onSend={voice.send}
                     onCancel={cancelVoiceInput}
                   />
