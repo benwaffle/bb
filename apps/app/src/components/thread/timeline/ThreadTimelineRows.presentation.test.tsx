@@ -143,7 +143,10 @@ describe("presentation-driven timeline rows", () => {
                 path: "~/.claude/ide",
               },
             ],
-            presentation,
+            presentation: {
+              ...presentation,
+              title: "grep -rn pid ~/.claude/ide",
+            },
           }),
           commandRow({ id: "cmd_plain", command: "ls -la src" }),
         ]}
