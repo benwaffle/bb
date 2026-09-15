@@ -26,6 +26,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildTimelineRowTitle,
   buildThreadTimelineFromEvents,
+  buildThreadTimelineTurnDetailsFromEvents,
   extractThreadTimelineActivePlanTurn,
   type ThreadEventWithMeta,
 } from "../src/index.js";
@@ -3200,4 +3201,68 @@ it("keeps a canonical disclosure ID when completed reasoning gains a delegation 
     operationKind: "reasoning",
   });
   expect(completed?.id).not.toBe(live.activeThinking?.id);
+});
+
+it("matches turn details for a segment that ends after its turn completes", () => {
+  const event = createTimelineEventFactory({
+    threadId: "thread-1",
+    turnId: "turn-1",
+  });
+  const delegation = {
+    background: true,
+    childRef: "child-1",
+    itemId: "delegation-1",
+    label: "Review the RFC",
+  };
+  const events = fromRows([
+    event.turnStarted({ seq: 1 }),
+    event.delegationStarted({ ...delegation, seq: 2 }),
+    event.assistantCompleted({
+      seq: 3,
+      itemId: "assistant-1",
+      text: "Reviewers are running.",
+    }),
+    event.assistantCompleted({
+      seq: 4,
+      itemId: "assistant-2",
+      text: "Still waiting on one.",
+    }),
+    event.commandStarted({ seq: 5, itemId: "command-1", command: "echo done" }),
+    event.commandCompleted({
+      seq: 6,
+      itemId: "command-1",
+      command: "echo done",
+    }),
+    event.assistantCompleted({ seq: 7, itemId: "assistant-3", text: "Done." }),
+    event.turnCompleted({ seq: 8 }),
+    event.delegationCompleted({ ...delegation, seq: 9 }),
+  ]);
+
+  const turnRows = buildTimelineRows(events).filter(
+    (row): row is Extract<TimelineRow, { kind: "turn" }> => row.kind === "turn",
+  );
+  expect(turnRows.map((row) => [row.sourceSeqStart, row.sourceSeqEnd])).toEqual(
+    [
+      [2, 9],
+      [4, 6],
+    ],
+  );
+
+  const details = buildThreadTimelineTurnDetailsFromEvents({
+    events,
+    options: {
+      includeDiagnosticOperations: false,
+      sourceSeqEnd: 9,
+      sourceSeqStart: 2,
+      threadName: "",
+      threadStatus: "idle",
+      turnStartedSourceSeq: 1,
+      workspaceRoot: null,
+    },
+  });
+
+  expect(details).toMatchObject({
+    kind: "matched",
+    rows: [expect.objectContaining({ id: "thread-1:delegation:delegation-1" })],
+  });
 });

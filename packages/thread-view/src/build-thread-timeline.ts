@@ -111,7 +111,11 @@ interface ThreadTimelineSourceSeqRange {
   sourceSeqStart: number;
 }
 
-interface BuildThreadTimelineTurnDetailsFromEventsOptions extends ThreadTimelineSourceSeqRange {
+interface ThreadTimelineTurnDetailsSelection extends ThreadTimelineSourceSeqRange {
+  turnStartedSourceSeq: number | null;
+}
+
+interface BuildThreadTimelineTurnDetailsFromEventsOptions extends ThreadTimelineTurnDetailsSelection {
   includeDiagnosticOperations: boolean;
   providerDisplayName?: string;
   threadStatus: Thread["status"];
@@ -1234,14 +1238,15 @@ type TimelineTurnSummaryRow = Extract<TimelineRow, { kind: "turn" }>;
 
 function findMatchingTurnSummaryRow(
   rows: TimelineRow[],
-  range: ThreadTimelineSourceSeqRange,
+  selection: ThreadTimelineTurnDetailsSelection,
 ): TimelineTurnSummaryRow | null {
   return (
     rows.find(
       (row): row is TimelineTurnSummaryRow =>
         row.kind === "turn" &&
-        row.sourceSeqStart === range.sourceSeqStart &&
-        row.sourceSeqEnd === range.sourceSeqEnd,
+        row.sourceSeqEnd === selection.sourceSeqEnd &&
+        (row.sourceSeqStart === selection.sourceSeqStart ||
+          row.sourceSeqStart === selection.turnStartedSourceSeq),
     ) ?? null
   );
 }

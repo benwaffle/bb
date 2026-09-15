@@ -2157,3 +2157,165 @@ describe("turn details for an item that finishes in a later turn", () => {
     }
   });
 });
+
+describe("turn summary details for segments spanning turn completion", () => {
+  it("loads the first segment when a delegation completes after turn/completed", () => {
+    const { db, thread } = setup();
+    const turnId = "turn-1";
+    const delegationId = "delegation-1";
+    const delegationItem = (status: "pending" | "completed") => ({
+      type: "delegation",
+      id: delegationId,
+      childRef: "child-thread",
+      label: "Review the RFC",
+      status,
+      background: true,
+    });
+    const turnEvent = (
+      sequence: number,
+      event: Omit<EventInput, "sequence" | "threadId" | "scope">,
+    ): EventInput => ({
+      ...event,
+      scope: turnScope(turnId),
+      sequence,
+      threadId: thread.id,
+    });
+    const agentMessage = (
+      sequence: number,
+      itemId: string,
+      text: string,
+    ): EventInput =>
+      turnEvent(sequence, {
+        type: "item/completed",
+        providerThreadId,
+        itemId,
+        itemKind: "agentMessage",
+        parentToolCallId: null,
+        data: JSON.stringify({
+          item: { type: "agentMessage", id: itemId, text },
+        }),
+      });
+    const commandItem = (status: "pending" | "completed") => ({
+      type: "commandExecution",
+      id: "command-1",
+      command: "echo done",
+      cwd: "/tmp/test",
+      status,
+      approvalStatus: null,
+      ...(status === "completed"
+        ? { exitCode: 0, aggregatedOutput: "done" }
+        : {}),
+    });
+
+    insertEvents(db, noopNotifier, [
+      {
+        threadId: thread.id,
+        sequence: 1,
+        type: "client/turn/requested",
+        scope: threadScope(),
+        itemId: null,
+        itemKind: null,
+        parentToolCallId: null,
+        data: JSON.stringify({
+          direction: "outbound",
+          source: "tell",
+          initiator: "user",
+          request: { method: "turn/start", params: {} },
+          requestId: requestId(1),
+          senderThreadId: null,
+          input: [{ type: "text", text: "Review the RFC", mentions: [] }],
+          target: { kind: "thread-start" },
+          execution,
+        }),
+      },
+      turnEvent(2, {
+        type: "turn/started",
+        providerThreadId,
+        itemId: null,
+        itemKind: null,
+        parentToolCallId: null,
+        data: JSON.stringify({}),
+      }),
+      turnEvent(3, {
+        type: "turn/input/accepted",
+        providerThreadId,
+        itemId: null,
+        itemKind: null,
+        parentToolCallId: null,
+        data: JSON.stringify({ clientRequestId: requestId(1) }),
+      }),
+      turnEvent(4, {
+        type: "item/started",
+        providerThreadId,
+        itemId: delegationId,
+        itemKind: "delegation",
+        parentToolCallId: null,
+        data: JSON.stringify({ item: delegationItem("pending") }),
+      }),
+      agentMessage(5, "assistant-1", "Reviewers are running."),
+      agentMessage(6, "assistant-2", "Still waiting on one."),
+      turnEvent(7, {
+        type: "item/started",
+        providerThreadId,
+        itemId: "command-1",
+        itemKind: "commandExecution",
+        parentToolCallId: null,
+        data: JSON.stringify({ item: commandItem("pending") }),
+      }),
+      turnEvent(8, {
+        type: "item/completed",
+        providerThreadId,
+        itemId: "command-1",
+        itemKind: "commandExecution",
+        parentToolCallId: null,
+        data: JSON.stringify({ item: commandItem("completed") }),
+      }),
+      agentMessage(9, "assistant-3", "Done."),
+      turnEvent(10, {
+        type: "turn/completed",
+        providerThreadId,
+        itemId: null,
+        itemKind: null,
+        parentToolCallId: null,
+        data: JSON.stringify({ status: "completed", providerThreadId }),
+      }),
+      turnEvent(11, {
+        type: "item/completed",
+        providerThreadId,
+        itemId: delegationId,
+        itemKind: "delegation",
+        parentToolCallId: null,
+        data: JSON.stringify({ item: delegationItem("completed") }),
+      }),
+    ]);
+
+    const timeline = buildPage(db, thread, LARGE_BUDGET, null).response;
+    const turnRows = timeline.rows.filter(
+      (row): row is Extract<TimelineRow, { kind: "turn" }> =>
+        row.kind === "turn",
+    );
+    expect(
+      turnRows.map((row) => [row.sourceSeqStart, row.sourceSeqEnd]),
+    ).toEqual([
+      [4, 11],
+      [6, 8],
+    ]);
+    const firstSegment = turnRows[0];
+    if (!firstSegment) {
+      throw new Error("expected a first turn segment");
+    }
+
+    const details = buildTurnDetailsPage(db, thread, {
+      includeDiagnosticOperations: false,
+      sourceSeqEnd: firstSegment.sourceSeqEnd,
+      sourceSeqStart: firstSegment.sourceSeqStart,
+      turnId,
+    });
+
+    expect(
+      details.rows.filter(
+        (row) => row.kind === "work" && row.workKind === "delegation",
+      ),
+    ).toHaveLength(1);
+  });
+});

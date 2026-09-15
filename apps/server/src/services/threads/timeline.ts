@@ -1867,12 +1867,12 @@ function buildTimelineTurnSummaryDetailsPage(
     THREAD_TIMELINE_EVENT_DATA_BYTE_LIMIT
       ? hydratedEventRows
       : eventRowsWithBackgroundTaskState;
-  const projectionSourceSeqStart = eventRowsWithTurnStarts.reduce(
-    (sourceSeqStart, row) =>
+  const turnStartedSourceSeq = eventRowsWithTurnStarts.reduce<number | null>(
+    (turnStartedSeq, row) =>
       row.type === "turn/started" && row.turnId === options.turnId
-        ? Math.min(sourceSeqStart, row.sequence)
-        : sourceSeqStart,
-    sourceRange.sourceSeqStart,
+        ? Math.min(turnStartedSeq ?? row.sequence, row.sequence)
+        : turnStartedSeq,
+    null,
   );
   const projectionEvents = projectionEventRows
     .filter((row) => row.sequence <= snapshot.maxSeq)
@@ -1882,7 +1882,8 @@ function buildTimelineTurnSummaryDetailsPage(
     options: {
       includeDiagnosticOperations,
       sourceSeqEnd: sourceRange.sourceSeqEnd,
-      sourceSeqStart: projectionSourceSeqStart,
+      sourceSeqStart: sourceRange.sourceSeqStart,
+      turnStartedSourceSeq,
       providerDisplayName: options.providerDisplayName,
       threadStatus: snapshot.status,
       threadName: thread.title ?? thread.titleFallback ?? "",

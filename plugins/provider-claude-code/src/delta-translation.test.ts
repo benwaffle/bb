@@ -1164,6 +1164,118 @@ describe("claude streaming", () => {
   });
 });
 
+describe("claude thinking block stream matching", () => {
+  type TranslatedEvents = ReturnType<
+    ReturnType<typeof createClaudeDeltaHarness>["translate"]
+  >;
+
+  function itemIdOf(
+    events: TranslatedEvents,
+    type: "item/started" | "item/completed",
+  ): string | undefined {
+    const event = events.find(
+      (
+        candidate,
+      ): candidate is Extract<
+        TranslatedEvents[number],
+        { type: typeof type }
+      > => candidate.type === type,
+    );
+    return event?.item.id;
+  }
+
+  function streamThinking(
+    harness: ReturnType<typeof createClaudeDeltaHarness>,
+    index: number,
+    thinking: string,
+  ): TranslatedEvents {
+    return harness.translate({
+      type: "stream_event",
+      event: {
+        type: "content_block_delta",
+        index,
+        delta: { type: "thinking_delta", thinking },
+      },
+      session_id: "sess-1",
+    });
+  }
+
+  function closeThinking(
+    harness: ReturnType<typeof createClaudeDeltaHarness>,
+    thinking: string,
+  ): TranslatedEvents {
+    return harness.translate({
+      type: "assistant",
+      message: {
+        role: "assistant",
+        content: [{ type: "thinking", thinking }],
+      },
+      session_id: "sess-1",
+    });
+  }
+
+  it("closes a thinking block streamed at a later content index when its assistant message carries a single block", () => {
+    const harness = createClaudeDeltaHarness();
+
+    const firstStartedId = itemIdOf(
+      streamThinking(harness, 1, "Second block."),
+      "item/started",
+    );
+    const firstClosed = closeThinking(harness, "Second block.");
+
+    expect(firstStartedId).toMatch(ITEM_ID_PATTERN);
+    expect(firstClosed).toContainEqual(
+      expect.objectContaining({
+        type: "item/completed",
+        item: expect.objectContaining({
+          type: "reasoning",
+          id: firstStartedId,
+          content: ["Second block."],
+        }),
+      }),
+    );
+
+    const secondStartedId = itemIdOf(
+      streamThinking(harness, 1, "Third block."),
+      "item/started",
+    );
+    const secondClosed = closeThinking(harness, "Third block.");
+
+    expect(secondStartedId).toMatch(ITEM_ID_PATTERN);
+    expect(secondStartedId).not.toBe(firstStartedId);
+    expect(secondClosed).toContainEqual(
+      expect.objectContaining({
+        type: "item/completed",
+        item: expect.objectContaining({
+          type: "reasoning",
+          id: secondStartedId,
+          content: ["Third block."],
+        }),
+      }),
+    );
+  });
+
+  it("matches interleaved thinking blocks to their streams by text", () => {
+    const harness = createClaudeDeltaHarness();
+
+    const firstStartedId = itemIdOf(
+      streamThinking(harness, 0, "First."),
+      "item/started",
+    );
+    const secondStartedId = itemIdOf(
+      streamThinking(harness, 2, "Second."),
+      "item/started",
+    );
+
+    expect(itemIdOf(closeThinking(harness, "Second."), "item/completed")).toBe(
+      secondStartedId,
+    );
+    expect(itemIdOf(closeThinking(harness, "First."), "item/completed")).toBe(
+      firstStartedId,
+    );
+  });
+});
+
 describe("claude unhandled and ignored events", () => {
   it("falls back to provider/unhandled for unknown sdk envelopes", () => {
     const harness = createClaudeDeltaHarness();
