@@ -46,6 +46,7 @@ import {
   listLatestOpenBackgroundTaskStateRowsForThread,
   listOpenBackgroundTaskItemRowsForHost,
   listOpenBackgroundTaskItemRowsForThread,
+  listOpenBackgroundTaskStateRowsForThread,
   listStoredBufferedTextDeltaRowsByItems,
   listStoredClientTurnRequestIdsInRange,
   listStoredConversationOutlineEventRows,
@@ -364,6 +365,51 @@ describe("slow query index plans", () => {
       expect(queryPlanDetails({ db, ...ownerQuery! })).toContain(
         "USING INDEX events_provider_identity_idx",
       );
+    } finally {
+      db.$client.close();
+    }
+  });
+
+  it("reads only the latest state of each open background task through the background-task index", () => {
+    const { db, thread } = setup();
+    try {
+      const task = (
+        itemId: string,
+        sequence: number,
+        type:
+          | "item/started"
+          | "item/backgroundTask/progress"
+          | "item/backgroundTask/completed",
+      ) => ({
+        threadId: thread.id,
+        sequence,
+        scope: turnScope("turn-background"),
+        providerThreadId: "provider-session-background",
+        type,
+        itemId,
+        itemKind: "backgroundTask" as const,
+        parentToolCallId: null,
+        data: JSON.stringify({ item: { id: itemId, type: "backgroundTask" } }),
+      });
+      insertEvents(db, noopNotifier, [
+        task("task:open", 1, "item/started"),
+        task("task:open", 2, "item/backgroundTask/progress"),
+        task("task:done", 3, "item/started"),
+        task("task:done", 4, "item/backgroundTask/completed"),
+      ]);
+      const captured = captureStatements(db, () => {
+        expect(
+          listOpenBackgroundTaskStateRowsForThread(db, {
+            threadId: thread.id,
+          }).map((row) => [row.itemId, row.sequence]),
+        ).toEqual([["task:open", 2]]);
+      });
+      expect(captured).toHaveLength(1);
+      const details = queryPlanDetails({ db, ...captured[0]! });
+      expect(details).toContain(
+        "USING INDEX events_background_task_thread_type_item_sequence_idx",
+      );
+      expect(details).not.toContain("SCAN events");
     } finally {
       db.$client.close();
     }

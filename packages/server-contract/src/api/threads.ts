@@ -1310,6 +1310,21 @@ export type ThreadTimelineSessionOption = z.infer<
   typeof threadTimelineSessionOptionSchema
 >;
 
+export const threadBackgroundCommandsResponseSchema = z.object({
+  commands: z.array(timelineWorkflowWorkRowSchema),
+});
+export type ThreadBackgroundCommandsResponse = z.infer<
+  typeof threadBackgroundCommandsResponseSchema
+>;
+
+export const threadBackgroundCommandStopResponseSchema = z.object({
+  ok: z.literal(true),
+  stopped: z.literal(true),
+});
+export type ThreadBackgroundCommandStopResponse = z.infer<
+  typeof threadBackgroundCommandStopResponseSchema
+>;
+
 const threadTimelineWindowFieldsShape = {
   contextBoundarySeq: z.number().int().nonnegative().nullable(),
   completedTurnDisplay: completedTurnDisplaySchema,

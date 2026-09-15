@@ -5426,6 +5426,69 @@ export function listOpenBackgroundTaskItemRowsForThread(
   );
 }
 
+export function listOpenBackgroundTaskStateRowsForThread(
+  db: DbQueryConnection,
+  args: { threadId: string },
+): StoredEventRow[] {
+  const startedType = "item/started" satisfies ThreadEventType;
+  const progressType = "item/backgroundTask/progress" satisfies ThreadEventType;
+  const completedType =
+    "item/backgroundTask/completed" satisfies ThreadEventType;
+  const settled = alias(events, "settled_open_background_task");
+  return db
+    .select({
+      createdAt: sql<StoredEventRow["createdAt"]>`${events.createdAt}`,
+      data: sql<StoredEventRow["data"]>`${events.data}`,
+      id: sql<StoredEventRow["id"]>`${events.id}`,
+      itemId: sql<StoredEventRow["itemId"]>`${events.itemId}`,
+      itemKind: sql<StoredEventRow["itemKind"]>`${events.itemKind}`,
+      parentToolCallId: sql<
+        StoredEventRow["parentToolCallId"]
+      >`${events.parentToolCallId}`,
+      providerThreadId: sql<
+        StoredEventRow["providerThreadId"]
+      >`${events.providerThreadId}`,
+      scopeKind: sql<StoredEventRow["scopeKind"]>`${events.scopeKind}`,
+      sequence: sql<StoredEventRow["sequence"]>`${events.sequence}`,
+      threadId: sql<StoredEventRow["threadId"]>`${events.threadId}`,
+      turnId: sql<StoredEventRow["turnId"]>`${events.turnId}`,
+      type: sql<StoredEventRow["type"]>`${events.type}`,
+    })
+    .from(
+      sql`${events} INDEXED BY events_background_task_thread_type_item_sequence_idx`,
+    )
+    .where(
+      and(
+        eq(events.threadId, args.threadId),
+        sql`${events.itemKind} = 'backgroundTask'`,
+        inArray(events.type, [startedType, progressType]),
+        isNotNull(events.itemId),
+        notExists(
+          db
+            .select({ one: sql`1` })
+            .from(settled)
+            .where(
+              and(
+                eq(settled.threadId, events.threadId),
+                sql`${settled.itemKind} = 'backgroundTask'`,
+                eq(settled.itemId, events.itemId),
+                eq(settled.type, completedType),
+              ),
+            ),
+        ),
+        sql`${events.sequence} = (
+          SELECT MAX(latest.sequence)
+          FROM events latest
+          WHERE latest.thread_id = ${events.threadId}
+            AND latest.item_id = ${events.itemId}
+            AND latest.type IN (${startedType}, ${progressType})
+        )`,
+      ),
+    )
+    .orderBy(events.sequence)
+    .all();
+}
+
 export function getUnfinishedCommandItemData(
   db: DbQueryConnection,
   args: { afterSequence: number; threadId: string },
