@@ -77,6 +77,7 @@ describe("prebuilt server bundle loading", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },
@@ -245,6 +246,7 @@ export default function plugin() {
       db: linkedDb,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },

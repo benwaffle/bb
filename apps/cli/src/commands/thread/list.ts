@@ -1,5 +1,10 @@
 import { Command } from "commander";
-import { PERSONAL_PROJECT_ID, type Thread } from "@bb/domain";
+import {
+  PERSONAL_PROJECT_ID,
+  formatMemoryBytes,
+  type Thread,
+  type ThreadMemoryUsage,
+} from "@bb/domain";
 import { action } from "../../action.js";
 import { createCliBbSdk } from "../../client.js";
 import { resolveExplicitIdFlag } from "../../context-env.js";
@@ -108,8 +113,10 @@ export function registerListCommand(
 
 const MAX_TITLE_WIDTH = 60;
 
+type ThreadListRow = Thread & { memoryUsage?: ThreadMemoryUsage | null };
+
 function printThreadTable(
-  threads: Thread[],
+  threads: ThreadListRow[],
   projectNames: ReadonlyMap<string, string>,
 ): void {
   const rows = threads.map((thread) => [
@@ -117,14 +124,26 @@ function printThreadTable(
     truncateCell(formatThreadListTitle(thread), MAX_TITLE_WIDTH),
     formatThreadListProject(thread, projectNames),
     formatThreadListStatus(thread),
+    formatThreadListMemory(thread),
   ]);
   printBorderlessTable(
     {
-      head: ["ID", "Title", "Project", "Status"],
-      colWidths: columnWidths(rows, [4, 5, 7, 12]),
+      head: ["ID", "Title", "Project", "Status", "Memory"],
+      colWidths: columnWidths(rows, [4, 5, 7, 12, 6]),
     },
     rows,
   );
+}
+
+function formatThreadListMemory(thread: ThreadListRow): string {
+  if (!thread.memoryUsage) {
+    return "-";
+  }
+  const shared =
+    thread.memoryUsage.sharedThreadCount > 1
+      ? ` (shared by ${thread.memoryUsage.sharedThreadCount})`
+      : "";
+  return `${formatMemoryBytes(thread.memoryUsage.rssBytes)}${shared}`;
 }
 
 function formatThreadListTitle(thread: Thread): string {
