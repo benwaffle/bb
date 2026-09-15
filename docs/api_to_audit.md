@@ -3906,3 +3906,34 @@ Stabilization requires exercising reconnect/reload, concurrent deduplication, ro
 `hosts.experimental_discoverRepos({ hostId })` asks the machine for git repositories under the user's home directory with local activity in the last 30 days, newest first, capped at 10. Each entry has `path`, `name`, `lastActivityAt`, `originUrl`, and `projectId` (the bb project already bound to that path on that machine, or null). `truncated` is true when the three-second walk budget ran out. The walk stops at each repository root, skips dot-directories, common build directories, scratch directories (`tmp`, `temp`, `tmp-*`, `Downloads`), linked worktrees, and submodules. The first-run setup guide and `bb project discover` use it. Host-daemon wire change: the `host.discover_repos` command (protocol 230).
 
 Stabilize after deciding whether depth, recency window, and limit should be caller options, and after exercising slow or network-mounted home directories and Windows hosts.
+
+## `PluginProviderDeclaration.experimental_sessionCommandsExtensionKind`
+
+**What it does.** Names one of the provider's `extensionKinds` whose `state`
+schema is `experimental_sessionCommandsStateSchema` from
+`@get-bb/plugin-sdk/provider-bridge` (types `ExperimentalSessionCommand` and
+`ExperimentalSessionCommandsState`). The provider's bridge publishes the
+agent's live slash-command list for a thread as an `extension.state` delta of
+that kind, on session start and whenever the agent changes the list. The
+server stores it as ordinary extension state and also remembers the most
+recent list per machine and provider in `provider-session-commands.json`
+under the server data dir. `GET
+/projects/:id/commands` (SDK `projects.commands`, CLI `bb project commands
+[--thread]`) merges a list into the catalog as `source: "skill", origin:
+"builtin"` entries, skipping any name or alias the scanned catalog already
+has: the thread's own latest list when `threadId` names a thread on this
+provider that has published one, otherwise the machine's remembered list. The
+Claude Code provider is the first caller, publishing Claude Code's bundled,
+user, and plugin skills minus terminal-only ones.
+
+**Audit before stabilizing.**
+
+1. Decide whether the command list belongs on a core thread delta instead of
+   a provider-declared extension kind, now that two layers name the kind.
+2. Confirm `skill`/`builtin` is the right catalog classification, or whether
+   session commands need their own source or origin and a distinct section.
+3. Confirm the 48 KiB bridge-side budget and the 400-entry schema cap against
+   real installs with many skills.
+4. Confirm the per-machine fallback should be the last publish from any
+   thread rather than a per-project or per-workspace list, since project
+   skills differ between checkouts while bundled skills do not.
