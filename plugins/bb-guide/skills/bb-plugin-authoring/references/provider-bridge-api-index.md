@@ -174,6 +174,8 @@ Read the installed declarations for exact current signatures.
 - `skillsConfigureParamsSchema`
 - `textBlockSchema`
 - `threadArchiveParamsSchema`
+- `threadBackgroundTaskStopParamsSchema`
+- `threadBackgroundTaskStopResultSchema`
 - `threadContextWindowUsageEnvelopeSchema`
 - `threadDeltaNotificationParamsSchema`
 - `threadDeltaSchema`
