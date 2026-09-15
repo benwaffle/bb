@@ -4,7 +4,10 @@ import {
 } from "@bb/process-utils";
 import { RequestError } from "@agentclientprotocol/sdk";
 import { createInterface } from "node:readline";
-import { experimental_recordProviderChildIo } from "@bb/provider-bridge-protocol/bridge-kit";
+import {
+  experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
+} from "@bb/provider-bridge-protocol/bridge-kit";
 import { connectAcpClient, type AcpClient } from "../client/acp-client.js";
 import {
   ACP_CLIENT_PROTOCOL_VERSION,
@@ -128,6 +131,10 @@ export function createAcpAgentConnection(
   });
   const { child } = managed;
   experimental_recordProviderChildIo(child, {
+    threadId: options.recordThreadId,
+  });
+  experimental_reportProviderChildProcess({
+    child,
     threadId: options.recordThreadId,
   });
 

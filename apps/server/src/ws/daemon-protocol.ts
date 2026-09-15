@@ -471,6 +471,10 @@ export function onDaemonSocketMessage(
         }
         return;
       }
+      if (message.type === "process-memory.sample") {
+        deps.hub.recordHostMemorySample(args.hostId, message);
+        return;
+      }
       if (message.type === "machine.shutdown-ack") {
         return;
       }
