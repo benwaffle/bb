@@ -12,6 +12,7 @@ import {
   type PromptDecorationExtensionOptions,
 } from "./prompt-decoration-extension";
 import { PromptMentionExtension } from "./prompt-mention-extension";
+import { VoiceInterimExtension } from "./voice-interim-extension";
 
 interface PromptEditorExtensionsOptions extends PromptDecorationExtensionOptions {
   getPlaceholder: () => string;
@@ -34,6 +35,7 @@ export function promptEditorExtensions({
       placeholder: () => getPlaceholder(),
     }),
     PromptMentionExtension,
+    VoiceInterimExtension,
     PromptDecorationExtension.configure({
       ...(getDecorationSources !== undefined ? { getDecorationSources } : {}),
       ...(onRuleError !== undefined ? { onRuleError } : {}),
