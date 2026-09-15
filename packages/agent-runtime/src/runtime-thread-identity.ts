@@ -4,6 +4,7 @@ import type { AgentRuntimeProviderSession } from "./types.js";
 export interface RuntimeProviderIdentityState {
   providerId: string;
   threadIds: Set<string>;
+  threadPids: Map<string, number>;
 }
 
 interface CreateRuntimeProviderIdentityStateArgs {
@@ -54,6 +55,7 @@ export class RuntimeThreadIdentityRegistry {
     return {
       providerId: args.providerId,
       threadIds: new Set(),
+      threadPids: new Map(),
     };
   }
 
@@ -182,6 +184,7 @@ export class RuntimeThreadIdentityRegistry {
 
   forgetThread(args: ForgetThreadArgs): void {
     args.providerState.threadIds.delete(args.threadId);
+    args.providerState.threadPids.delete(args.threadId);
     this.clearThread(args.threadId);
   }
 }
