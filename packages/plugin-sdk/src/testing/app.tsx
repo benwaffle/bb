@@ -124,6 +124,7 @@ import { normalizeExperimentalFileOpenOptions } from "../internal/file-navigatio
 import { experimental_THREAD_ACTION_GROUPS } from "../thread-action-groups.js";
 import {
   collectPluginAppRegistrations,
+  type CollectedPluginCommandRegistration,
   type CollectedPluginProviderIconRegistration,
   type CollectedExperimentalSidebarFooterItem,
 } from "../internal/plugin-app-collector.js";
@@ -1577,6 +1578,7 @@ export interface CapturedPluginApp {
   messageDirectives: PluginMessageDirectiveRegistration[];
   codeFenceRenderers: ExperimentalCodeFenceRendererRegistration[];
   messageActions: PluginMessageActionRegistration[];
+  commandPaletteActions: CollectedPluginCommandRegistration[];
   providerIcons: CollectedPluginProviderIconRegistration[];
   icons: ExperimentalIconRegistration[];
   timelineRenderers: PluginTimelineRendererRegistration[];
