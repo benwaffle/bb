@@ -1,5 +1,5 @@
 import { hostProviderCliInstallEventSchema } from "@bb/server-contract";
-import type { Host, HostType } from "@bb/domain";
+import type { Host, HostType, HostWithMemoryUsage } from "@bb/domain";
 import type {
   CreateHostJoinCodeResponse,
   CreateMachineRequest,
@@ -91,7 +91,9 @@ export interface MachineProviderListArgs {
 export type HostCreateJoinCodeResult = CreateHostJoinCodeResponse;
 export type HostDeleteResult = { ok: true };
 export type HostDirectoryResult = HostDirectoryListing;
-export type HostGetResult = Host & { connectMachineId: string | null };
+export type HostGetResult = HostWithMemoryUsage & {
+  connectMachineId: string | null;
+};
 export type HostEnrollmentCommandResult = HostEnrollmentCommandResponse;
 export type HostReconnectResult = HostReconnectResponse;
 export type HostCloneDefaultPathResult = HostCloneDefaultPathResponse;

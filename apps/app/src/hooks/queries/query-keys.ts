@@ -12,6 +12,7 @@ import {
 
 const HOSTS_QUERY_KEY = "hosts";
 const HOST_QUERY_KEY = "host";
+const HOST_MEMORY_USAGE_QUERY_KEY = "hostMemoryUsage";
 const HOST_DIRECTORY_QUERY_KEY = "hostDirectory";
 const HOST_CLONE_DEFAULT_PATH_QUERY_KEY = "hostCloneDefaultPath";
 const PROJECTS_QUERY_KEY = "projects";
@@ -114,6 +115,10 @@ type HostsQueryKey =
 type HostQueryId = string | null | undefined;
 type HostQueryKey = readonly [typeof HOST_QUERY_KEY, HostQueryId];
 type AllHostQueryKeyPrefix = readonly [typeof HOST_QUERY_KEY];
+type HostMemoryUsageQueryKey = readonly [
+  typeof HOST_MEMORY_USAGE_QUERY_KEY,
+  HostQueryId,
+];
 type HostDirectoryQueryKey = readonly [
   typeof HOST_DIRECTORY_QUERY_KEY,
   HostQueryId,
@@ -527,6 +532,12 @@ export function hostQueryKey(hostId: HostQueryId): HostQueryKey {
 
 export function allHostQueryKeyPrefix(): AllHostQueryKeyPrefix {
   return [HOST_QUERY_KEY];
+}
+
+export function hostMemoryUsageQueryKey(
+  hostId: HostQueryId,
+): HostMemoryUsageQueryKey {
+  return [HOST_MEMORY_USAGE_QUERY_KEY, hostId];
 }
 
 export function hostDirectoryQueryKey(

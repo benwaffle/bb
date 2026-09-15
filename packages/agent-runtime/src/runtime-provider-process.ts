@@ -23,6 +23,7 @@ import type {
   AgentRuntimeBridgeLaunch,
   AgentRuntimeOptions,
   AgentRuntimeProcessExitThreadState,
+  AgentRuntimeProviderProcessInfo,
   AgentRuntimeSkillRoot,
 } from "./types.js";
 
@@ -289,6 +290,24 @@ export class RuntimeProviderProcessManager {
           .map((proc) => proc.providerId),
       ),
     ];
+  }
+
+  listProcesses(): AgentRuntimeProviderProcessInfo[] {
+    const infos: AgentRuntimeProviderProcessInfo[] = [];
+    for (const proc of this.processes.values()) {
+      if (hasChildProcessExited(proc.child) || proc.child.pid === undefined) {
+        continue;
+      }
+      infos.push({
+        pid: proc.child.pid,
+        providerId: proc.providerId,
+        threads: [...proc.identity.threadIds].map((threadId) => ({
+          threadId,
+          pid: proc.identity.threadPids.get(threadId) ?? null,
+        })),
+      });
+    }
+    return infos;
   }
 
   async shutdownProvider(args: ShutdownRuntimeProviderArgs): Promise<void> {

@@ -9,7 +9,7 @@ import {
   type HostDaemonSessionRow,
 } from "@bb/db";
 import type { EnvironmentRow, HostRow } from "@bb/db";
-import type { Host, HostType } from "@bb/domain";
+import type { Host, HostType, HostWithMemoryUsage } from "@bb/domain";
 import type { DbConnection } from "@bb/db";
 import type { NotificationHub } from "../../ws/hub.js";
 import { ApiError } from "../../errors.js";
@@ -27,7 +27,10 @@ import {
 type ProjectRow = NonNullable<ReturnType<typeof getProject>>;
 type ThreadRow = NonNullable<ReturnType<typeof getThread>>;
 type StandardProject = ProjectRow & { kind: "standard" };
-type HostLookupHub = Pick<NotificationHub, "getDaemonSessionIdForHost">;
+type HostLookupHub = Pick<
+  NotificationHub,
+  "getDaemonSessionIdForHost" | "getHostMemoryUsage"
+>;
 
 interface HostLookupDeps {
   db: DbConnection;
@@ -123,10 +126,20 @@ export function listPublicHostsWithStatus(
   );
 }
 
+function toHostRecordWithMemoryUsage(
+  deps: HostLookupDeps,
+  row: HostRow,
+): HostWithMemoryUsage {
+  return {
+    ...toHostRecord(row, toHostStatus(deps, row.id)),
+    memoryUsage: deps.hub.getHostMemoryUsage(row.id),
+  };
+}
+
 export function requireNonDestroyedHostWithStatus(
   deps: HostLookupDeps,
   hostId: string,
-): Host {
+): HostWithMemoryUsage {
   const host = getHost(deps.db, hostId);
   if (!host) {
     throwHostNotFound();
@@ -138,7 +151,7 @@ export function requireNonDestroyedHostWithStatus(
       destroyedHostUnavailableDetails(host.destroyedAt),
     );
   }
-  return toHostRecord(host, toHostStatus(deps, host.id));
+  return toHostRecordWithMemoryUsage(deps, host);
 }
 
 export function getNonDestroyedHostWithStatus(

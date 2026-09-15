@@ -4,6 +4,7 @@ import {
   experimental_isProviderBridgeRecording,
   experimental_readBoundedLines,
   experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
   sanitizeInheritedChildProcessEnv,
   withoutBridgeRuntimeEnv,
 } from "@get-bb/plugin-sdk/provider-bridge";
@@ -121,6 +122,10 @@ export class PiRpcChild {
       stdio: ["pipe", "pipe", "pipe", "pipe", "pipe"],
     });
     experimental_recordProviderChildIo(this.child, {
+      threadId: args.recordThreadId,
+    });
+    experimental_reportProviderChildProcess({
+      child: this.child,
       threadId: args.recordThreadId,
     });
     this.channelRecorder = createChannelRecorder(args.recordThreadId);

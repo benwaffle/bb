@@ -14,6 +14,7 @@ import {
 import {
   experimental_isProviderBridgeRecording,
   experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
 } from "@get-bb/plugin-sdk/provider-bridge";
 import type { ClaudePermissionMode } from "../interactive-contract.js";
 import {
@@ -134,6 +135,7 @@ function spawnRecordedClaudeProcess(args: {
     args.onStderr(data);
   });
   experimental_recordProviderChildIo(child, { threadId: args.threadId });
+  experimental_reportProviderChildProcess({ child, threadId: args.threadId });
   return child as SpawnedProcess;
 }
 

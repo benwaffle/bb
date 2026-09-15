@@ -23,6 +23,7 @@ export function makeThreadResponse(
     activeBackgroundAgentCount: 0,
     canRestoreEnvironment: false,
     canSpawnChild: true,
+    memoryUsage: null,
     queuedMessageCount: 0,
     ...overrides,
     runtime: thread.runtime,

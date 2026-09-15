@@ -1,4 +1,5 @@
 import { useMemo, type ReactNode } from "react";
+import { formatMemoryBytes } from "@bb/domain";
 import type { GitDiffFileChangeKind } from "@bb/server-contract";
 import { CopyButton } from "@/components/ui/copy-button.js";
 import { DiffStatsTally } from "@/components/ui/diff-stats-tally.js";
@@ -32,20 +33,6 @@ interface GitDiffCardHeaderProps {
   actionSlot?: ReactNode;
 }
 
-const BYTES_PER_UNIT = 1024;
-
-function formatByteSize(bytes: number): string {
-  if (bytes < BYTES_PER_UNIT) {
-    return `${bytes} B`;
-  }
-  const kb = bytes / BYTES_PER_UNIT;
-  if (kb < BYTES_PER_UNIT) {
-    return `${kb < 10 ? kb.toFixed(1) : Math.round(kb)} KB`;
-  }
-  const mb = kb / BYTES_PER_UNIT;
-  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)} MB`;
-}
-
 interface GitDiffCardImageSizeStatProps {
   stat: DiffImageSizeStat;
 }
@@ -56,10 +43,10 @@ export function GitDiffCardImageSizeStat({
   return (
     <span className="flex shrink-0 items-center gap-1 whitespace-nowrap text-xs tabular-nums">
       {stat.addedBytes !== null ? (
-        <span className="text-diff-added">{`+${formatByteSize(stat.addedBytes)}`}</span>
+        <span className="text-diff-added">{`+${formatMemoryBytes(stat.addedBytes)}`}</span>
       ) : null}
       {stat.removedBytes !== null ? (
-        <span className="text-diff-removed">{`-${formatByteSize(stat.removedBytes)}`}</span>
+        <span className="text-diff-removed">{`-${formatMemoryBytes(stat.removedBytes)}`}</span>
       ) : null}
     </span>
   );

@@ -19,6 +19,7 @@ import type {
   ThreadActivityState,
   ThreadChangeMetadata,
   ThreadListEntry,
+  ThreadMemoryUsage,
   ThreadQueuedWork,
   ThreadRuntimeState,
   ThreadStatus,
@@ -43,7 +44,7 @@ import { intendedThreadHostId } from "./dispatch-attempt.js";
 
 type ThreadRuntimeDisplayHub = Pick<
   NotificationHub,
-  "getDaemonSessionIdForHost"
+  "getDaemonSessionIdForHost" | "getThreadMemoryUsage"
 >;
 
 interface ThreadRuntimeDisplayDeps {
@@ -87,6 +88,7 @@ interface ToThreadListEntryResponseFromLatestSessionArgs {
   activity: ThreadActivityState;
   hostConnected: boolean;
   latestSession: HostDaemonSessionRow | null;
+  memoryUsage: ThreadMemoryUsage | null;
   now?: number;
   queuedWork: ThreadQueuedWork;
   thread: ThreadWithPendingInteractionState;
@@ -361,6 +363,7 @@ export function toThreadResponseFromThread(
       thread: args.thread,
     }),
     canSpawnChild: canThreadSpawnChild(deps, { thread: args.thread }),
+    memoryUsage: deps.hub.getThreadMemoryUsage(args.thread.id),
     queuedMessageCount:
       listQueuedThreadMessageCountsByThreadIds(deps.db, {
         threadIds: [args.thread.id],
@@ -575,6 +578,7 @@ export function toThreadListEntryResponses(
   return args.threads.map((thread) => {
     const entry = toThreadListEntryResponseFromLatestSession({
       activity: activityByThreadId.get(thread.id) ?? EMPTY_THREAD_ACTIVITY,
+      memoryUsage: deps.hub.getThreadMemoryUsage(thread.id),
       queuedWork: queuedWorkByThreadId.get(thread.id) ?? "none",
       hostConnected:
         thread.environmentHostId !== null &&
@@ -616,6 +620,7 @@ function toThreadListEntryResponseFromLatestSession(
       isWorktree: args.thread.environmentIsWorktree,
     }),
     hasPendingInteraction: args.thread.hasPendingInteraction,
+    memoryUsage: args.memoryUsage,
     runtime: resolveThreadRuntimeStateFromLatestSession({
       environmentHostId: args.thread.environmentHostId,
       hostConnected: args.hostConnected,

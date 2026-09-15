@@ -270,6 +270,32 @@ describe("WebSocketManager thread-open signals", () => {
     expect(paneAction).toHaveBeenCalledWith(signal);
     expect(threadOpen).not.toHaveBeenCalled();
   });
+
+  it("routes host memory usage signals to their listeners only", () => {
+    const { manager } = createConnectedManager();
+    const memoryUsage = vi.fn();
+    const changed = vi.fn();
+    manager.onHostMemoryUsage(memoryUsage);
+    manager.onChanged(changed);
+
+    const signal = {
+      type: "host-memory-usage",
+      hostId: "host_1",
+      host: { rssBytes: 1024, processCount: 2, sampledAt: 1_700_000_000_000 },
+      threads: {
+        thr_1: {
+          rssBytes: 1024,
+          processCount: 2,
+          sharedThreadCount: 1,
+          sampledAt: 1_700_000_000_000,
+        },
+      },
+    };
+    dispatchRaw(signal);
+
+    expect(memoryUsage).toHaveBeenCalledWith(signal);
+    expect(changed).not.toHaveBeenCalled();
+  });
 });
 
 interface FakeBrowserEvents extends WebSocketManagerBrowserEvents {
