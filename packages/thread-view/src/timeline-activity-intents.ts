@@ -19,12 +19,22 @@ type TimelineReadActivityIntent = Extract<
   { type: "read" }
 >;
 
+export function commandHasProviderSummary(row: TimelineCommandWorkRow): boolean {
+  const title = row.presentation?.title;
+  if (title === undefined) {
+    return false;
+  }
+  const commandFirstLine = row.command.trim().split("\n", 1)[0]?.trim() ?? "";
+  const titleWithoutEllipsis = title.endsWith("…") ? title.slice(0, -1) : title;
+  return !commandFirstLine.startsWith(titleWithoutEllipsis);
+}
+
 export function timelineRowActivityIntents(
   row: TimelineExplorationWorkRow,
 ): readonly TimelineActivityIntent[] {
   switch (row.workKind) {
     case "command":
-      return row.activityIntents;
+      return commandHasProviderSummary(row) ? [] : row.activityIntents;
     case "file-read":
       return [
         {
