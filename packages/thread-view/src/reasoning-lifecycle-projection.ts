@@ -200,8 +200,13 @@ export function upsertReasoningLifecycle(
   });
 }
 
+interface FinalizeReasoningLifecycleByKeyArgs extends FinalizeOpenReasoningLifecyclesArgs {
+  endAtLastUpdate: boolean;
+  messageKey: string;
+}
+
 function finalizeReasoningLifecycleByKey(
-  args: FinalizeOpenReasoningLifecyclesArgs & { messageKey: string },
+  args: FinalizeReasoningLifecycleByKeyArgs,
 ): EventProjectionOperationMessage | null {
   const lifecycle = args.state.openReasoningLifecyclesByKey.get(
     args.messageKey,
@@ -219,7 +224,10 @@ function finalizeReasoningLifecycleByKey(
     return null;
   }
 
-  const durationMs = args.meta.createdAt - lifecycle.startedAt;
+  const end = args.endAtLastUpdate
+    ? { createdAt: lifecycle.updatedAt, seq: lifecycle.updatedSeq }
+    : { createdAt: args.meta.createdAt, seq: args.meta.seq };
+  const durationMs = end.createdAt - lifecycle.startedAt;
   const message: EventProjectionOperationMessage = {
     kind: "operation",
     id: messageId(
@@ -229,10 +237,10 @@ function finalizeReasoningLifecycleByKey(
     ),
     threadId: lifecycle.threadId,
     sourceSeqStart: lifecycle.sourceSeqStart,
-    sourceSeqEnd: args.meta.seq,
-    createdAt: args.meta.createdAt,
+    sourceSeqEnd: end.seq,
+    createdAt: end.createdAt,
     startedAt: lifecycle.startedAt,
-    completedAt: args.meta.createdAt,
+    completedAt: end.createdAt,
     ...eventProjectionMessageTurnScopeFields(lifecycle.turnId),
     ...(lifecycle.parentToolCallId
       ? { parentToolCallId: lifecycle.parentToolCallId }
@@ -270,6 +278,7 @@ export function finalizeReasoningLifecycle(
   }
 
   finalizeReasoningLifecycleByKey({
+    endAtLastUpdate: false,
     meta: args.meta,
     state: args.state,
     status: args.status,
@@ -280,7 +289,10 @@ export function finalizeReasoningLifecycle(
 function finalizeReasoningWithoutCompletion(
   args: FinalizeOpenReasoningLifecyclesArgs & { messageKey: string },
 ): void {
-  const message = finalizeReasoningLifecycleByKey(args);
+  const message = finalizeReasoningLifecycleByKey({
+    ...args,
+    endAtLastUpdate: args.status === "completed",
+  });
   if (message) {
     args.state.reasoningMessagesAwaitingCompletion.set(
       args.messageKey,

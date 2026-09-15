@@ -17,6 +17,7 @@ const options = {
   threadStatus: "idle",
   threadName: "",
   workspaceRoot: null,
+  turnStartedSourceSeq: null,
 } as const;
 
 function timeline(events: ThreadEventRow[], includeNestedRows: boolean) {

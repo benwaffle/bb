@@ -108,7 +108,11 @@ interface ThreadTimelineSourceSeqRange {
   sourceSeqStart: number;
 }
 
-interface BuildThreadTimelineTurnDetailsFromEventsOptions extends ThreadTimelineSourceSeqRange {
+interface ThreadTimelineTurnDetailsSelection extends ThreadTimelineSourceSeqRange {
+  turnStartedSourceSeq: number | null;
+}
+
+interface BuildThreadTimelineTurnDetailsFromEventsOptions extends ThreadTimelineTurnDetailsSelection {
   completedTurnDisplay: CompletedTurnDisplay;
   includeDiagnosticOperations: boolean;
   providerDisplayName?: string;
@@ -1245,8 +1249,9 @@ export function buildThreadTimelineTurnDetailsFromEvents(
   const matchingSummary = plan.find(
     (item) =>
       item.kind === "summary" &&
-      item.row.sourceSeqStart === args.options.sourceSeqStart &&
-      item.row.sourceSeqEnd === args.options.sourceSeqEnd,
+      item.row.sourceSeqEnd === args.options.sourceSeqEnd &&
+      (item.row.sourceSeqStart === args.options.sourceSeqStart ||
+        item.row.sourceSeqStart === args.options.turnStartedSourceSeq),
   );
   if (matchingSummary?.kind === "summary") {
     return {
