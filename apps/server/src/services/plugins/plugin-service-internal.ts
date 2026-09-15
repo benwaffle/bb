@@ -101,6 +101,7 @@ export interface PluginServiceDeps {
   hub: Pick<
     NotificationHub,
     | "getDaemonSessionIdForHost"
+    | "getThreadMemoryUsage"
     | "notifyPluginSignal"
     | "notifySystem"
     | "notifyPluginChanged"

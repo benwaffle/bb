@@ -6,6 +6,7 @@ export const BRIDGE_NOTIFICATION_METHODS = {
   sessionReplaced: "session/replaced",
   providerRaw: "provider/raw",
   providerRecovery: "provider/recovery",
+  threadProcess: "thread/process",
   error: "error",
   requestCancelled: "notifications/cancelled",
 } as const;
@@ -15,6 +16,15 @@ export const requestCancelledNotificationSchema = z
     requestId: z.union([z.string(), z.number().int()]),
   })
   .passthrough();
+export const threadProcessNotificationSchema = z
+  .object({
+    threadId: z.string().min(1),
+    pid: z.number().int().positive(),
+  })
+  .passthrough();
+export type ThreadProcessNotification = z.infer<
+  typeof threadProcessNotificationSchema
+>;
 
 export const threadIdentityNotificationSchema = z
   .object({
