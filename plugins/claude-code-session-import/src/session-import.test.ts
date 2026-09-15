@@ -87,7 +87,12 @@ function toolResult(
 }
 
 function writeSession(homeDir: string): string {
-  const projectDir = join(homeDir, ".claude", "projects", "-tmp-import-project");
+  const projectDir = join(
+    homeDir,
+    ".claude",
+    "projects",
+    "-tmp-import-project",
+  );
   mkdirSync(projectDir, { recursive: true });
   const records: unknown[] = [
     {
@@ -213,9 +218,12 @@ describe("readClaudeSessionTurns", () => {
         entry.event.type === "item/completed" &&
         entry.event.item.type === "agentMessage",
     );
-    expect(reply?.event.type === "item/completed" && reply.event.item.type === "agentMessage"
-      ? reply.event.item.text
-      : null).toBe("Done: settings has a search box.");
+    expect(
+      reply?.event.type === "item/completed" &&
+        reply.event.item.type === "agentMessage"
+        ? reply.event.item.text
+        : null,
+    ).toBe("Done: settings has a search box.");
     expect(reply?.at).toBe(Date.parse("2026-09-12T10:00:04.000Z"));
 
     expect(second.input).toEqual([
@@ -267,7 +275,11 @@ describe("readClaudeSessionTurns", () => {
     writeFileSync(
       join(otherDir, `${otherId}.jsonl`),
       `${[
-        { type: "custom-title", customTitle: "browser-tab-organization", sessionId: otherId },
+        {
+          type: "custom-title",
+          customTitle: "browser-tab-organization",
+          sessionId: otherId,
+        },
         {
           type: "user",
           message: { role: "user", content: "check my chrome tabs" },
@@ -278,7 +290,11 @@ describe("readClaudeSessionTurns", () => {
         },
         {
           type: "assistant",
-          message: { role: "assistant", content: [{ type: "text", text: "ok" }], stop_reason: "end_turn" },
+          message: {
+            role: "assistant",
+            content: [{ type: "text", text: "ok" }],
+            stop_reason: "end_turn",
+          },
           uuid: "x2",
           timestamp: "2026-09-13T06:00:05.000Z",
           cwd: "/tmp/other",
@@ -288,11 +304,25 @@ describe("readClaudeSessionTurns", () => {
         .map((record) => JSON.stringify(record))
         .join("\n")}\n`,
     );
-    mkdirSync(join(homeDir, ".claude", "projects", "-tmp-empty"), { recursive: true });
-    writeFileSync(join(homeDir, ".claude", "projects", "-tmp-empty", "11111111-2222-4333-8444-555555555555.jsonl"), "");
+    mkdirSync(join(homeDir, ".claude", "projects", "-tmp-empty"), {
+      recursive: true,
+    });
+    writeFileSync(
+      join(
+        homeDir,
+        ".claude",
+        "projects",
+        "-tmp-empty",
+        "11111111-2222-4333-8444-555555555555.jsonl",
+      ),
+      "",
+    );
 
     const sessions = listClaudeSessions({ homeDir, env: {} });
-    expect(sessions.map((session) => session.sessionId)).toEqual([otherId, SESSION_ID]);
+    expect(sessions.map((session) => session.sessionId)).toEqual([
+      otherId,
+      SESSION_ID,
+    ]);
     expect(sessions[0]).toMatchObject({
       title: "browser-tab-organization",
       cwd: "/tmp/other",
@@ -306,10 +336,18 @@ describe("readClaudeSessionTurns", () => {
       turnCount: 2,
       sessionPath: path,
     });
-    expect(listClaudeSessions({ homeDir, env: {}, dir: CWD }).map((s) => s.sessionId)).toEqual([SESSION_ID]);
+    expect(
+      listClaudeSessions({ homeDir, env: {}, dir: CWD }).map(
+        (s) => s.sessionId,
+      ),
+    ).toEqual([SESSION_ID]);
 
     expect(
-      resolveClaudeSessionPath({ session: "Browser-Tab-Organization", homeDir, env: {} }),
+      resolveClaudeSessionPath({
+        session: "Browser-Tab-Organization",
+        homeDir,
+        env: {},
+      }),
     ).toBe(join(otherDir, `${otherId}.jsonl`));
     expect(() =>
       resolveClaudeSessionPath({ session: "no such title", homeDir, env: {} }),
