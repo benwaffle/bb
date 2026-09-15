@@ -278,6 +278,9 @@ export function createFakeRuntime() {
     async clearThreadGoal() {
       return { cleared: true };
     },
+    async stopBackgroundTask() {
+      return { stopped: true };
+    },
     async renameThread(args) {
       state.renamedTitle = args.title;
     },

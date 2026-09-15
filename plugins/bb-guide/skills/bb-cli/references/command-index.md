@@ -205,6 +205,8 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
+- `bb thread background`
+- `bb thread background stop`
 - `bb thread interactions`
 - `bb thread interactions list`
 - `bb thread interactions show`
