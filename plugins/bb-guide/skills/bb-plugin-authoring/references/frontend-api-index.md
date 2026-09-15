@@ -331,6 +331,7 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalVoiceDelivery`
 - `ExperimentalFailedVoiceRecording`
 - `ExperimentalComposerVoice`
+- `ExperimentalComposerPushToTalk`
 - `ExperimentalComposerPromptAction`
 - `ExperimentalComposerInput`
 - `ExperimentalComposerThreadLinks`
