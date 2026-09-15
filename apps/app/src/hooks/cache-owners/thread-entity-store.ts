@@ -55,6 +55,7 @@ const LIST_FACET: Record<ListFacetKey, true> = {
   environmentProviderId: true,
   environmentIsWorktree: true,
   environmentWorkspaceDisplayKind: true,
+  memoryUsage: true,
 };
 const DETAIL_FACET: Record<DetailFacetKey, true> = {
   activeBackgroundAgentCount: true,
@@ -62,6 +63,7 @@ const DETAIL_FACET: Record<DetailFacetKey, true> = {
   canEditMessages: true,
   canSpawnChild: true,
   queuedMessageCount: true,
+  memoryUsage: true,
 };
 const THREAD_KEYS = new Set(Object.keys(threadWithRuntimeSchema.shape));
 const FACET_KEYS: Record<Facet, ReadonlySet<string>> = {

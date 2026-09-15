@@ -2,6 +2,7 @@ import {
   emitPluginThreadEvents,
   emitPluginThreadRead,
 } from "../services/plugins/plugin-thread-events.js";
+import { HostMemoryUsageStore } from "../services/hosts/host-memory-usage.js";
 import { Buffer } from "node:buffer";
 import {
   realtimeSubscriptionTargetKey as subscriptionKey,
@@ -9,7 +10,9 @@ import {
   type ChangedMessage,
   type EnvironmentChangeKind,
   type HostChangeKind,
+  type HostMemoryUsage,
   type ProjectChangeKind,
+  type ThreadMemoryUsage,
   type SystemChangeKind,
   type ThreadChangeKind,
   type ThreadChangeMetadata,
@@ -21,10 +24,12 @@ import type {
   HostPlatform,
   HostDaemonOnlineRpcRequestMessage,
   HostDaemonOnlineRpcResponseMessage,
+  HostDaemonProcessMemorySampleMessage,
   HostDaemonServerWsMessage,
   HostDaemonSessionCloseReason,
 } from "@bb/host-daemon-contract";
 import {
+  hostMemoryUsageSignalSchema,
   pluginSignalSchema,
   serverMessageSchema,
   terminalServerMessageSchema,
@@ -255,6 +260,7 @@ export class HostOnlineRpcUnavailableError extends Error {
 }
 
 export class NotificationHub implements DbNotifier {
+  private readonly hostMemoryUsage = new HostMemoryUsageStore();
   private readonly clientKeysBySocket = new Map<
     HubSocket,
     Map<string, RealtimeSubscriptionTarget>
@@ -781,6 +787,9 @@ export class NotificationHub implements DbNotifier {
     this.rejectHostOnlineRpcWaitersForSession(sessionId);
     if (this.daemonSessionIdsByHost.get(entry.hostId) === sessionId) {
       this.daemonSessionIdsByHost.delete(entry.hostId);
+      if (this.hostMemoryUsage.clear(entry.hostId)) {
+        this.broadcastHostMemoryUsage(entry.hostId);
+      }
     }
     const waiters = this.daemonSessionCloseWaiters.get(sessionId);
     if (waiters !== undefined) {
@@ -1115,6 +1124,37 @@ export class NotificationHub implements DbNotifier {
           projectId: thread.projectId,
           threadId: thread.threadId,
           action,
+        }),
+      ),
+    );
+  }
+
+  recordHostMemorySample(
+    hostId: string,
+    message: HostDaemonProcessMemorySampleMessage,
+  ): void {
+    if (this.hostMemoryUsage.replace(hostId, message)) {
+      this.broadcastHostMemoryUsage(hostId);
+    }
+  }
+
+  getHostMemoryUsage(hostId: string): HostMemoryUsage | null {
+    return this.hostMemoryUsage.getHostMemoryUsage(hostId);
+  }
+
+  getThreadMemoryUsage(threadId: string): ThreadMemoryUsage | null {
+    return this.hostMemoryUsage.getThreadMemoryUsage(threadId);
+  }
+
+  private broadcastHostMemoryUsage(hostId: string): number {
+    const snapshot = this.hostMemoryUsage.getSnapshot(hostId);
+    return this.broadcastToAllClients(
+      JSON.stringify(
+        hostMemoryUsageSignalSchema.parse({
+          type: "host-memory-usage",
+          hostId,
+          host: snapshot?.host ?? null,
+          threads: Object.fromEntries(snapshot?.threads ?? []),
         }),
       ),
     );
