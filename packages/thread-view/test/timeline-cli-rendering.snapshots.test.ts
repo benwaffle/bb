@@ -1440,7 +1440,15 @@ describe("timeline CLI rendering snapshots", () => {
         itemId: "root-reasoning",
       }),
       event.reasoningDelta({
-        delta: "Child thought.",
+        createdAt: 1_000,
+        delta: "Child ",
+        itemId: "child-reasoning",
+        parentToolCallId: "delegation-1",
+        turnId: "child-turn",
+      }),
+      event.reasoningDelta({
+        createdAt: 3_000,
+        delta: "thought.",
         itemId: "child-reasoning",
         parentToolCallId: "delegation-1",
         turnId: "child-turn",
@@ -1456,11 +1464,12 @@ describe("timeline CLI rendering snapshots", () => {
       timeline.messages.filter((message) => message.kind === "operation"),
     ).toEqual([
       expect.objectContaining({
+        completedAt: 3_000,
         detail: "Child thought.",
         parentToolCallId: "delegation-1",
         scope: { kind: "turn", turnId: "child-turn" },
         status: "completed",
-        title: "Thought for 5s",
+        title: "Thought for 2s",
       }),
     ]);
   });
@@ -2405,7 +2414,8 @@ describe("timeline CLI rendering snapshots", () => {
     const expectedText = "Summary 1.\nBody.\nSummary 2.";
 
     expect(
-      renderActiveTimeline(streamingEvents).projection.state.activeThinking?.text,
+      renderActiveTimeline(streamingEvents).projection.state.activeThinking
+        ?.text,
     ).toBe(expectedText);
     const completedMessages = renderActiveTimeline(
       completedEvents.slice(0, -1),
@@ -2518,6 +2528,48 @@ describe("timeline CLI rendering snapshots", () => {
         startedAt: 2_000,
         status: "interrupted",
         title: "Thought for 5s",
+      }),
+    ]);
+  });
+
+  it("bounds streamed reasoning without a completion to its last delta when its turn completes", () => {
+    const event = createTimelineEventFactory({ threadId: "thread-1" });
+    const timeline = renderIdleTimeline([
+      event.turnStarted({ createdAt: 0 }),
+      event.reasoningDelta({
+        createdAt: 2_000,
+        itemId: "reasoning-1",
+        delta: "Checking the ",
+      }),
+      event.reasoningDelta({
+        createdAt: 3_000,
+        itemId: "reasoning-1",
+        delta: "happy path.",
+      }),
+      event.commandStarted({
+        createdAt: 4_000,
+        itemId: "command-1",
+        command: "echo ok",
+      }),
+      event.commandCompleted({
+        createdAt: 5_000,
+        itemId: "command-1",
+        command: "echo ok",
+      }),
+      event.turnCompleted({ createdAt: 9_000 }),
+    ]);
+
+    expect(
+      timeline.messages.filter((message) => message.kind === "operation"),
+    ).toEqual([
+      expect.objectContaining({
+        completedAt: 3_000,
+        detail: "Checking the happy path.",
+        sourceSeqEnd: 3,
+        sourceSeqStart: 2,
+        startedAt: 2_000,
+        status: "completed",
+        title: "Thought for 1s",
       }),
     ]);
   });

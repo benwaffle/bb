@@ -377,8 +377,15 @@ interface ClaudeTurnMirror {
   segment: number;
 }
 
+interface ClaudeOpenThinkingStream {
+  contentIndex: number;
+  parentToolCallId: string | undefined;
+  text: string;
+}
+
 interface ClaudeThreadDialectState {
   mirror: ClaudeTurnMirror;
+  openThinkingStreams: ClaudeOpenThinkingStream[];
   cumulativeTokens: ThreadEventTokenUsageBreakdown;
   latestRequestContextTokens: number | undefined;
   latestProviderCheckpointId: string | undefined;
@@ -397,6 +404,7 @@ interface ClaudeThreadDialectState {
 function createThreadState(): ClaudeThreadDialectState {
   return {
     mirror: { turnOpen: false, pendingInputs: 0, segment: 0 },
+    openThinkingStreams: [],
     cumulativeTokens: ZERO_TOKEN_USAGE,
     latestRequestContextTokens: undefined,
     latestProviderCheckpointId: undefined,
@@ -457,6 +465,43 @@ export function createClaudeDeltaTranslator(
     state.mirror.turnOpen = false;
     state.armedHardRateLimitRejection = undefined;
     state.startedTools.clear();
+    state.openThinkingStreams = [];
+  }
+
+  function trackOpenThinkingStream(
+    state: ClaudeThreadDialectState,
+    stream: ClaudeOpenThinkingStream,
+  ): void {
+    const open = state.openThinkingStreams.find(
+      (candidate) =>
+        candidate.contentIndex === stream.contentIndex &&
+        candidate.parentToolCallId === stream.parentToolCallId,
+    );
+    if (open) {
+      open.text += stream.text;
+      return;
+    }
+    state.openThinkingStreams.push({ ...stream });
+  }
+
+  function takeOpenThinkingStreamContentIndex(
+    state: ClaudeThreadDialectState,
+    block: { parentToolCallId: string | undefined; text: string },
+  ): number | undefined {
+    const candidates = state.openThinkingStreams.filter(
+      (candidate) => candidate.parentToolCallId === block.parentToolCallId,
+    );
+    const match =
+      candidates.find((candidate) => candidate.text === block.text) ??
+      candidates[0];
+    if (match === undefined) {
+      return undefined;
+    }
+    state.openThinkingStreams.splice(
+      state.openThinkingStreams.indexOf(match),
+      1,
+    );
+    return match.contentIndex;
   }
 
   function withMirror(
@@ -844,10 +889,15 @@ export function createClaudeDeltaTranslator(
     }
 
     for (const thinkingBlock of extractThinkingBlocks(message)) {
+      const contentIndex =
+        takeOpenThinkingStreamContentIndex(state, {
+          parentToolCallId,
+          text: thinkingBlock.text,
+        }) ?? thinkingBlock.contentIndex;
       deltas.push({
         kind: "item.textClose",
         key: {
-          channel: thinkingStreamChannel(thinkingBlock.contentIndex),
+          channel: thinkingStreamChannel(contentIndex),
           ...parentRefField,
         },
         channel: "reasoningText",
@@ -910,6 +960,11 @@ export function createClaudeDeltaTranslator(
 
     const reasoningDelta = extractStreamThinkingDelta(message);
     if (reasoningDelta) {
+      trackOpenThinkingStream(state, {
+        contentIndex: reasoningDelta.contentIndex,
+        parentToolCallId,
+        text: reasoningDelta.delta,
+      });
       deltas.push({ kind: "turn.open" });
       deltas.push({
         kind: "item.textDelta",

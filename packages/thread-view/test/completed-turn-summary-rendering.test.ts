@@ -849,6 +849,7 @@ describe("flat completed turn display", () => {
       sourceSeqStart: 4,
       threadName: "",
       threadStatus: "idle" as const,
+      turnStartedSourceSeq: null,
       workspaceRoot: null,
     };
 
