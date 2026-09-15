@@ -81,6 +81,7 @@ function workflowRow(): TimelineWorkflowWorkRow {
     status: "pending",
     workKind: "workflow",
     itemId: "task:wf-open",
+    familyId: null,
     taskType: "local_workflow",
     workflowName: "fixture-mini",
     description: "fixture workflow",
@@ -90,6 +91,8 @@ function workflowRow(): TimelineWorkflowWorkRow {
     usage: null,
     summary: null,
     error: null,
+    command: null,
+    output: null,
     completedAt: null,
   };
 }
