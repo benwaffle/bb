@@ -135,6 +135,31 @@ describe("handshake gating", () => {
         providerThreadId: "p_1",
       }),
     ).toMatchObject({ kind: "noop" });
+    expect(
+      adapter.buildCommandPlan({
+        type: "thread/backgroundTask/stop",
+        threadId: "thr_1",
+        providerThreadId: "p_1",
+        taskId: "task_1",
+      }),
+    ).toMatchObject({ kind: "noop" });
+  });
+
+  it("routes background task stop only when the bridge advertises it", () => {
+    const adapter = makeAdapter();
+    completeHandshake(adapter, { backgroundTaskStop: true });
+    expect(
+      adapter.buildCommandPlan({
+        type: "thread/backgroundTask/stop",
+        threadId: "thr_1",
+        providerThreadId: "p_1",
+        taskId: "task_1",
+      }),
+    ).toMatchObject({
+      kind: "request",
+      method: "thread/backgroundTask/stop",
+      params: { threadId: "thr_1", providerThreadId: "p_1", taskId: "task_1" },
+    });
   });
 
   it("moves approval policy ownership per the handshake", () => {
