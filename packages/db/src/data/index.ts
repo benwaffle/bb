@@ -293,6 +293,8 @@ export {
   wouldRemoveSharedProviderSessionClaim,
   getLastStoredProviderThreadId,
   getStoredProviderSession,
+  listStoredProviderSessionsByProvider,
+  listStoredStartupContextsByProvider,
   getLastStoredTurnRequestEvent,
   getStoredTurnRequestEventForTurn,
   getLatestThreadOutputEventRow,
