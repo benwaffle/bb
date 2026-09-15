@@ -387,6 +387,9 @@ export function createFakeRuntime() {
     listRunningProviders() {
       return state.runningProviders;
     },
+    listProviderProcesses() {
+      return [];
+    },
     getActiveTurnId(threadId) {
       return activeTurnsByThreadId.get(threadId) ?? null;
     },
