@@ -66,6 +66,7 @@ describe("plugin safe mode", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
       },

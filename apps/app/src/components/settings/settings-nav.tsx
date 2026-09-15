@@ -4,6 +4,7 @@ import { useHostDaemon, useLocalHostDaemonAccess } from "@/hooks/useHostDaemon";
 import { usePluginSlots, type PluginFileOpenerSlot } from "@/lib/plugin-slots";
 import { usePluginList } from "@/hooks/queries/plugin-settings-queries";
 import {
+  SETTINGS_MACHINE_MEMORY_ROUTE_PATH,
   SETTINGS_MACHINE_ROUTE_PATH,
   SETTINGS_PLUGIN_ROUTE_PATH,
   SETTINGS_PROJECT_ROUTE_PATH,
@@ -63,10 +64,9 @@ export function useSettingsNavState(): SettingsNavState {
   const activePluginId = isInstalledDetail
     ? null
     : (pluginMatch?.params.pluginId ?? null);
-  const machineMatch = matchPath(
-    SETTINGS_MACHINE_ROUTE_PATH,
-    location.pathname,
-  );
+  const machineMatch =
+    matchPath(SETTINGS_MACHINE_ROUTE_PATH, location.pathname) ??
+    matchPath(SETTINGS_MACHINE_MEMORY_ROUTE_PATH, location.pathname);
   const activeMachineId = machineMatch?.params.hostId ?? null;
   const projectMatch = matchPath(
     SETTINGS_PROJECT_ROUTE_PATH,

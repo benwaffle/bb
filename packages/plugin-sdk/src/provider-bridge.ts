@@ -196,6 +196,7 @@ export {
   errorEnvelopeSchema,
   experimental_isProviderBridgeRecording,
   experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
   extractResultText,
   fileReadPresentation as experimental_fileReadPresentation,
   formatCommand as experimental_formatCommand,
