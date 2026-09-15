@@ -43,6 +43,10 @@ every window and client sees the same value.
   can be intentional when contexts do not overlap; the UI identifies reuse.
 - New Thread, New Window, New Tab, Close, and Settings in the desktop menu use
   the same resolved shortcuts as renderer commands.
+- `history.back` and `history.forward` default to `Mod+[` and `Mod+]` and
+  retrace the app's page history like the sidebar arrow buttons. They work from
+  the composer and other text fields, and decline in a terminal or the embedded
+  browser. Rebind them with `bb settings keyboard set history.back <shortcut>`.
 - The complete default table is in `docs/configuration.md` in the bb source
   repository.
 

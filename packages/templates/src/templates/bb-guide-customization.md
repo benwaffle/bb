@@ -194,7 +194,11 @@ disables a command. `Mod` means Command on macOS and Control on Windows/Linux.
 Bindings for non-native actions apply in browser and desktop clients. Command
 contexts and native-only availability remain server-owned, and desktop menu
 accelerators for New Thread, New Window, New Tab, Close, and Settings use the
-same resolved bindings. The complete default table is in docs/configuration.md.
+same resolved bindings. Go back and go forward (`history.back`,
+`history.forward`) default to `Mod+[` and `Mod+]` and retrace the app's page
+history like the sidebar arrow buttons; they work from the composer and other
+text fields, and decline in a terminal or the embedded browser. The complete
+default table is in docs/configuration.md.
 
   bb settings keyboard list
   bb settings keyboard hints <true|false>

@@ -66,6 +66,26 @@ vi.mock("@/hooks/queries/system-queries", () => ({
           shortcut: testState.sidebarShortcut,
           when: { all: ["mainSurface" as const], none: ["modalOpen" as const] },
         },
+        {
+          command: "history.back" as const,
+          desktopOnly: false,
+          shortcut: {
+            key: "[",
+            mod: true,
+            meta: false,
+            control: false,
+            alt: false,
+            shift: false,
+          },
+          when: {
+            all: ["mainSurface" as const],
+            none: [
+              "modalOpen" as const,
+              "terminalFocus" as const,
+              "browserFocus" as const,
+            ],
+          },
+        },
       ],
     },
   }),
@@ -95,6 +115,14 @@ function ThreadNavigationHandlers() {
   });
   useAppCommandHandler("thread.next", () => {
     testState.calls.push("thread.next");
+    return true;
+  });
+  return null;
+}
+
+function HistoryBackHandler() {
+  useAppCommandHandler("history.back", () => {
+    testState.calls.push("history.back");
     return true;
   });
   return null;
@@ -184,6 +212,17 @@ describe("prompt editor app shortcuts", () => {
 
     expect(event.defaultPrevented).toBe(true);
     expect(testState.calls).toEqual([command]);
+    expect(document.activeElement).toBe(editor);
+  });
+
+  it("runs the history back shortcut while the composer has focus", () => {
+    vi.spyOn(navigator, "platform", "get").mockReturnValue("MacIntel");
+    const editor = renderComposer(<HistoryBackHandler />);
+
+    const event = pressInEditor(editor, { key: "[", metaKey: true });
+
+    expect(event.defaultPrevented).toBe(true);
+    expect(testState.calls).toEqual(["history.back"]);
     expect(document.activeElement).toBe(editor);
   });
 
