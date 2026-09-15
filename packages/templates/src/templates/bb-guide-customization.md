@@ -293,6 +293,11 @@ Host files and voice transcription
   bb voice transcribe <audio-file> [--type <mime>] [--prompt <context>]
                                    --type defaults to audio/webm
 
+In the app, holding Space in an empty composer (or with nothing focused)
+records push-to-talk: interim text appears while speaking and is inserted on
+release; Escape cancels. The "Hold Space to talk" switch in Settings → Voice
+Input turns this off per browser.
+
 `bb file` supports `--host` for remote machines and `--root` on mutating
 commands to confine access beneath an absolute directory. `bb file write`
 takes exactly one of `--content` or `--stdin`; `bb file paths` lists files and

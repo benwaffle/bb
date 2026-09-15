@@ -16,6 +16,7 @@ interface VoiceRecordingBarProps {
   stream: MediaStream | null;
   microphoneWarning: string | null;
   submitIcon: IconName;
+  hint?: string;
   onConfirm: () => void;
   onSend: () => void;
   onCancel: () => void;
@@ -32,6 +33,7 @@ export function VoiceRecordingBar({
   stream,
   microphoneWarning,
   submitIcon,
+  hint,
   onConfirm,
   onSend,
   onCancel,
@@ -62,12 +64,23 @@ export function VoiceRecordingBar({
       >
         <Icon name="X" className="size-4" />
       </Button>
-      <div className="relative flex min-w-0 flex-1 items-center">
+      <div className="relative flex min-w-0 flex-1 items-center gap-2">
         <div
-          className={cn("h-7 w-full", isTranscribing && "animate-shine-icon")}
+          className={cn(
+            "h-7 min-w-0 flex-1",
+            isTranscribing && "animate-shine-icon",
+          )}
         >
           <WaveformVisualizer stream={stream} active={!isTranscribing} />
         </div>
+        {hint ? (
+          <span
+            data-voice-hint=""
+            className="shrink-0 text-xs text-subtle-foreground"
+          >
+            {hint}
+          </span>
+        ) : null}
         <span className="sr-only" aria-live="polite">
           {isTranscribing ? "Transcribing" : "Recording"}
         </span>

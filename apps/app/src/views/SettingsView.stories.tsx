@@ -186,8 +186,10 @@ function VoiceInputStory() {
       errorMessage={null}
       isLoading={false}
       isSupported={true}
+      onPushToTalkEnabledChange={() => undefined}
       onRefresh={() => undefined}
       preferredDeviceId={preferredDeviceId}
+      pushToTalkEnabled={true}
     />
   );
 }
