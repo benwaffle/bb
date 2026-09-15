@@ -9,6 +9,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import type { Host } from "@bb/domain";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/lib/command-palette/palette-ranking";
 import { usePluginSlots } from "@/lib/plugin-slots";
 import { buildSettingsPaletteActions } from "@/lib/command-palette/palette-settings-actions";
+import { buildMachinePaletteActions } from "@/lib/command-palette/palette-machine-actions";
 import { buildPluginPagePaletteActions } from "@/lib/command-palette/palette-plugin-page-actions";
 import {
   buildPluginSettingsEntries,
@@ -39,6 +41,7 @@ const THREAD_SEARCH_ACTION_ID = paletteActionIdForCommand("thread.search");
 
 export interface CommandPaletteBodyProps {
   actions: readonly PaletteAction[];
+  hosts: readonly Host[];
   installedPlugins: readonly PluginSettingsCandidate[];
   recents: readonly string[];
   query: string;
@@ -48,6 +51,7 @@ export interface CommandPaletteBodyProps {
 
 export function CommandPaletteBody({
   actions,
+  hosts,
   installedPlugins,
   recents,
   query,
@@ -86,6 +90,16 @@ export function CommandPaletteBody({
       }),
     [navigate, pluginSlots.navPanels],
   );
+  const machineActions = useMemo(
+    () =>
+      buildMachinePaletteActions({
+        hosts,
+        navigate: (path) => {
+          void navigate(path);
+        },
+      }),
+    [hosts, navigate],
+  );
 
   const { choices, select } = useServerChoices();
   const serverActions = useMemo<PaletteAction[]>(
@@ -109,10 +123,11 @@ export function CommandPaletteBody({
     () => [
       ...actions,
       ...settingsActions,
+      ...machineActions,
       ...pluginPageActions,
       ...serverActions,
     ],
-    [actions, pluginPageActions, settingsActions, serverActions],
+    [actions, machineActions, pluginPageActions, settingsActions, serverActions],
   );
   const commandQuery = query.startsWith(">") ? query.slice(1) : query;
   const ranked = useMemo(

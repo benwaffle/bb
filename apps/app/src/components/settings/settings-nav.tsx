@@ -5,6 +5,7 @@ import type { LocalHostDaemonAccessState } from "@/lib/local-host-daemon-access"
 import { usePluginSlots, type PluginFileOpenerSlot } from "@/lib/plugin-slots";
 import { usePluginList } from "@/hooks/queries/plugin-settings-queries";
 import {
+  SETTINGS_MACHINE_MEMORY_ROUTE_PATH,
   SETTINGS_MACHINE_ROUTE_PATH,
   SETTINGS_PLUGIN_ROUTE_PATH,
   SETTINGS_PROJECT_ROUTE_PATH,
@@ -64,7 +65,9 @@ export function resolveSettingsRoute({
   const activePluginId = isInstalledDetail
     ? null
     : (pluginMatch?.params.pluginId ?? null);
-  const machineMatch = matchPath(SETTINGS_MACHINE_ROUTE_PATH, pathname);
+  const machineMatch =
+    matchPath(SETTINGS_MACHINE_ROUTE_PATH, pathname) ??
+    matchPath(SETTINGS_MACHINE_MEMORY_ROUTE_PATH, pathname);
   const activeMachineId = machineMatch?.params.hostId ?? null;
   const projectMatch = matchPath(SETTINGS_PROJECT_ROUTE_PATH, pathname);
   const activeProjectId = projectMatch?.params.projectId ?? null;
