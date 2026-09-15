@@ -1414,8 +1414,9 @@ calls can keep the previous values until the worker becomes idle.
 
 Ordinary setup variable delivery requires host-daemon protocol 205; immediate
 plugin-call reuse across environment changes requires protocol 206. Daemon-wide
-machine environment synchronization requires protocol 207. Older daemons must
-update before the server accepts their session.
+machine environment synchronization requires protocol 207. Stopping a
+background command from the UI or `bb thread commands stop` requires protocol
+210. Older daemons must update before the server accepts their session.
 
 The built-in GitHub row uses `gh auth token --hostname github.com` and `gh api
 --hostname github.com user` on the server host. It supplies `GH_TOKEN`, Git's

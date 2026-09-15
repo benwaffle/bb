@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { isBackgroundAgentTaskType } from "@bb/domain";
 import type { TimelineWorkflowWorkRow } from "@bb/server-contract";
 import { useResizeObserver } from "usehooks-ts";
@@ -22,6 +22,10 @@ import { cn } from "@bb/shared-ui/lib/utils";
 
 const BODY_ID = "thread-background-commands-card-body";
 const TOGGLE_ID = "thread-background-commands-card-toggle";
+const STOP_BUTTON_CLASS =
+  "flex min-h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-none border-l border-border/35 bg-transparent text-muted-foreground transition-colors hover:text-foreground disabled:cursor-wait disabled:text-muted-foreground/60";
+const ROW_STOP_BUTTON_CLASS =
+  "flex size-5 shrink-0 cursor-pointer items-center justify-center rounded-sm bg-transparent text-muted-foreground transition-colors hover:text-foreground disabled:cursor-wait disabled:text-muted-foreground/60";
 const COMPACT_PROMPT_SHELL_MAX_WIDTH_REM = 34;
 const DEFAULT_ROOT_FONT_SIZE_PX = 16;
 
@@ -78,14 +82,95 @@ function backgroundActivityModel(row: TimelineWorkflowWorkRow): string | null {
   return isBackgroundAgentTaskType(row.taskType) ? row.model : null;
 }
 
+function backgroundActivityText(row: TimelineWorkflowWorkRow): string {
+  if (isBackgroundAgentTaskType(row.taskType)) {
+    return row.description;
+  }
+  return row.command ?? row.description;
+}
+
 function backgroundActivityAriaLabel(
   row: TimelineWorkflowWorkRow,
   label = backgroundActivityDisplay(row).label,
 ): string {
   const model = backgroundActivityModel(row);
-  return model
-    ? `${label}: ${row.description} · Model ${model}`
-    : `${label}: ${row.description}`;
+  const text = backgroundActivityText(row);
+  return model ? `${label}: ${text} · Model ${model}` : `${label}: ${text}`;
+}
+
+const OUTPUT_TAIL_LINES = 8;
+
+function backgroundCommandOutputTail(
+  row: TimelineWorkflowWorkRow,
+): string | null {
+  if (isBackgroundAgentTaskType(row.taskType)) {
+    return null;
+  }
+  const output = row.output?.replace(/\s+$/u, "") ?? "";
+  if (output.length === 0) {
+    return null;
+  }
+  return output.split("\n").slice(-OUTPUT_TAIL_LINES).join("\n");
+}
+
+function BackgroundCommandOutputTail({
+  row,
+}: {
+  row: TimelineWorkflowWorkRow;
+}) {
+  const tail = backgroundCommandOutputTail(row);
+  if (tail === null) {
+    return null;
+  }
+  return (
+    <pre
+      aria-label="Background command output"
+      className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md bg-card px-2 py-1 font-mono text-2xs leading-tight text-muted-foreground"
+    >
+      {tail}
+    </pre>
+  );
+}
+
+function stopBackgroundCommandAriaLabel(row: TimelineWorkflowWorkRow): string {
+  return `Stop background command: ${backgroundActivityText(row)}`;
+}
+
+function isStoppableBackgroundCommand(row: TimelineWorkflowWorkRow): boolean {
+  return (
+    !isBackgroundAgentTaskType(row.taskType) &&
+    row.familyId !== null &&
+    row.status === "pending"
+  );
+}
+
+function StopBackgroundCommandButton({
+  row,
+  className,
+  isStopping,
+  onStop,
+}: {
+  row: TimelineWorkflowWorkRow;
+  className: string;
+  isStopping: boolean;
+  onStop: (row: TimelineWorkflowWorkRow) => void;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={stopBackgroundCommandAriaLabel(row)}
+      title="Stop this command"
+      onClick={() => onStop(row)}
+      disabled={isStopping}
+      className={className}
+    >
+      <Icon
+        name={isStopping ? "Loading" : "Square"}
+        className={cn("size-3", isStopping && "animate-spin")}
+        aria-hidden="true"
+      />
+    </button>
+  );
 }
 
 function compactBackgroundActivityLabel(
@@ -107,14 +192,26 @@ function compactBackgroundActivityLabel(
 function BackgroundActivitySummary({
   row,
   showDuration,
+  showFullCommand = false,
 }: {
   row: TimelineWorkflowWorkRow;
   showDuration: boolean;
+  showFullCommand?: boolean;
 }) {
   const display = backgroundActivityDisplay(row);
   const model = backgroundActivityModel(row);
+  const text = backgroundActivityText(row);
+  const wrapsCommand =
+    showFullCommand &&
+    !isBackgroundAgentTaskType(row.taskType) &&
+    row.command !== null;
   return (
-    <span className="flex min-w-0 flex-1 items-center gap-1 text-left">
+    <span
+      className={cn(
+        "flex min-w-0 flex-1 gap-1 text-left",
+        wrapsCommand ? "items-start" : "items-center",
+      )}
+    >
       <span
         className={cn(
           "shrink-0 whitespace-nowrap",
@@ -124,10 +221,19 @@ function BackgroundActivitySummary({
         {display.runningPrefix}
       </span>
       <span
-        className={cn("min-w-0 truncate", activityTextClass("active"))}
-        title={row.description}
+        className={cn(
+          "min-w-0",
+          wrapsCommand
+            ? "whitespace-pre-wrap [overflow-wrap:anywhere]"
+            : "truncate",
+          !isBackgroundAgentTaskType(row.taskType) && row.command !== null
+            ? "font-mono"
+            : undefined,
+          activityTextClass("active"),
+        )}
+        title={text}
       >
-        {row.description}
+        {text}
       </span>
       {model ? (
         <span
@@ -155,12 +261,16 @@ interface ThreadBackgroundCommandsCardProps {
   commands: TimelineWorkflowWorkRow[];
   isExpanded: boolean;
   onToggle: () => void;
+  onStopCommand?: (row: TimelineWorkflowWorkRow) => void;
+  stoppingTaskId?: string | null;
 }
 
 export function ThreadBackgroundCommandsCard({
   commands,
   isExpanded,
   onToggle,
+  onStopCommand,
+  stoppingTaskId = null,
 }: ThreadBackgroundCommandsCardProps) {
   const isCompactViewport = useIsCompactViewport();
   const cardRef = useRef<HTMLElement>(null!);
@@ -183,11 +293,28 @@ export function ThreadBackgroundCommandsCard({
   const others = commands.slice(1);
   const hasMore = others.length > 0;
   const useCompactSummary = isCompactCard ?? isCompactViewport;
-  const canExpand = hasMore || useCompactSummary;
+  const hasFullCommandToReveal = commands.some(
+    (row) => !isBackgroundAgentTaskType(row.taskType) && row.command !== null,
+  );
+  const canExpand = hasMore || useCompactSummary || hasFullCommandToReveal;
   const expandedRows = useCompactSummary ? commands : others;
   const compactLabel = compactBackgroundActivityLabel(commands);
   const primaryDisplay = backgroundActivityDisplay(primary);
   const groupLabel = backgroundActivityGroupLabel(commands);
+  const isStopping = (row: TimelineWorkflowWorkRow): boolean =>
+    stoppingTaskId !== null && row.familyId === stoppingTaskId;
+  const stopButtonFor = (
+    row: TimelineWorkflowWorkRow,
+    className: string,
+  ): ReactNode =>
+    onStopCommand && isStoppableBackgroundCommand(row) ? (
+      <StopBackgroundCommandButton
+        row={row}
+        className={className}
+        isStopping={isStopping(row)}
+        onStop={onStopCommand}
+      />
+    ) : null;
 
   return (
     <PromptStackCard
@@ -225,10 +352,16 @@ export function ThreadBackgroundCommandsCard({
               </span>
             ) : (
               <>
-                <BackgroundActivitySummary row={primary} showDuration={false} />
-                <span className={activityMetaClass("active", "shrink-0")}>
-                  +{others.length} more
-                </span>
+                <BackgroundActivitySummary
+                  row={primary}
+                  showDuration={false}
+                  showFullCommand={isExpanded}
+                />
+                {hasMore ? (
+                  <span className={activityMetaClass("active", "shrink-0")}>
+                    +{others.length} more
+                  </span>
+                ) : null}
               </>
             )}
             <PromptStackCardChevron
@@ -252,6 +385,7 @@ export function ThreadBackgroundCommandsCard({
             <BackgroundActivitySummary row={primary} showDuration />
           </div>
         )}
+        {useCompactSummary ? null : stopButtonFor(primary, STOP_BUTTON_CLASS)}
       </div>
       {canExpand ? (
         <AnimatedBody
@@ -261,15 +395,25 @@ export function ThreadBackgroundCommandsCard({
           collapsedBorder="none"
         >
           <div className="flex flex-col gap-0.5 py-1">
+            {useCompactSummary ? null : (
+              <div className="flex min-w-0 flex-col px-3">
+                <BackgroundCommandOutputTail row={primary} />
+              </div>
+            )}
             {expandedRows.map((row) => {
               const display = backgroundActivityDisplay(row);
               const model = backgroundActivityModel(row);
+              const showsFullCommand =
+                !isBackgroundAgentTaskType(row.taskType) &&
+                row.command !== null;
               return (
+                <div key={row.id} className="flex min-w-0 flex-col px-3">
                 <div
-                  key={row.id}
                   className={cn(
-                    "flex min-w-0 gap-1.5 px-3 py-0.5 text-xs",
-                    useCompactSummary ? "items-start" : "items-center",
+                    "flex min-w-0 gap-1.5 py-0.5 text-xs",
+                    showsFullCommand || useCompactSummary
+                      ? "items-start"
+                      : "items-center",
                   )}
                 >
                   <Icon
@@ -280,13 +424,14 @@ export function ThreadBackgroundCommandsCard({
                   <span
                     className={cn(
                       "min-w-0 flex-1 text-muted-foreground",
-                      useCompactSummary
-                        ? "whitespace-normal [overflow-wrap:anywhere]"
+                      showsFullCommand ? "font-mono" : undefined,
+                      showsFullCommand || useCompactSummary
+                        ? "whitespace-pre-wrap [overflow-wrap:anywhere]"
                         : "truncate",
                     )}
-                    title={row.description}
+                    title={backgroundActivityText(row)}
                   >
-                    {row.description}
+                    {backgroundActivityText(row)}
                   </span>
                   {model ? (
                     <span
@@ -301,6 +446,9 @@ export function ThreadBackgroundCommandsCard({
                       <LiveDurationText startedAt={row.startedAt} />
                     ) : null}
                   </span>
+                  {stopButtonFor(row, ROW_STOP_BUTTON_CLASS)}
+                </div>
+                  <BackgroundCommandOutputTail row={row} />
                 </div>
               );
             })}

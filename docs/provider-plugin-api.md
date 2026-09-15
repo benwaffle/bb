@@ -173,6 +173,8 @@ dropped on the bridge's `staleTurn` recovery hint whatever the mode.
 
 **Runtime → bridge**: `model/list`,
 `thread/{start,resume,fork,stop,discard,archive,unarchive,name/set,goal/clear}`,
+`thread/backgroundTask/stop {taskId}` (only when the handshake declares
+`backgroundTaskStop`; answers `{stopped}` once the task settled),
 `turn/{start,steer}`, `skills/configure {roots}` (only when the handshake
 declares `skills.configure`),
 `provider/{health,usage,installation/status,installation/run}`.

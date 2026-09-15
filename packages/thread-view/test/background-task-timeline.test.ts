@@ -255,7 +255,172 @@ function turnCompleted(turnId: string, seq: number): ThreadEventWithMeta {
   );
 }
 
+function findCommandRows(rows: TimelineRow[]): TimelineRow[] {
+  const found: TimelineRow[] = [];
+  for (const row of rows) {
+    if (row.kind === "work" && row.workKind === "command") {
+      found.push(row);
+    }
+    if (row.kind === "turn" && row.children) {
+      found.push(...findCommandRows(row.children));
+    }
+    if (row.kind === "work" && row.workKind === "delegation") {
+      found.push(...findCommandRows(row.childRows));
+    }
+  }
+  return found;
+}
+
+function backgroundBashEvents(args: {
+  output: string | undefined;
+  settled: boolean;
+}): ThreadEventWithMeta[] {
+  const command = "for i in $(seq 1 100); do echo tick $i; sleep 1; done";
+  const events: ThreadEventWithMeta[] = [
+    turnStarted("turn-1", 1),
+    withMeta(
+      {
+        type: "item/started",
+        threadId: "thread-1",
+        providerThreadId: "provider-1",
+        scope: turnScope("turn-1"),
+        item: {
+          type: "commandExecution",
+          id: "toolu-bash",
+          command,
+          cwd: "/workspace",
+          status: "pending",
+          approvalStatus: null,
+        },
+      },
+      2,
+    ),
+    withMeta(
+      {
+        type: "item/started",
+        threadId: "thread-1",
+        providerThreadId: "provider-1",
+        scope: turnScope("turn-1"),
+        item: bashTaskItem({
+          status: "pending",
+          taskStatus: "running",
+          id: "task:bg-1",
+          description: "Count ticks",
+          parentToolCallId: "toolu-bash",
+        }),
+      },
+      3,
+    ),
+    withMeta(
+      {
+        type: "item/completed",
+        threadId: "thread-1",
+        providerThreadId: "provider-1",
+        scope: turnScope("turn-1"),
+        item: {
+          type: "commandExecution",
+          id: "toolu-bash",
+          command,
+          cwd: "/workspace",
+          status: "completed",
+          approvalStatus: null,
+          aggregatedOutput:
+            "Command running in background with ID: bg1. Output is being written to: /tmp/tasks/bg1.output.",
+        },
+      },
+      4,
+    ),
+    turnCompleted("turn-1", 5),
+  ];
+  if (args.output !== undefined) {
+    events.push(
+      withMeta(
+        {
+          type: args.settled
+            ? "item/backgroundTask/completed"
+            : "item/backgroundTask/progress",
+          threadId: "thread-1",
+          providerThreadId: "provider-1",
+          scope: threadScope(),
+          item: {
+            ...bashTaskItem({
+              status: args.settled ? "completed" : "pending",
+              taskStatus: args.settled ? "completed" : "running",
+              id: "task:bg-1",
+              description: "Count ticks",
+              parentToolCallId: "toolu-bash",
+            }),
+            command,
+            output: args.output,
+            outputFile: "/tmp/tasks/bg1.output",
+          },
+        },
+        6,
+      ),
+    );
+  }
+  return events;
+}
+
 describe("background task timeline projection", () => {
+  it("streams a background command's output into the row that launched it", () => {
+    const rows = buildTimelineRows(
+      backgroundBashEvents({ output: "tick 1\ntick 2\n", settled: false }),
+    );
+
+    const commandRows = findCommandRows(rows);
+    expect(commandRows).toHaveLength(1);
+    const commandRow = commandRows[0]!;
+    expect(commandRow.kind === "work" && commandRow.workKind === "command").toBe(
+      true,
+    );
+    if (commandRow.kind !== "work" || commandRow.workKind !== "command") {
+      throw new Error("expected a command row");
+    }
+    expect(commandRow.output).toBe("tick 1\ntick 2\n");
+    expect(commandRow.command).toContain("seq 1 100");
+  });
+
+  it("streams output even when the task event precedes its command row", () => {
+    const command = "for i in $(seq 1 100); do echo tick $i; sleep 1; done";
+    const events = backgroundBashEvents({
+      output: "tick 1\n",
+      settled: false,
+    });
+    const reordered = [events[0]!, events[2]!, events[5]!, events[1]!, events[3]!, events[4]!];
+    const rows = buildTimelineRows(
+      reordered.map((entry, index) => ({ ...entry, meta: { ...entry.meta, seq: index + 1 } })),
+    );
+    const commandRow = findCommandRows(rows)[0]!;
+    if (commandRow.kind !== "work" || commandRow.workKind !== "command") {
+      throw new Error("expected a command row");
+    }
+    expect(commandRow.command).toBe(command);
+    expect(commandRow.output).toBe("tick 1\n");
+  });
+
+  it("keeps the launch message when the background task reported no output yet", () => {
+    const rows = buildTimelineRows(
+      backgroundBashEvents({ output: undefined, settled: false }),
+    );
+    const commandRow = findCommandRows(rows)[0]!;
+    if (commandRow.kind !== "work" || commandRow.workKind !== "command") {
+      throw new Error("expected a command row");
+    }
+    expect(commandRow.output).toContain("running in background");
+  });
+
+  it("leaves the final output on the launching row after the command settles", () => {
+    const rows = buildTimelineRows(
+      backgroundBashEvents({ output: "tick 1\ntick 2\ntick 3\n", settled: true }),
+    );
+    const commandRow = findCommandRows(rows)[0]!;
+    if (commandRow.kind !== "work" || commandRow.workKind !== "command") {
+      throw new Error("expected a command row");
+    }
+    expect(commandRow.output).toBe("tick 1\ntick 2\ntick 3\n");
+  });
+
   it("folds started → progress → completed into one workflow row", () => {
     const rows = buildTimelineRows([
       turnStarted("turn-1", 1),

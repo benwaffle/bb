@@ -181,6 +181,9 @@ function defaultBridgeNodeEnv(): Record<string, string> | undefined {
 type ProviderProcess = RuntimeProviderProcess;
 
 const threadGoalClearResultSchema = z.object({ cleared: z.boolean() }).strict();
+const backgroundTaskStopResultSchema = z
+  .object({ stopped: z.boolean() })
+  .strict();
 const THREAD_GOAL_CLEAR_EVENT_TIMEOUT_MS = 5_000;
 const PREPARED_THREAD_REWIND_TTL_MS = 5 * 60_000;
 const PREPARED_THREAD_REWIND_RETRY_MS = 30_000;
@@ -2214,6 +2217,34 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             timeoutMs: THREAD_GOAL_CLEAR_EVENT_TIMEOUT_MS,
           });
           return { cleared: confirmed };
+        },
+      });
+    },
+
+    async stopBackgroundTask({ threadId, taskId }) {
+      return runThreadOperation({
+        threadId,
+        work: async () => {
+          const pid = threadIdentityRegistry.resolveProviderForThread(threadId);
+          const proc = requireProviderProcessForThread(threadId);
+          const adapterCommand: AdapterCommand = {
+            type: "thread/backgroundTask/stop",
+            threadId,
+            providerThreadId: requireProviderThreadId(threadId),
+            taskId,
+          };
+          const plan = proc.adapter.buildCommandPlan(adapterCommand);
+          if (plan.kind !== "request") {
+            throw new Error(
+              `Provider "${pid}" does not support stopping background commands.`,
+            );
+          }
+          const result = await sendCommand({
+            proc,
+            message: plan,
+            resultSchema: backgroundTaskStopResultSchema,
+          });
+          return { stopped: result.stopped };
         },
       });
     },

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { readBackgroundCommandOutputTail } from "./background-command-output.js";
 import { ClaudeContextUsageCollector } from "./context-usage.js";
 import {
   buildClaudeSessionCommandsState,
@@ -74,6 +75,7 @@ import {
   type ThreadResumeParams,
   type ThreadStartParams,
   type ThreadStopParams,
+  type ThreadBackgroundTaskStopParams,
   type TurnStartParams,
   type TurnSteerParams,
 } from "./commands.js";
@@ -218,6 +220,7 @@ interface ThreadSession {
   recoveryHintRaisedThisTurn: "authRequired" | "rateLimited" | null;
   streamEnded: boolean;
   translator: ClaudeDeltaTranslator;
+  backgroundCommandOutputPoll: ReturnType<typeof setInterval> | null;
   pendingInteractiveRequests: Map<string | number, PendingInteractiveRequest>;
   permissionEscalationByAgentId: Map<string, PermissionEscalation | null>;
   permissionEscalationByPromptId: Map<string, PermissionEscalation | null>;
@@ -382,6 +385,10 @@ function requireSkillPluginsRoot(): string {
 }
 
 const THREAD_STOP_CLOSE_TIMEOUT_MS = 4_000;
+const BACKGROUND_COMMAND_OUTPUT_POLL_MS = 1_000;
+const BACKGROUND_TASK_STOP_REQUEST_TIMEOUT_MS = 5_000;
+const BACKGROUND_TASK_STOP_SETTLE_TIMEOUT_MS = 10_000;
+const BACKGROUND_TASK_STOP_SETTLE_POLL_MS = 100;
 const CLAUDE_CHROME_SETTING_RESTART_REASON = "Claude in Chrome setting changed";
 
 const { send, sendResult, sendError } = createBridgeIo<
@@ -932,6 +939,7 @@ function createThreadSession(attachment: ThreadAttachment): ThreadSession {
   const translator = createClaudeDeltaTranslator({
     cwd: attachment.sessionConstructionConfig.sessionOptions.cwd,
     sandboxEnabled: attachment.sessionOptions.sandbox?.enabled === true,
+    readBackgroundCommandOutput: readBackgroundCommandOutputTail,
   });
   translator.configureInjectedTools(
     (attachment.sessionConstructionConfig.dynamicTools ?? []).map((tool) => ({
@@ -952,6 +960,7 @@ function createThreadSession(attachment: ThreadAttachment): ThreadSession {
     recoveryHintRaisedThisTurn: null,
     streamEnded: false,
     translator,
+    backgroundCommandOutputPoll: null,
     pendingInteractiveRequests: new Map(),
     permissionEscalationByAgentId: new Map(),
     permissionEscalationByPromptId: new Map(),
@@ -1354,6 +1363,7 @@ function createOnSdkMessage(
       threadId: args.threadIdRef.current,
       message,
     });
+    ensureBackgroundCommandOutputPolling(threadSession, args.threadIdRef);
     if (
       message.type === "result" ||
       (message.type === "system" && message.subtype === "compact_boundary")
@@ -1450,6 +1460,96 @@ async function publishSessionCommands(
   ]);
 }
 
+function stopBackgroundCommandOutputPolling(threadSession: ThreadSession): void {
+  if (threadSession.backgroundCommandOutputPoll !== null) {
+    clearInterval(threadSession.backgroundCommandOutputPoll);
+    threadSession.backgroundCommandOutputPoll = null;
+  }
+}
+
+function ensureBackgroundCommandOutputPolling(
+  threadSession: ThreadSession,
+  threadIdRef: { current: string },
+): void {
+  if (
+    threadSession.backgroundCommandOutputPoll !== null ||
+    !threadSession.translator.hasStreamingBackgroundCommands(threadIdRef.current)
+  ) {
+    return;
+  }
+  const poll = setInterval(() => {
+    const threadId = threadIdRef.current;
+    if (
+      threadSession.closing ||
+      threadSession.streamEnded ||
+      threadSession.attachment.residentSession !== threadSession
+    ) {
+      stopBackgroundCommandOutputPolling(threadSession);
+      return;
+    }
+    sendThreadDeltas(
+      threadId,
+      threadSession.translator.pollBackgroundCommandOutput(threadId),
+    );
+    if (!threadSession.translator.hasStreamingBackgroundCommands(threadId)) {
+      stopBackgroundCommandOutputPolling(threadSession);
+    }
+  }, BACKGROUND_COMMAND_OUTPUT_POLL_MS);
+  poll.unref();
+  threadSession.backgroundCommandOutputPoll = poll;
+}
+
+async function handleBackgroundTaskStop(
+  id: string | number,
+  params: ThreadBackgroundTaskStopParams,
+): Promise<void> {
+  const threadSession = threadAttachments.get(params.threadId)?.residentSession;
+  if (
+    !threadSession ||
+    threadSession.closing ||
+    threadSession.translator.getBackgroundTaskState(
+      params.threadId,
+      params.taskId,
+    ) !== "running"
+  ) {
+    sendResult(id, { stopped: false });
+    return;
+  }
+  const isSettled = (): boolean =>
+    threadSession.translator.getBackgroundTaskState(
+      params.threadId,
+      params.taskId,
+    ) === "settled";
+  const requested = await Promise.race([
+    threadSession.session.stopTask(params.taskId).then(
+      (sent) => (sent ? "sent" : "no-session"),
+      () => "rejected",
+    ),
+    new Promise<"timeout">((resolve) =>
+      setTimeout(
+        () => resolve("timeout"),
+        BACKGROUND_TASK_STOP_REQUEST_TIMEOUT_MS,
+      ).unref(),
+    ),
+  ]);
+  if (requested === "no-session") {
+    sendResult(id, { stopped: isSettled() });
+    return;
+  }
+  const deadline = Date.now() + BACKGROUND_TASK_STOP_SETTLE_TIMEOUT_MS;
+  while (
+    !isSettled() &&
+    !threadSession.closing &&
+    !threadSession.streamEnded &&
+    Date.now() < deadline
+  ) {
+    await new Promise<void>((resolve) =>
+      setTimeout(resolve, BACKGROUND_TASK_STOP_SETTLE_POLL_MS).unref(),
+    );
+  }
+  sendResult(id, { stopped: isSettled() });
+}
+
 function createOnSdkDone(
   args: CreateSdkCallbackArgs,
 ): (error?: unknown) => void {
@@ -1461,6 +1561,7 @@ function createOnSdkDone(
     if (!threadSession) return;
 
     threadSession.streamEnded = true;
+    stopBackgroundCommandOutputPolling(threadSession);
     resolvePendingSessionWork(
       threadSession,
       "Claude SDK stream ended before pending work completed",
@@ -2020,6 +2121,7 @@ async function handleRequest(request: ClaudeCodeJsonRpcRequest): Promise<void> {
           threadArchive: false,
           threadRename: false,
           threadGoalClear: false,
+          backgroundTaskStop: true,
           fork: "checkpoint",
           approvalEnforcedBy: "provider",
           grammarVersions: [THREAD_DELTA_GRAMMAR_V3, THREAD_DELTA_GRAMMAR_V3],
@@ -2090,6 +2192,9 @@ async function handleRequest(request: ClaudeCodeJsonRpcRequest): Promise<void> {
       break;
     case "thread/discard":
       sendResult(request.id, await closeThreadForStop(request.params.threadId));
+      break;
+    case "thread/backgroundTask/stop":
+      await handleBackgroundTaskStop(request.id, request.params);
       break;
     case "skills/configure":
       configuredSkillRoots = assembleSkillPlugins(request.params.roots);

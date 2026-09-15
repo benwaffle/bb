@@ -167,6 +167,8 @@ configures the machine with optional configured `preset` and `image` names;
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
+- `bb thread commands`
+- `bb thread commands stop`
 - `bb thread interactions`
 - `bb thread interactions list`
 - `bb thread interactions show`
