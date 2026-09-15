@@ -3474,7 +3474,7 @@ describe("PromptBoxInternal compact layout", () => {
     expect(onSubmit).toHaveBeenCalledTimes(3);
   });
 
-  it("does not open context usage when a submit touch's click lands on the donut", () => {
+  it("does not open context usage when a submit touch's click lands on the readout", () => {
     const restoreMatchMedia = mockPointerCoarse(true);
     const onSubmit = vi.fn();
     function Harness() {
@@ -3521,19 +3521,19 @@ describe("PromptBoxInternal compact layout", () => {
       expect(onSubmit).toHaveBeenCalledOnce();
       expect(document.activeElement).not.toBe(getPromptEditorElement());
 
-      const donut = screen.getByRole("button", {
-        name: "Context window 10% used",
+      const readout = screen.getByRole("button", {
+        name: "Context window 1k/10k tokens, 10% used",
       });
-      fireEvent.click(donut, { detail: 1 });
+      fireEvent.click(readout, { detail: 1 });
       expect(
         screen.queryByRole("dialog", { name: "Context window" }),
       ).toBeNull();
-      expect(donut.getAttribute("aria-expanded")).toBe("false");
+      expect(readout.getAttribute("aria-expanded")).toBe("false");
 
-      fireEvent.pointerDown(donut, touch);
-      fireEvent.pointerUp(donut, touch);
-      fireEvent.click(donut, { detail: 1 });
-      expect(donut.getAttribute("aria-expanded")).toBe("true");
+      fireEvent.pointerDown(readout, touch);
+      fireEvent.pointerUp(readout, touch);
+      fireEvent.click(readout, { detail: 1 });
+      expect(readout.getAttribute("aria-expanded")).toBe("true");
     } finally {
       restoreMatchMedia();
     }
