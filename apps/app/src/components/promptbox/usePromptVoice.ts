@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
+import { usePushToTalk } from "@/hooks/usePushToTalk";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { transcribeVoiceInput } from "@/lib/api";
 import type { PromptDraftState } from "@bb/client-core";
+import { usePushToTalkEnabled } from "@/lib/push-to-talk-preference";
 import type { PromptBoxHandle, PromptVoiceConfig } from "./PromptBoxInternal";
 
 async function requestVoiceTranscription({
@@ -28,6 +30,7 @@ export function usePromptVoice(
     setDraft: (draft: PromptDraftState) => void;
   },
 ): PromptVoiceConfig {
+  const pushToTalkEnabled = usePushToTalkEnabled();
   const sendPendingRef = useRef(false);
   const stoppedRef = useRef(false);
   const mountedRef = useRef(true);
@@ -114,6 +117,22 @@ export function usePromptVoice(
     }
   }, [voiceInput.state]);
 
+  const transcribeLive = useCallback(
+    (args: { file: File; prompt?: string; signal: AbortSignal }) =>
+      requestVoiceTranscription({
+        file: args.file,
+        ...(args.prompt === undefined ? {} : { promptContext: args.prompt }),
+        signal: args.signal,
+      }),
+    [],
+  );
+
+  const pushToTalk = usePushToTalk({
+    onFinalTranscript: onTranscript,
+    onTranscribe: transcribeLive,
+    getPromptContext,
+  });
+
   return useMemo<PromptVoiceConfig>(
     () => ({
       state: voiceInput.state,
@@ -123,6 +142,15 @@ export function usePromptVoice(
       stop,
       send,
       cancel,
+      pushToTalk: {
+        enabled: pushToTalkEnabled && pushToTalk.isSupported,
+        state: pushToTalk.state,
+        stream: pushToTalk.stream,
+        transcript: pushToTalk.snapshot,
+        start: pushToTalk.start,
+        stop: pushToTalk.stop,
+        cancel: pushToTalk.cancel,
+      },
     }),
     [
       voiceInput.state,
@@ -132,6 +160,14 @@ export function usePromptVoice(
       stop,
       send,
       cancel,
+      pushToTalkEnabled,
+      pushToTalk.isSupported,
+      pushToTalk.state,
+      pushToTalk.stream,
+      pushToTalk.snapshot,
+      pushToTalk.start,
+      pushToTalk.stop,
+      pushToTalk.cancel,
     ],
   );
 }
