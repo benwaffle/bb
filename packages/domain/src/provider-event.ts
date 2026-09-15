@@ -375,6 +375,8 @@ export const threadEventBackgroundTaskItemSchema = z.object({
   error: z.string().optional(),
   outputFile: z.string().optional(),
   ownerStopped: z.literal(true).optional(),
+  command: z.string().optional(),
+  output: z.string().optional(),
   ...itemPresentationField,
   parentToolCallId: z.string().optional(),
 });
