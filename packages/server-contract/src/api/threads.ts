@@ -35,6 +35,7 @@ import {
   threadTimelinePendingTodosSchema,
   threadEventSchema,
   threadEventTypeValues,
+  threadMemoryUsageSchema,
   threadParentNotificationsSchema,
   threadVisibilitySchema,
   threadWithRuntimeSchema,
@@ -618,6 +619,7 @@ export const threadResponseSchema = threadWithRuntimeSchema.extend({
   canRestoreEnvironment: z.boolean(),
   canEditMessages: z.boolean(),
   canSpawnChild: z.boolean(),
+  memoryUsage: threadMemoryUsageSchema.nullable(),
   // How many messages are waiting on this thread's queue right now — waiting on
   // the clock, on the running turn, on provisioning, on an interaction, or on
   // a plugin. The count alone drives the pending-region and thread-row badges;

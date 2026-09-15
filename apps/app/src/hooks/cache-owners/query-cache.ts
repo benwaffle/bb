@@ -1,7 +1,9 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import type {
+  HostMemoryUsage,
   Thread,
   ThreadListEntry,
+  ThreadMemoryUsage,
   ThreadStatusChangeMetadata,
 } from "@bb/domain";
 import {
@@ -12,6 +14,7 @@ import { bumpDiffPatchEvictionGeneration } from "./environment-diff-patch-cache-
 import { patchCachedQueryData } from "./cache-effect-utils";
 import { readCachedSidebarBootstrap } from "@/lib/sidebar-bootstrap-cache";
 import type {
+  HostMemoryUsageSignal,
   SidebarBootstrapResponse,
   ThreadResponse,
   ThreadTimelineResponse,
@@ -27,8 +30,10 @@ import {
   environmentQueryKey,
   environmentWorkStatusQueryKey,
   environmentWorkStatusQueryKeyPrefix,
+  hostMemoryUsageQueryKey,
   SIDEBAR_NAVIGATION_QUERY_KEY,
   sidebarNavigationQueryKey,
+  THREAD_QUERY_KEY,
   THREADS_QUERY_KEY,
   threadsQueryKey,
   threadTimelineQueryKeyPrefix,
@@ -36,7 +41,7 @@ import {
   type ArchivedThreadsListFilters,
   type ThreadListQueryFilters,
 } from "../queries/query-keys";
-import { patchThreadEntity } from "./thread-entity-store";
+import { getThreadEntity, patchThreadEntity } from "./thread-entity-store";
 
 type TimelineRowsUpdater = (
   rows: readonly TimelineRow[],
@@ -648,6 +653,86 @@ export function updateCachedThreadStatusState(
     { status, runtime, latestAttentionAt, updatedAt },
     updatedAt,
   );
+}
+
+function sameMemoryUsage(
+  left: ThreadMemoryUsage | null,
+  right: ThreadMemoryUsage | null,
+): boolean {
+  if (left === null || right === null) {
+    return left === right;
+  }
+  return (
+    left.rssBytes === right.rssBytes &&
+    left.processCount === right.processCount &&
+    left.sharedThreadCount === right.sharedThreadCount &&
+    left.sampledAt === right.sampledAt
+  );
+}
+
+export function applyHostMemoryUsageSignal(
+  queryClient: QueryClient,
+  signal: HostMemoryUsageSignal,
+): void {
+  queryClient.setQueryData<HostMemoryUsage | null>(
+    hostMemoryUsageQueryKey(signal.hostId),
+    signal.host,
+  );
+  const hostThreadIds = listCachedHostThreadIds(queryClient, signal.hostId);
+  for (const threadId of hostThreadIds) {
+    const memoryUsage = signal.threads[threadId] ?? null;
+    const current = getThreadEntity(queryClient, threadId)?.list?.memoryUsage;
+    if (current !== undefined && sameMemoryUsage(current, memoryUsage)) {
+      continue;
+    }
+    patchThreadEntity(queryClient, threadId, { memoryUsage });
+  }
+  for (const [queryKey, cached] of queryClient.getQueriesData<ThreadResponse>({
+    queryKey: [THREAD_QUERY_KEY],
+  })) {
+    if (!cached || queryKey.length !== 2) {
+      continue;
+    }
+    const reported = Object.hasOwn(signal.threads, cached.id);
+    if (!reported && !hostThreadIds.has(cached.id)) {
+      continue;
+    }
+    const memoryUsage = reported ? signal.threads[cached.id]! : null;
+    if (sameMemoryUsage(cached.memoryUsage, memoryUsage)) {
+      continue;
+    }
+    queryClient.setQueryData<ThreadResponse>(queryKey, {
+      ...cached,
+      memoryUsage,
+    });
+  }
+}
+
+function listCachedHostThreadIds(
+  queryClient: QueryClient,
+  hostId: string,
+): Set<string> {
+  const threadIds = new Set<string>();
+  for (const { data } of getCachedThreadLists(queryClient, {
+    queryKey: threadsQueryKey(),
+  })) {
+    for (const thread of iterateThreadListCacheEntries(data)) {
+      if (thread.environmentHostId === hostId) {
+        threadIds.add(thread.id);
+      }
+    }
+  }
+  const navigation = queryClient.getQueryData<SidebarBootstrapResponse>(
+    sidebarNavigationQueryKey(),
+  );
+  if (navigation) {
+    for (const thread of listSidebarNavigationThreads(navigation)) {
+      if (thread.environmentHostId === hostId) {
+        threadIds.add(thread.id);
+      }
+    }
+  }
+  return threadIds;
 }
 
 export function getFetchingThreadListQueryKeys(
