@@ -77,8 +77,8 @@ capability fields pass through. Bridges version with their plugin, not with
 the daemon — that decoupling is the protocol's reason to exist.
 
 Handshake capabilities are **session-behavior facts** (`sessionRestore`,
-`threadArchive`, `threadRename`, `threadGoalClear`, `fork`,
-`approvalEnforcedBy`, `grammarVersions`, `steerMode`). They are reported by
+`threadArchive`, `threadRename`, `threadGoalClear`, `backgroundTaskStop`,
+`fork`, `approvalEnforcedBy`, `grammarVersions`, `steerMode`). They are reported by
 the code that implements them, so they cannot drift from behavior.
 `grammarVersions` is the inclusive `[min, max]` range of the `thread/delta`
 grammar the bridge speaks (default `[2, 2]`: a bridge that says nothing
