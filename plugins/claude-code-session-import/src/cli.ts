@@ -1,15 +1,16 @@
 import { isAbsolute, resolve } from "node:path";
 import type { BbPluginApi, PluginCliResult } from "@get-bb/plugin-sdk";
 import { looksLikeSessionPath } from "./session-import.js";
+import { describeHiddenReason } from "./session-visibility.js";
 import {
   SessionImportError,
   type ClaudeSessionImportService,
-} from "./session-import-service.js";
+} from "./service.js";
 
 const IMPORT_USAGE =
   "Usage: bb claude-code import <session-id|title|session.jsonl> [--project <id>] [--environment <id|path>] [--machine <host-id>] [--title <text>] [--turns A-B] [--json]";
 const SESSIONS_USAGE =
-  "Usage: bb claude-code sessions [--dir <path>] [--machine <host-id>] [--limit <n>] [--json]";
+  "Usage: bb claude-code sessions [--dir <path>] [--machine <host-id>] [--limit <n>] [--all] [--json]";
 const USAGE = `${IMPORT_USAGE}\n${SESSIONS_USAGE}`;
 const DEFAULT_SESSION_LIST_LIMIT = 30;
 
@@ -31,7 +32,9 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function parseImportArgs(argv: readonly string[]): ParsedImportArgs | string {
+export function parseImportArgs(
+  argv: readonly string[],
+): ParsedImportArgs | string {
   const parsed: ParsedImportArgs = {
     session: "",
     projectId: null,
@@ -46,7 +49,7 @@ function parseImportArgs(argv: readonly string[]): ParsedImportArgs | string {
     const arg = argv[index] ?? "";
     const readValue = (): string | null => {
       const value = argv[index + 1];
-      if (value === undefined) return null;
+      if (value === undefined || value.startsWith("--")) return null;
       index += 1;
       return value;
     };
@@ -97,9 +100,10 @@ interface ParsedSessionsArgs {
   machine: string | null;
   limit: number;
   json: boolean;
+  all: boolean;
 }
 
-function parseSessionsArgs(
+export function parseSessionsArgs(
   argv: readonly string[],
 ): ParsedSessionsArgs | string {
   const parsed: ParsedSessionsArgs = {
@@ -107,13 +111,18 @@ function parseSessionsArgs(
     machine: null,
     limit: DEFAULT_SESSION_LIST_LIMIT,
     json: false,
+    all: false,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index] ?? "";
-    const value = argv[index + 1];
+    const next = argv[index + 1];
+    const value = next === undefined || next.startsWith("--") ? undefined : next;
     switch (arg) {
       case "--json":
         parsed.json = true;
+        break;
+      case "--all":
+        parsed.all = true;
         break;
       case "--dir":
         if (value === undefined) return "--dir needs a directory path";
@@ -127,7 +136,8 @@ function parseSessionsArgs(
         break;
       case "--limit": {
         const limit = value === undefined ? Number.NaN : Number(value);
-        if (!Number.isInteger(limit) || limit < 1) return "--limit needs a positive integer";
+        if (!Number.isInteger(limit) || limit < 1)
+          return "--limit needs a positive integer";
         parsed.limit = limit;
         index += 1;
         break;
@@ -174,21 +184,30 @@ export function registerClaudeSessionImportCli(
       return failFrom(error);
     }
     const { machine, sessions } = listing;
-    const shown = sessions.slice(0, parsed.limit);
+    const selectable = parsed.all
+      ? sessions
+      : sessions.filter((session) => session.hiddenReason === null);
+    const hiddenCount = sessions.length - selectable.length;
+    const shown = selectable.slice(0, parsed.limit);
     if (parsed.json) {
       return {
         exitCode: 0,
         stdout: JSON.stringify({
           machine: machine.id,
-          total: sessions.length,
+          total: selectable.length,
+          hidden: hiddenCount,
           sessions: shown,
         }),
       };
     }
+    const hiddenNote =
+      hiddenCount === 0
+        ? ""
+        : `\n${hiddenCount} ${hiddenCount === 1 ? "session is" : "sessions are"} already in bb; --all lists them too.`;
     if (shown.length === 0) {
       return {
         exitCode: 0,
-        stdout: `No Claude Code sessions on ${machine.name}${parsed.dir === null ? "" : ` for ${parsed.dir}`}.`,
+        stdout: `No Claude Code sessions to import on ${machine.name}${parsed.dir === null ? "" : ` for ${parsed.dir}`}.${hiddenNote}`,
       };
     }
     const now = Date.now();
@@ -196,15 +215,19 @@ export function registerClaudeSessionImportCli(
       const label = session.title ?? session.firstPrompt ?? "(untitled)";
       const project =
         session.projectName === null ? "" : `  [${session.projectName}]`;
-      return `${session.sessionId}  ${formatAge(session.lastActivityAt, now).padEnd(8)}  ${String(session.turnCount).padStart(3)} turns  ${session.cwd ?? "?"}${project}\n    ${label.replace(/\s+/gu, " ").slice(0, 110)}`;
+      const hidden =
+        session.hiddenReason === null
+          ? ""
+          : `  (${describeHiddenReason(session.hiddenReason)})`;
+      return `${session.sessionId}  ${formatAge(session.lastActivityAt, now).padEnd(8)}  ${String(session.turnCount).padStart(3)} turns  ${session.cwd ?? "?"}${project}${hidden}\n    ${label.replace(/\s+/gu, " ").slice(0, 110)}`;
     });
     const footer =
-      sessions.length > shown.length
-        ? `\n${sessions.length - shown.length} more; raise --limit or narrow with --dir <path>.`
+      selectable.length > shown.length
+        ? `\n${selectable.length - shown.length} more; raise --limit or narrow with --dir <path>.`
         : "";
     return {
       exitCode: 0,
-      stdout: `${lines.join("\n")}${footer}\nImport one with: bb claude-code import <id|title>`,
+      stdout: `${lines.join("\n")}${footer}${hiddenNote}\nImport one with: bb claude-code import <id|title>`,
     };
   }
 
@@ -215,7 +238,7 @@ export function registerClaudeSessionImportCli(
       {
         name: "sessions",
         summary:
-          "List Claude Code sessions on a machine (id, title, directory, last activity) so one can be imported",
+          "List importable Claude Code sessions on a machine (id, title, directory, last activity); sessions that already belong to bb threads are left out unless --all",
         usage: SESSIONS_USAGE,
       },
       {
