@@ -1,6 +1,7 @@
 import ReconnectingWebSocket from "partysocket/ws";
 import {
   changedMessageLenientSchema,
+  hostMemoryUsageSignalLenientSchema,
   pluginSignalLenientSchema,
   pongMessageLenientSchema,
   realtimeSubscriptionTargetKey,
@@ -11,6 +12,7 @@ import {
 import type {
   ClientMessage,
   ChangedMessage,
+  HostMemoryUsageSignal,
   PluginSignal,
   RealtimeSubscriptionTarget,
   ThreadOpenFile,
@@ -29,6 +31,7 @@ type ThreadOpenCallback = (signal: ThreadOpenSignal) => void;
 type ThreadPaneActionCallback = (signal: ThreadPaneActionSignal) => void;
 type PluginSignalCallback = (signal: PluginSignal) => void;
 type ThreadTimelineCallback = (signal: ThreadTimelineSignal) => void;
+type HostMemoryUsageCallback = (signal: HostMemoryUsageSignal) => void;
 export type WebSocketConnectedEvent =
   | { reconnected: false }
   | {
@@ -87,6 +90,7 @@ export class WebSocketManager {
   private threadPaneActionCallbacks = new Set<ThreadPaneActionCallback>();
   private pluginSignalCallbacks = new Set<PluginSignalCallback>();
   private threadTimelineCallbacks = new Set<ThreadTimelineCallback>();
+  private hostMemoryUsageCallbacks = new Set<HostMemoryUsageCallback>();
   private pendingOpenFileByThreadId = new Map<string, ThreadOpenFile>();
   private connectedCallbacks = new Set<ConnectedCallback>();
   private connectionStateCallbacks = new Set<ConnectionStateCallback>();
@@ -427,6 +431,14 @@ export class WebSocketManager {
       return;
     }
 
+    const hostMemoryUsage = hostMemoryUsageSignalLenientSchema.safeParse(parsed);
+    if (hostMemoryUsage.success) {
+      for (const cb of this.hostMemoryUsageCallbacks) {
+        cb(hostMemoryUsage.data);
+      }
+      return;
+    }
+
     const msg = changedMessageLenientSchema.safeParse(parsed);
     if (msg.success) {
       for (const cb of this.callbacks) {
@@ -522,6 +534,13 @@ export class WebSocketManager {
     this.pluginSignalCallbacks.add(callback);
     return () => {
       this.pluginSignalCallbacks.delete(callback);
+    };
+  }
+
+  onHostMemoryUsage(callback: HostMemoryUsageCallback): () => void {
+    this.hostMemoryUsageCallbacks.add(callback);
+    return () => {
+      this.hostMemoryUsageCallbacks.delete(callback);
     };
   }
 

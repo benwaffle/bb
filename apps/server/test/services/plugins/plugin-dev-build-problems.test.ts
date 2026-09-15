@@ -18,6 +18,7 @@ async function createRuntime() {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         notifyPluginSignal: () => 0,
         notifySystem: () => {},

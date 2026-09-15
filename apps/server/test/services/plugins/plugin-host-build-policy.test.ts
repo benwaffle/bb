@@ -41,6 +41,7 @@ describe("mutable plugin host build policy", () => {
       logger: testLogger,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         notifyPluginSignal: () => 0,
         notifySystem: () => {},

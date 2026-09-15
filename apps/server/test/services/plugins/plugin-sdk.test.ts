@@ -189,6 +189,7 @@ describe("plugin bb.sdk bind gate", () => {
       ensureSharedPortTunnel,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         notifyPluginSignal: () => 0,
         notifySystem: () => {},
