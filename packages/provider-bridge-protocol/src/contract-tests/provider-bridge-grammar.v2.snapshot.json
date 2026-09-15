@@ -331,7 +331,8 @@
     "provider/raw",
     "provider/recovery",
     "session/replaced",
-    "thread/identity"
+    "thread/identity",
+    "thread/process"
   ],
   "inboundRequestMethods": [
     "interaction/request",
