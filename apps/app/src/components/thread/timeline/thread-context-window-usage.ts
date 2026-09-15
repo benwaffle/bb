@@ -1,9 +1,7 @@
 import type { ThreadContextWindowUsage } from "@bb/server-contract";
+import { formatContextWindowTokens } from "@bb/thread-view";
 
-const TOKEN_COMPACT_FORMATTER = new Intl.NumberFormat("en-US", {
-  notation: "compact",
-  maximumFractionDigits: 0,
-});
+export { formatContextWindowReadout } from "@bb/thread-view";
 
 export function calculateContextWindowUsagePercent(
   usage: ThreadContextWindowUsage,
@@ -15,6 +13,5 @@ export function calculateContextWindowUsagePercent(
 }
 
 export function formatCompactTokenCount(value: number): string {
-  const safeValue = Math.max(0, Math.round(value));
-  return TOKEN_COMPACT_FORMATTER.format(safeValue).toLowerCase();
+  return formatContextWindowTokens(value);
 }
