@@ -120,6 +120,7 @@ import { applyThreadOpenToLayout } from "@/views/thread-detail/splitThreadNaviga
 import { useAppSettingsRouteMemory } from "@/hooks/useAppSettingsRouteMemory";
 import { useSetRootComposeProjectId } from "@/lib/root-compose-selection";
 import { BackToAppCommandHandler } from "./BackToAppCommandHandler";
+import { HistoryNavigationCommandHandler } from "./HistoryNavigationCommandHandler";
 
 const SIDEBAR_WIDTH_KEY = "bb.sidebar.width";
 const SIDEBAR_OPEN_KEY = "bb.sidebar.open";
@@ -765,6 +766,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           >
             <ThreadActionsProvider>
               <SidebarStateBridge>
+                <HistoryNavigationCommandHandler />
                 {backToAppRoutePath !== null && !isSidebarResizing ? (
                   <BackToAppCommandHandler routePath={backToAppRoutePath} />
                 ) : null}
