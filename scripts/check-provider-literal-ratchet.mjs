@@ -79,6 +79,7 @@ const EXCLUDED_PREFIXES = [
   // Account Pool proxies one named provider's traffic; it is provider-side
   // code like plugins/provider-*, not core.
   join("plugins", "account-pool"),
+  join("plugins", "claude-code-session-import"),
   join("packages", "provider-bridge-acp"),
   // Test-only helpers: they name providers so tests can pick a model.
   join("packages", "test-helpers"),
