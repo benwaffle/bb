@@ -160,6 +160,7 @@ async function createPluginUpdateFixture(
     db,
     hub: {
       getDaemonSessionIdForHost: () => null,
+      getThreadMemoryUsage: () => null,
       notifyPluginChanged: () => {},
       onWatchedTargets: () => () => {},
       notifyPluginSignal: () => 0,
@@ -258,6 +259,7 @@ describe("plugin update scheduling", () => {
       db: emptyDb,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -293,6 +295,7 @@ describe("plugin update scheduling", () => {
       db: frozenDb,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -413,6 +416,7 @@ describe("plugin update scheduling", () => {
         db: schedulingDb,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginChanged: () => {},
           onWatchedTargets: () => () => {},
           notifyPluginSignal: () => 0,
@@ -994,6 +998,7 @@ describe("plugin update service and routes", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -1100,6 +1105,7 @@ describe("plugin update service and routes", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -1141,6 +1147,7 @@ describe("plugin update service and routes", () => {
       db,
       hub: {
         getDaemonSessionIdForHost: () => null,
+        getThreadMemoryUsage: () => null,
         notifyPluginChanged: () => {},
         onWatchedTargets: () => () => {},
         notifyPluginSignal: () => 0,
@@ -1261,6 +1268,7 @@ describe("plugin update service and routes", () => {
         db,
         hub: {
           getDaemonSessionIdForHost: () => null,
+          getThreadMemoryUsage: () => null,
           notifyPluginChanged: () => {},
           onWatchedTargets: () => () => {},
           notifyPluginSignal: () => 0,
