@@ -84,7 +84,11 @@ export {
   type EventProjectionFold,
 } from "./build-event-projection.js";
 
-export { extractThreadContextWindowUsage } from "./thread-context-window-usage.js";
+export {
+  extractThreadContextWindowUsage,
+  formatContextWindowReadout,
+  formatContextWindowTokens,
+} from "./thread-context-window-usage.js";
 export {
   isExternalUserBoundaryForTurn,
   type ExternalUserBoundaryMessage,
