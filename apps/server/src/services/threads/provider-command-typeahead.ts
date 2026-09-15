@@ -3,6 +3,7 @@ import {
   type CommandListResponse,
   type ProviderCommand,
 } from "@bb/server-contract";
+import type { ProviderSessionCommand } from "@bb/domain";
 import type { HostProviderCommand } from "@bb/host-daemon-contract";
 import type { ProviderRegistration } from "../providers/provider-registry.js";
 import type { ResolvedSkillCatalogEntry } from "../skills/injected-skills.js";
@@ -90,22 +91,52 @@ function compareCommands(a: ProviderCommand, b: ProviderCommand): number {
   return a.name.localeCompare(b.name);
 }
 
+function sessionCommandsMissingFromCatalog(
+  catalog: readonly ProviderCommand[],
+  sessionCommands: readonly ProviderSessionCommand[],
+): ProviderCommand[] {
+  const knownNames = new Set(catalog.map((command) => command.name));
+  const additions: ProviderCommand[] = [];
+  for (const command of sessionCommands) {
+    if (
+      knownNames.has(command.name) ||
+      command.aliases.some((alias) => knownNames.has(alias))
+    ) {
+      continue;
+    }
+    knownNames.add(command.name);
+    additions.push({
+      name: command.name,
+      source: "skill",
+      origin: "builtin",
+      description: command.description,
+      argumentHint: command.argumentHint,
+    });
+  }
+  return additions;
+}
+
 interface BuildCommandListResponseArgs {
   commands: HostProviderCommand[];
   includeBuiltinCompact: boolean;
   skillCatalog: readonly ResolvedSkillCatalogEntry[];
+  sessionCommands?: readonly ProviderSessionCommand[];
 }
 
 export function buildCommandListResponse(
   args: BuildCommandListResponseArgs,
 ): CommandListResponse {
+  const catalog = dedupeBySourceAndName([
+    ...BUILT_IN_PROVIDER_COMMANDS.filter(
+      (command) => command.name !== "compact" || args.includeBuiltinCompact,
+    ),
+    ...args.skillCatalog.map(toSkillCommand),
+    ...args.commands.map(toProviderCommand),
+  ]);
   return {
-    commands: dedupeBySourceAndName([
-      ...BUILT_IN_PROVIDER_COMMANDS.filter(
-        (command) => command.name !== "compact" || args.includeBuiltinCompact,
-      ),
-      ...args.skillCatalog.map(toSkillCommand),
-      ...args.commands.map(toProviderCommand),
-    ]).sort(compareCommands),
+    commands: [
+      ...catalog,
+      ...sessionCommandsMissingFromCatalog(catalog, args.sessionCommands ?? []),
+    ].sort(compareCommands),
   };
 }

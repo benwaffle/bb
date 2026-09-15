@@ -44,6 +44,7 @@ export * from "./system-message.js";
 export * from "./provider-event.js";
 export * from "./thread-provider-state.js";
 export * from "./provider-extension-kind.js";
+export * from "./provider-session-commands.js";
 export * from "./provider-fork.js";
 export * from "./provider-model-catalog.js";
 export * from "./provider-types.js";

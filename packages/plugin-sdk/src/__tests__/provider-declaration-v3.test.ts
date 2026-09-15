@@ -411,3 +411,56 @@ describe("provider declaration fields renamed in SDK 0.4.16", () => {
     );
   });
 });
+
+describe("provider declaration session commands", () => {
+  const stateSchema = z.object({ commands: z.array(z.object({})) });
+
+  it("keeps a session commands kind that names a declared state schema", () => {
+    const normalized = validatePluginProviderDeclaration(
+      declaration({
+        extensionKinds: { "session-commands": { state: stateSchema } },
+        experimental_sessionCommandsExtensionKind: "session-commands",
+      }),
+    );
+    expect(normalized.experimental_sessionCommandsExtensionKind).toBe(
+      "session-commands",
+    );
+  });
+
+  it("omits the field when the declaration leaves it out", () => {
+    const normalized = validatePluginProviderDeclaration(declaration());
+    expect("experimental_sessionCommandsExtensionKind" in normalized).toBe(
+      false,
+    );
+  });
+
+  it("rejects a kind name that is not declared with a state schema", () => {
+    expect(() =>
+      validatePluginProviderDeclaration(
+        declaration({
+          experimental_sessionCommandsExtensionKind: "session-commands",
+        }),
+      ),
+    ).toThrow(/extensionKinds\.session-commands declares no state schema/u);
+    expect(() =>
+      validatePluginProviderDeclaration(
+        declaration({
+          extensionKinds: { "session-commands": { item: stateSchema } },
+          experimental_sessionCommandsExtensionKind: "session-commands",
+        }),
+      ),
+    ).toThrow(/extensionKinds\.session-commands declares no state schema/u);
+  });
+
+  it("rejects a kind name outside the extension kind name pattern", () => {
+    expect(() =>
+      validatePluginProviderDeclaration(
+        declaration({
+          extensionKinds: { "session-commands": { state: stateSchema } },
+          experimental_sessionCommandsExtensionKind:
+            "my-agent/session-commands",
+        }),
+      ),
+    ).toThrow(/experimental_sessionCommandsExtensionKind must be/u);
+  });
+});
