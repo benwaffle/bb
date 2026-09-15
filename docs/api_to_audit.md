@@ -162,6 +162,31 @@ Before stabilization:
 - a composer has one mention search and one command search; confirm no
   composer needs two at once;
 
+## `ExperimentalComposerVoice.pushToTalk` and `ExperimentalVoiceRecordingBarProps.hint` (`@get-bb/plugin-sdk/app`)
+
+`input.voice.pushToTalk` (`ExperimentalComposerPushToTalk`) hands a composer
+bb's hold-Space recording: whether it is `enabled` (the client-local "Hold
+Space to talk" preference and browser support), its `state` (`idle`,
+`starting`, `recording`, `finalizing`), the microphone `stream`, the live
+`transcript` so far, and `start`, `stop` and `cancel`. The composer owns the
+key gesture (when a Space hold starts, release stops, Escape cancels) and
+previews `transcript` at the caret; recording, segment rotation, live
+re-transcription and delivering the final text through
+`editor.voice.deliverTranscript(text, "insert")` stay bb's
+(`apps/app/src/hooks/usePushToTalk.ts`). `experimental_VoiceRecordingBar`
+takes an optional `hint` shown beside the waveform, which bb's composer uses
+for "Release Space to finish". The bundled composer
+(`plugins/composer/src/PromptBoxInternal.tsx`) is the only caller; core's
+`ComposerBox` passes the config through from `usePromptVoice`.
+
+Before stabilization, decide whether the hold gesture and its gating
+(`plugins/composer/src/push-to-talk-keys.ts`: empty composer or nothing
+interactive focused, no open overlay) belong to the host rather than each
+composer, so a minimal composer gets push-to-talk without reimplementing
+them; whether `transcript` should keep committed and interim text apart for
+styling; and verify the hold across composer remounts, plugin reloads and
+multiple visible composers.
+
 ## Composer commands
 
 `PluginAppComposer.experimental_registerCommand({ id, title, defaultShortcut?, run })`

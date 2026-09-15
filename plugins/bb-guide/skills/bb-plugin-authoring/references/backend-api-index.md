@@ -191,6 +191,7 @@ Read the installed declarations for exact current signatures.
 - `ExperimentalComposerPopupProps`
 - `ExperimentalComposerPromptAction`
 - `ExperimentalComposerProps`
+- `ExperimentalComposerPushToTalk`
 - `ExperimentalComposerRegistration`
 - `ExperimentalComposerRendererApi`
 - `ExperimentalComposerRootProps`

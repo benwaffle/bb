@@ -2713,6 +2713,26 @@ export interface ExperimentalComposerVoice {
   discard(recording: ExperimentalFailedVoiceRecording): void;
   download(recording: ExperimentalFailedVoiceRecording): void;
   cancel(): void;
+  /** Hold-Space recording with a live transcript; omit where the host has none. */
+  pushToTalk?: ExperimentalComposerPushToTalk;
+}
+
+/**
+ * bb's hold-Space push-to-talk. The composer decides when a Space hold starts
+ * a recording and calls `start`, `stop` on release and `cancel` on Escape;
+ * recording, live transcription and delivering the final transcript through
+ * `editor.voice.deliverTranscript` stay bb's.
+ */
+export interface ExperimentalComposerPushToTalk {
+  /** Whether the user turned push-to-talk on and the browser can record. */
+  enabled: boolean;
+  state: "idle" | "starting" | "recording" | "finalizing";
+  stream: MediaStream | null;
+  /** The transcript so far, to preview at the caret while a hold is active; empty before the first result. */
+  transcript: string;
+  start(): void | Promise<void>;
+  stop(): void | Promise<void>;
+  cancel(): void;
 }
 
 /** A host shortcut prompt action in the composer's `+` menu. */
@@ -3062,6 +3082,8 @@ export interface ExperimentalVoiceRecordingBarProps {
   stream: MediaStream | null;
   microphoneWarning: string | null;
   submitIcon: BbIconName;
+  /** A short instruction shown beside the waveform. */
+  hint?: string;
   onConfirm(): void;
   onSend(): void;
   onCancel(): void;
