@@ -1332,6 +1332,7 @@ const READ_EXPERIMENTAL_PROVIDER_DECLARATION_FIELDS: ReadonlySet<string> =
     "experimental_nativeSkillRoots",
     "experimental_nativeCommandRoots",
     "experimental_resolvesNativeRoots",
+    "experimental_sessionCommandsExtensionKind",
   ]);
 
 const RENAMED_PROVIDER_FIELDS_SDK_VERSION = "0.4.16";
@@ -1597,6 +1598,23 @@ export function validatePluginProviderDeclaration(
           "experimental_nativeCommandRoots",
           declaration.experimental_nativeCommandRoots,
         );
+  const sessionCommandsExtensionKind =
+    declaration.experimental_sessionCommandsExtensionKind;
+  if (sessionCommandsExtensionKind !== undefined) {
+    if (
+      typeof sessionCommandsExtensionKind !== "string" ||
+      !PROVIDER_EXTENSION_KIND_NAME_PATTERN.test(sessionCommandsExtensionKind)
+    ) {
+      throw new Error(
+        `provider "${id}" experimental_sessionCommandsExtensionKind must be an extension kind name matching ${PROVIDER_EXTENSION_KIND_NAME_PATTERN}`,
+      );
+    }
+    if (extensionKinds?.[sessionCommandsExtensionKind]?.state === undefined) {
+      throw new Error(
+        `provider "${id}" experimental_sessionCommandsExtensionKind names ${JSON.stringify(sessionCommandsExtensionKind)}, but extensionKinds.${sessionCommandsExtensionKind} declares no state schema`,
+      );
+    }
+  }
   const resolvesNativeRoots = declaration.experimental_resolvesNativeRoots;
   if (
     resolvesNativeRoots !== undefined &&
@@ -1647,6 +1665,12 @@ export function validatePluginProviderDeclaration(
       ? {}
       : { experimental_nativeCommandRoots: nativeCommandRoots }),
     experimental_resolvesNativeRoots: resolvesNativeRoots ?? false,
+    ...(sessionCommandsExtensionKind === undefined
+      ? {}
+      : {
+          experimental_sessionCommandsExtensionKind:
+            sessionCommandsExtensionKind,
+        }),
     ...(deriveProviderOptions === undefined
       ? {}
       : { deriveProviderOptions: deriveProviderOptions }),

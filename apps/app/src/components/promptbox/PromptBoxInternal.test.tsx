@@ -2464,7 +2464,9 @@ describe("PromptBoxInternal compact layout", () => {
         const voiceButton = screen.getByRole("button", {
           name: "Start voice input",
         });
-        expect(screen.getByRole("button", { name: "Submit (Enter)" })).toBeTruthy();
+        expect(
+          screen.getByRole("button", { name: "Submit (Enter)" }),
+        ).toBeTruthy();
         fireEvent.pointerDown(voiceButton, {
           button: 0,
           pointerType: "touch",
@@ -4480,6 +4482,86 @@ describe("PromptBoxInternal prompt actions", () => {
         },
       },
     ]);
+  });
+
+  it("keeps the composer open after Enter picks a skill with arguments and shows its hint until arguments arrive", async () => {
+    const { changes, onSubmit, promptBoxRef } = renderPromptBox("/code", {
+      commandSuggestions: [
+        {
+          kind: "command",
+          name: "code-review",
+          source: "skill",
+          origin: "builtin",
+          description: "Review the current diff",
+          argumentHint: "[low|medium|high]",
+        },
+      ],
+    });
+
+    await focusPromptEnd(promptBoxRef);
+    await screen.findByRole("button", { name: /code-review/u });
+    fireEvent.keyDown(getPromptEditorElement(), { key: "Enter" });
+
+    await waitFor(() => expect(latestValue(changes)).toBe("/code-review "));
+    expect(onSubmit).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-command-argument-placeholder]")
+          ?.textContent,
+      ).toBe("[low|medium|high]"),
+    );
+
+    await act(async () => {
+      promptBoxRef.current?.insertTextAtCursor("low");
+    });
+
+    await waitFor(() => expect(latestValue(changes)).toBe("/code-review low"));
+    expect(latestChange(changes)?.mentions).toEqual([
+      {
+        start: 0,
+        end: "/code-review".length,
+        resource: {
+          kind: "command",
+          trigger: "/",
+          name: "code-review",
+          source: "skill",
+          origin: "builtin",
+          label: "code-review",
+          argumentHint: "[low|medium|high]",
+        },
+      },
+    ]);
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-command-argument-placeholder]"),
+      ).toBeNull(),
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("still submits bb's argument-less built-in command when Enter picks it", async () => {
+    const { changes, onSubmit, promptBoxRef } = renderPromptBox("/com", {
+      commandSuggestions: [
+        {
+          kind: "command",
+          name: "compact",
+          source: "command",
+          origin: "builtin",
+          description: "Compact context",
+          argumentHint: null,
+        },
+      ],
+    });
+
+    await focusPromptEnd(promptBoxRef);
+    await screen.findByRole("button", { name: /compact/u });
+    fireEvent.keyDown(getPromptEditorElement(), { key: "Enter" });
+
+    await waitFor(() => expect(latestValue(changes)).toBe("/compact "));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledOnce());
+    expect(
+      document.querySelector("[data-command-argument-placeholder]"),
+    ).toBeNull();
   });
 
   it("keeps typed content after a prompt action when selecting another action", async () => {

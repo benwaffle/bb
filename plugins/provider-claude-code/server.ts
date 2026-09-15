@@ -1,11 +1,13 @@
 import { registerUsageSource } from "./src/usage-source.js";
 import type { BbPluginApi } from "@get-bb/plugin-sdk";
+import { experimental_sessionCommandsStateSchema } from "@get-bb/plugin-sdk/provider-bridge";
 import {
   CLAUDE_CODE_ACTIVE_CATALOG_DATA,
   CLAUDE_XHIGH_CAPABLE_REASONING_EFFORT_DATA,
   DEFAULT_CLAUDE_CODE_MODEL,
 } from "./src/model-catalog-data.js";
 import { CLAUDE_NATIVE_ROOTS_DECLARATION } from "./src/native-roots.js";
+import { CLAUDE_SESSION_COMMANDS_EXTENSION_NAME } from "./src/session-commands.js";
 import { registerClaudeSessionImportCli } from "./src/session-import-cli.js";
 import { claudeSessionImportRpcContract } from "./src/session-import-rpc.js";
 import {
@@ -91,6 +93,13 @@ export default function plugin(bb: BbPluginApi) {
       iconTint: { light: "#D97757", dark: "#D97757" },
     },
     ...CLAUDE_NATIVE_ROOTS_DECLARATION,
+    extensionKinds: {
+      [CLAUDE_SESSION_COMMANDS_EXTENSION_NAME]: {
+        state: experimental_sessionCommandsStateSchema,
+      },
+    },
+    experimental_sessionCommandsExtensionKind:
+      CLAUDE_SESSION_COMMANDS_EXTENSION_NAME,
     maintenance: { health: true, usage: true, installation: true },
     capabilities: {
       supportsServiceTier: false,

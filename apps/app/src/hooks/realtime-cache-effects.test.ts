@@ -214,9 +214,9 @@ describe("createRealtimeCacheEffects", () => {
       projectPathsQueryKey("project-1", null, "host-b", "src", 8, true, true),
     );
     expect(
-      projectCommandsQueryKey("project-1", "codex", null, "host-a"),
+      projectCommandsQueryKey("project-1", "codex", null, "host-a", null),
     ).not.toEqual(
-      projectCommandsQueryKey("project-1", "codex", null, "host-b"),
+      projectCommandsQueryKey("project-1", "codex", null, "host-b", null),
     );
     expect(
       projectFilePreviewQueryKey("project-1", null, "host-a", "README.md"),
@@ -295,6 +295,7 @@ describe("createRealtimeCacheEffects", () => {
       "project-1",
       "codex",
       "environment-1",
+      null,
       null,
     );
     queryClient.setQueryData(commandsKey, { commands: [] });

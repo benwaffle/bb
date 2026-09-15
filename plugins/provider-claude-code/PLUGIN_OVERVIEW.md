@@ -6,6 +6,7 @@ Start a thread, pick Claude Code, and let it work in your repository from bb. Th
 - Reasoning levels from Low to Max, plus Ultracode, which turns on multi-agent workflow orchestration.
 - Checkpoint forks, manual compaction, and native questions from the agent.
 - Claude Code skills and CLAUDE.md files from your home directory and project.
+- Claude Code's own slash commands in the composer's `/` menu, including bundled skills such as `/code-review`, `/simplify`, `/loop`, and `/batch`. A running thread shows what its session advertises; new threads show the last list published on that machine. Commands that only work in a terminal, like `/doctor`, stay hidden.
 - Health, usage, and install status for Claude Code on each host, with an install or update action.
 - Import Claude Code sessions started in the terminal: browse them from the home screen or with `bb claude-code sessions`, and turn one into a thread that continues the conversation with `bb claude-code import <id|title>`.
 

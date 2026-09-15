@@ -61,6 +61,7 @@ export function useComposerTypeahead({
     skillsTrigger: providerPromptActions.skillsTrigger,
     promptActions,
     environmentId,
+    threadId: currentThreadId,
     query: commandQuery,
     composerFocused: hasComposerFocused,
   });
