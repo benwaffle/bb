@@ -87,6 +87,7 @@ describe("retired bundled plugins", () => {
       telemetry: createNoopTelemetryService(),
       db,
       hub: {
+        getThreadMemoryUsage: () => null,
         getDaemonSessionIdForHost: () => null,
         notifyPluginSignal: () => 0,
         notifySystem: () => {},

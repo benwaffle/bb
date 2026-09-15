@@ -5,6 +5,7 @@ import {
   experimental_killPortableProcess,
   experimental_readBoundedLines,
   experimental_recordProviderChildIo,
+  experimental_reportProviderChildProcess,
   experimental_spawnPortableProcess,
   sanitizeInheritedChildProcessEnv,
   withoutBridgeRuntimeEnv,
@@ -138,6 +139,10 @@ export class PiRpcChild {
       stdio: ["pipe", "pipe", "pipe", "pipe", "pipe"],
     });
     experimental_recordProviderChildIo(this.child, {
+      threadId: args.recordThreadId,
+    });
+    experimental_reportProviderChildProcess({
+      child: this.child,
       threadId: args.recordThreadId,
     });
     this.channelRecorder = createChannelRecorder(args.recordThreadId);
