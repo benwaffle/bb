@@ -106,6 +106,7 @@ import { roundDurationMs } from "@bb/process-utils";
 import { runEventLoopWorkSync } from "../system/event-loop-work.js";
 import { parseStoredEvent } from "./thread-data.js";
 import { decodeStoredEventRowCached } from "./stored-event-decode-cache.js";
+import { loadThreadCost } from "./cost/load-thread-cost.js";
 import {
   selectTimelineWindowStart,
   forgetLatestTimelineSelections,
@@ -201,6 +202,7 @@ type ThreadTimelineBuildProfileStage =
   | "summary-compaction"
   | "context-window-query"
   | "context-window-json-decode"
+  | "thread-cost-query"
   | "thread-view-projection"
   | "pagination-segmentation";
 
@@ -1436,6 +1438,15 @@ function buildThreadTimelineInternal(
         withRowMeta(row, decodeStoredEventRowCached(db, row)),
       ),
   );
+  const threadCost =
+    options.page.kind === "latest"
+      ? measureThreadTimelineStage(profile, "thread-cost-query", () =>
+          loadThreadCost(db, {
+            providerId: thread.providerId,
+            threadId: thread.id,
+          }),
+        )
+      : undefined;
   const acceptedClientRequestContext: AcceptedClientRequestContext = {
     acceptedClientRequestEvents: [],
     rejectedClientRequestEvents: [],
@@ -1521,6 +1532,7 @@ function buildThreadTimelineInternal(
       options.page.kind === "latest"
         ? (timeline.contextWindowUsage ?? undefined)
         : undefined,
+    cost: threadCost?.cost ?? undefined,
     timelinePage: {
       kind: eventSelection.responsePageKind,
       segmentLimit: options.page.segmentLimit,
