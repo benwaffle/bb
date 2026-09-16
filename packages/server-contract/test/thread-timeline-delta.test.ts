@@ -422,6 +422,7 @@ describe("thread timeline delta", () => {
         ...THREAD_TIMELINE_WINDOW_FIELD_KEYS,
         "rows",
         "contextWindowUsage",
+        "cost",
         "timelinePage",
         "maxSeq",
         "tag",
