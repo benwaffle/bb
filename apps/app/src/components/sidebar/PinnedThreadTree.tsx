@@ -217,6 +217,7 @@ export const PinnedThreadTree = memo(function PinnedThreadTree({
       <div
         ref={setPinnedParentRef}
         data-sidebar-sticky-section=""
+        data-sidebar-pinned-tree=""
         className="relative space-y-0.5"
         onClickCapture={chronologicalDnd.onClickCapture}
       >
@@ -260,6 +261,7 @@ export const PinnedThreadTree = memo(function PinnedThreadTree({
   return (
     <div
       data-sidebar-sticky-section=""
+      data-sidebar-pinned-tree=""
       className="relative space-y-0.5"
       onClickCapture={onClickCapture}
     >

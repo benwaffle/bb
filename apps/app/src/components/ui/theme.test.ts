@@ -126,6 +126,20 @@ describe("theme.css neutral ramp", () => {
     expect(rule).toContain("linear-gradient(var(--sidebar), var(--sidebar))");
   });
 
+  it("keeps pinned thread rows out of the sticky stack", () => {
+    const baseTierAt = css.search(
+      /\[data-sidebar-sticky-stack\]\s*\[data-sidebar-sticky-tier\]\s*\{/,
+    );
+    const pinnedRuleMatch = css.match(
+      /\[data-sidebar-sticky-stack\]\s*\[data-sidebar-pinned-tree\]\s*\[data-sidebar-sticky-tier="parent"\]\s*\{([^}]*)\}/s,
+    );
+
+    expect(pinnedRuleMatch?.[1]).toContain("position: relative");
+    expect(pinnedRuleMatch?.[1]).toContain("top: auto");
+    expect(baseTierAt).toBeGreaterThan(-1);
+    expect(pinnedRuleMatch?.index).toBeGreaterThan(baseTierAt);
+  });
+
   it("resolves the open-in-split thread tint to an opaque sidebar color", () => {
     const rule = css.match(
       /\.bb-sidebar-open-in-split-row\s*\{([^}]*)\}/s,

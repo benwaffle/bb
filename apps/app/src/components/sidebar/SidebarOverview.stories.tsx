@@ -645,3 +645,66 @@ export function SplitPageLabels() {
     </Provider>
   );
 }
+
+const pinnedGroupSidebarNavigation = makeSidebarBootstrapResponse({
+  personalProject: makeProjectWithThreadsResponse({
+    ...personalProject,
+    threads: [],
+  }),
+  projects: [
+    makeProjectWithThreadsResponse({
+      ...bbProject,
+      threads: [
+        makeThreadListEntry({
+          id: "thr_story_pin_group",
+          projectId: bbProject.id,
+          title: "Feature orchestrator",
+          titleFallback: "Feature orchestrator",
+          pinnedAt: 400,
+          pinSortKey: "0001",
+          latestAttentionAt: 400,
+          createdAt: 400,
+          updatedAt: 400,
+        }),
+        ...Array.from({ length: 6 }, (_unused, index) =>
+          makeThreadListEntry({
+            id: `thr_story_pin_group_child_${index}`,
+            projectId: bbProject.id,
+            parentThreadId: "thr_story_pin_group",
+            title: `Worker ${index + 1}`,
+            titleFallback: `Worker ${index + 1}`,
+            latestAttentionAt: 390 - index,
+            createdAt: 390 - index,
+            updatedAt: 390 - index,
+          }),
+        ),
+        ...Array.from({ length: 20 }, (_unused, index) =>
+          makeThreadListEntry({
+            id: `thr_story_pin_group_sibling_${index}`,
+            projectId: bbProject.id,
+            title: `Unpinned thread ${index + 1}`,
+            titleFallback: `Unpinned thread ${index + 1}`,
+            latestAttentionAt: 300 - index,
+            createdAt: 300 - index,
+            updatedAt: 300 - index,
+          }),
+        ),
+      ],
+    }),
+  ],
+});
+
+export function PinnedGroupScroll() {
+  return (
+    <StoryCard labelWidth="120px">
+      <StoryRow
+        label="pinned parent"
+        hint="the pinned group scrolls as one unit"
+      >
+        <SidebarFrame>
+          <LoadedSidebar navigation={pinnedGroupSidebarNavigation} />
+        </SidebarFrame>
+      </StoryRow>
+    </StoryCard>
+  );
+}
