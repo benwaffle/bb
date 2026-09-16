@@ -264,6 +264,7 @@ import type {
   ThreadTimelineResponse,
   ThreadBackgroundCommandStopResponse,
   ThreadContextResponse,
+  ThreadCostResponse,
   ThreadWithIncludesResponse,
   TimelineTurnSummaryDetailsQuery,
   TimelineTurnSummaryDetailsResponse,
@@ -1660,6 +1661,12 @@ export const publicApiRoutes = {
       method: "get",
       request: noRequest<PathId>(),
       response: jsonResponse<ThreadContextResponse>(),
+    }),
+    cost: defineRoute({
+      path: "/threads/:id/cost",
+      method: "get",
+      request: noRequest<PathId>(),
+      response: jsonResponse<ThreadCostResponse>(),
     }),
     conversationOutline: defineRoute({
       path: "/threads/:id/conversation-outline",
