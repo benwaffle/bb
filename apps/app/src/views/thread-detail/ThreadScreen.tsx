@@ -614,6 +614,7 @@ export function ThreadScreen({
       isPrimaryComposer={presentation.kind === "page"}
       permissionPolicy={composer.permissionPolicy}
       contextWindowUsage={timeline.contextWindowUsage}
+      cost={timeline.cost ?? null}
       environmentCheckout={composer.environmentCheckout}
       environmentCompactLabel={chrome?.environmentCompactLabel}
       environmentHost={chrome?.environmentHost}

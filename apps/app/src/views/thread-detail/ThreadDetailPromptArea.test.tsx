@@ -22,6 +22,7 @@ import {
   within,
 } from "@testing-library/react";
 import type {
+  ThreadTimelineResponse,
   TimelineWorkflowWorkRow,
   ThreadTimelineSessionOption,
 } from "@bb/server-contract";
@@ -136,6 +137,7 @@ function makePendingInteraction(): PendingInteraction {
 
 interface RenderPromptAreaOptions {
   activePromptMode?: ThreadTimelineActivePromptMode | null;
+  cost?: ThreadTimelineResponse["cost"] | null;
   activeWorkflows?: TimelineWorkflowWorkRow[];
   childThreadsSection?: ComponentProps<
     typeof ThreadDetailPromptArea
@@ -159,6 +161,7 @@ let testQueryClient: QueryClient;
 
 function buildPromptAreaElement({
   activePromptMode = null,
+  cost = null,
   activeWorkflows = [],
   childThreadsSection = null,
   goal = null,
@@ -177,6 +180,7 @@ function buildPromptAreaElement({
         activeBackgroundCommands={[]}
         activePromptMode={activePromptMode}
         activeWorkflows={activeWorkflows}
+        cost={cost}
         childThreadsSection={childThreadsSection}
         composerFocusRequestKey={0}
         composerId="thread-detail-follow-up-composer"

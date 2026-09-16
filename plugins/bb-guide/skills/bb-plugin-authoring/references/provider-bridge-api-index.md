@@ -305,6 +305,7 @@ Read the installed declarations for exact current signatures.
 - `ThreadEventContextWindowUsage`
 - `ThreadEventItemPresentation`
 - `ThreadEventItemStatus`
+- `ThreadEventModelTokenUsage`
 - `ThreadEventPlanStep`
 - `ThreadEventSearchMode`
 - `ThreadEventTokenUsageBreakdown`

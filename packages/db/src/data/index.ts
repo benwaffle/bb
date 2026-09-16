@@ -321,6 +321,8 @@ export {
   listActiveBackgroundTaskCountsByThreadIds,
   listContextWindowUsageRows,
   getLatestTokenUsageRow,
+  listThreadTokenUsageRows,
+  listLatestTokenUsageByThreadIds,
   listEvents,
   listStoredConversationOutlineEventRows,
   listStoredRootConversationOutlineEventRows,
