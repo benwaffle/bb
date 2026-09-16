@@ -172,6 +172,7 @@
       "total": "required",
       "last": "required",
       "modelContextWindow": "required",
+      "models": "optional",
       "providerTurnId": "optional"
     }
   },
