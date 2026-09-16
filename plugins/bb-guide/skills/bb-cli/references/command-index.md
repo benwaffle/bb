@@ -202,6 +202,7 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb thread context`
 - `bb thread commands`
 - `bb thread options`
+- `bb thread cost`
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
