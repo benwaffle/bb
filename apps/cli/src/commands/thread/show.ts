@@ -28,6 +28,7 @@ import {
 import { GITHUB_PR_STATUS_PLUGIN_ID } from "bb-plugin-bb--github-pr-status/read-contract";
 import { z } from "zod";
 import {
+  type ThreadCost,
   type ThreadTimelineResponse,
   type TimelineConversationRow,
   THREAD_EVENT_LIST_PAGE_SIZE,
@@ -42,6 +43,7 @@ import {
   printEnvironmentInfo,
 } from "../environment-helpers.js";
 import { fetchThreadPendingTodos, printPendingTodos } from "./pending-todos.js";
+import { fetchThreadCost, formatThreadCostLine } from "./cost.js";
 
 interface ThreadShowCommandOptions {
   self?: boolean;
@@ -81,6 +83,7 @@ type ThreadShowEnvironmentJsonPayload = Environment & {
 };
 
 interface ThreadShowJsonPayload extends ThreadStatusPayload {
+  cost: ThreadCost | null;
   environment: ThreadShowEnvironmentJsonPayload | null;
   pendingTodos: ThreadTimelinePendingTodos | null;
   workStatus?: WorkspaceStatus | null;
@@ -390,10 +393,13 @@ export function registerShowCommand(
           threadId,
         });
 
+        const cost = await fetchThreadCost({ sdk, threadId });
+
         if (opts.json) {
           const environment = await getEnvironment();
           const jsonPayload: ThreadShowJsonPayload = {
             ...statusPayload,
+            cost,
             environment: threadShowEnvironmentJson(
               environment,
               fetchedPullRequest,
@@ -415,6 +421,10 @@ export function registerShowCommand(
         }
 
         printThreadStatus(statusPayload, environmentInfo, fetchedPullRequest);
+
+        if (cost) {
+          console.log(`  Cost: ${formatThreadCostLine(cost)}`);
+        }
 
         printPendingTodos(pendingTodos);
 

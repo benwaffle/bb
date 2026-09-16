@@ -56,6 +56,7 @@ const LIST_FACET: Record<ListFacetKey, true> = {
   environmentProviderId: true,
   environmentIsWorktree: true,
   environmentWorkspaceDisplayKind: true,
+  cost: true,
 };
 const DETAIL_FACET: Record<DetailFacetKey, true> = {
   activeBackgroundAgentCount: true,
