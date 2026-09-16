@@ -1156,6 +1156,7 @@ function EmbeddedThreadChatWithComposer({
           textEffects={queuedComposerTextEffects}
           environmentSummary={null}
           contextWindowUsage={null}
+          cost={null}
           execution={inlineExecutionConfig}
           executionReadOnly
           permission={inlinePermissionConfig}
@@ -1252,6 +1253,7 @@ function EmbeddedThreadChatWithComposer({
           textEffects={bottomComposerTextEffects}
           environmentSummary={composer.environmentSummary}
           contextWindowUsage={null}
+          cost={null}
           execution={bottomExecutionConfig}
           permission={bottomPermissionConfig}
           permissionReadOnly={composer.permissionPolicy === "snapshot"}
