@@ -792,6 +792,7 @@ function ThreadDetailViewInternal(
     activeBackgroundCommands,
     contextBoundarySeq,
     contextWindowUsage,
+    cost,
     goal,
     providerCommands,
     sessionOptions,
@@ -2379,6 +2380,7 @@ function ThreadDetailViewInternal(
       activeBackgroundAgentCount={thread.activeBackgroundAgentCount}
       canUseGitUi={canUseGitUi}
       contextWindowUsage={contextWindowUsage}
+      cost={cost}
       environmentCheckout={threadCheckoutDisplay}
       environmentCompactLabel={
         composerEnvironmentChrome?.environmentCompactLabel
