@@ -210,6 +210,7 @@ Sections:
 Inspecting:
 
   bb thread context [id]                   Show recorded context usage and available breakdown (--self, --json)
+  bb thread cost [id]                      Show thread cost, per-model spend, and per-turn rows (--self, --json)
   bb thread show [id]                      Show thread details and pull request status
     --self                                 Target current thread
     --work-status                          Include git working-tree status
@@ -518,3 +519,14 @@ directories are inside that storage before removing files, including dev
 servers in nested checkouts. On macOS and Linux this uses the same SIGTERM
 grace period and SIGKILL fallback as worktree removal. Windows does not
 enumerate process working directories.
+
+`bb thread cost [id]` reports what the thread has spent. The server prices
+persisted token usage with a built-in table keyed by provider and model, and
+prefers a cost the provider reports itself: `source` is `reported` when every
+turn carried one, `estimated` when the price came from the table, and `mixed`
+while a running turn is still estimated. Providers with no per-token price
+report tokens instead of dollars. Per-turn rows cover the usage events still
+retained for the thread, so a long thread can report fewer turns than it ran.
+The same total appears as `cost` in `bb thread show --json` and on every entry
+of `bb thread list --json`, and in the app as the readout in the composer
+status bar.
