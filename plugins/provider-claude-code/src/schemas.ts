@@ -96,6 +96,20 @@ export const claudeModelUsageSchema = z.record(
     .passthrough(),
 );
 
+export const claudeModelSpendSchema = z.record(
+  z.string(),
+  z
+    .object({
+      inputTokens: z.number().optional(),
+      outputTokens: z.number().optional(),
+      cacheReadInputTokens: z.number().optional(),
+      cacheCreationInputTokens: z.number().optional(),
+      costUSD: z.number().optional(),
+    })
+    .passthrough(),
+);
+export type ClaudeModelSpend = z.infer<typeof claudeModelSpendSchema>;
+
 const contentBlockDeltaSchema = z
   .object({
     type: z.literal("content_block_delta"),
@@ -357,6 +371,7 @@ export type ClaudeAssistantMessage = z.infer<
 
 export const claudeAssistantUsageMessageSchema = z
   .object({
+    model: z.string().optional(),
     usage: sdkUsageSchema.optional(),
   })
   .passthrough();
