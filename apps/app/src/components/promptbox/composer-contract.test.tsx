@@ -230,6 +230,7 @@ function followUpSurface({
       <FollowUpPromptBox
         attachments={{ projectId: "proj_contract" }}
         stack={null}
+        cost={null}
         composer={{
           history: {
             entries: [],

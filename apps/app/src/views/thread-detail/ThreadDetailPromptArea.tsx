@@ -200,6 +200,7 @@ interface ThreadDetailPromptAreaProps {
   isPrimaryComposer: boolean;
   permissionPolicy: ThreadComposerPermissionPolicy;
   contextWindowUsage?: ThreadTimelineResponse["contextWindowUsage"];
+  cost: ThreadTimelineResponse["cost"] | null;
   environmentCheckout?: WorkspaceCheckoutDisplay;
   environmentCompactLabel?: string;
   environmentGoneStatus: "destroyed" | MachineRemovalStatus | null;
@@ -294,6 +295,7 @@ function buildInlineDraftComposer(options: InlineDraftComposerOptions) {
       textEffects={options.textEffects}
       environmentSummary={null}
       contextWindowUsage={null}
+      cost={null}
       execution={options.execution}
       executionReadOnly={options.executionReadOnly}
       permission={options.permission}
@@ -490,6 +492,7 @@ export function ThreadDetailPromptArea({
   isPrimaryComposer,
   permissionPolicy,
   contextWindowUsage,
+  cost,
   environmentCheckout,
   environmentCompactLabel,
   environmentGoneStatus,
@@ -2483,6 +2486,7 @@ export function ThreadDetailPromptArea({
                 setFullHistoryThreadId(next ? null : thread.id),
             }
       }
+      cost={cost ?? null}
       execution={bottomExecutionConfig}
       permission={bottomPermissionConfig}
       permissionReadOnly={isPermissionSnapshot}
