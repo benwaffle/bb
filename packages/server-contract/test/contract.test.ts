@@ -587,8 +587,11 @@ const OPTIONAL_SERVER_FIELD_GROUPS: readonly OptionalServerFieldGroup[] = [
   },
   {
     reason:
-      "Timeline responses omit context-window usage when the provider did not report it.",
-    fields: ["threadTimelineResponseSchema.contextWindowUsage"],
+      "Timeline responses omit context-window usage when the provider did not report it, and omit cost until the thread has recorded token usage.",
+    fields: [
+      "threadTimelineResponseSchema.contextWindowUsage",
+      "threadTimelineResponseSchema.cost",
+    ],
   },
   {
     reason:
@@ -1312,6 +1315,7 @@ describe("server-contract canonical schemas", () => {
           environmentWorkspaceDisplayKind: "managed-worktree",
           queuedWork: "none",
           memoryUsage: null,
+          cost: { totalUsd: 0.25, totalTokens: 1_000, source: "reported" },
         },
       ]),
     ).toMatchObject([
@@ -1327,6 +1331,7 @@ describe("server-contract canonical schemas", () => {
         environmentIsWorktree: true,
         environmentWorkspaceDisplayKind: "managed-worktree",
         queuedWork: "none",
+        cost: { totalUsd: 0.25, totalTokens: 1_000, source: "reported" },
       },
     ]);
 
