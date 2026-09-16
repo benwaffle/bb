@@ -406,6 +406,7 @@ export function optimisticallyInsertThread(
   const insertedThread: ThreadListEntry = {
     ...thread,
     statusChangedAt: thread.createdAt,
+    cost: null,
     activity: {
       activeWorkflowCount: 0,
       activeBackgroundAgentCount: 0,

@@ -396,6 +396,7 @@ export type {
   ThreadEventContextWindowUsage,
   ThreadEventItemPresentation,
   ThreadEventItemStatus,
+  ThreadEventModelTokenUsage,
   ThreadEventPlanStep,
   ThreadEventSearchMode,
   ThreadEventTokenUsageBreakdown,
