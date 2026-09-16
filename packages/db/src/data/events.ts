@@ -1334,6 +1334,11 @@ export interface ListContextWindowUsageRowsArgs {
   threadId: string;
 }
 
+export interface ListThreadTokenUsageRowsArgs {
+  limit: number;
+  threadId: string;
+}
+
 export interface GetLatestCompletedThreadContextClearSequenceArgs {
   atOrBeforeSequence?: number;
   threadId: string;
@@ -2364,6 +2369,50 @@ export function listLatestOpenBackgroundTaskStateRowsForThread(
   return rows.sort((left, right) => left.sequence - right.sequence);
 }
 
+export interface LatestThreadTokenUsageRow {
+  threadId: string;
+  tokenUsage: string | null;
+}
+
+export interface ListLatestTokenUsageByThreadIdsArgs {
+  threadIds: readonly string[];
+}
+
+export function listLatestTokenUsageByThreadIds(
+  db: DbQueryConnection,
+  args: ListLatestTokenUsageByThreadIdsArgs,
+): LatestThreadTokenUsageRow[] {
+  if (args.threadIds.length === 0) {
+    return [];
+  }
+  return queryInSqliteVariableBatches({
+    dedupeKey: (threadId) => threadId,
+    fixedVariableCount: 2,
+    variableCountPerValue: 1,
+    queryBatch: (threadIds) => {
+      const usageType = "thread/tokenUsage/updated" satisfies ThreadEventType;
+      return db.all<LatestThreadTokenUsageRow>(sql`
+    WITH ranked_usage AS (
+      SELECT
+        ${events.threadId} AS thread_id,
+        json_extract(${events.data}, '$.tokenUsage') AS token_usage,
+        ROW_NUMBER() OVER (
+          PARTITION BY ${events.threadId}
+          ORDER BY ${events.sequence} DESC
+        ) AS rank
+      FROM ${events}
+      WHERE ${inArray(events.threadId, [...threadIds])}
+        AND ${eq(events.type, usageType)}
+        AND ${isNotNestedTurnUsageEvent}
+    )
+    SELECT thread_id AS threadId, token_usage AS tokenUsage
+    FROM ranked_usage
+    WHERE rank = 1`);
+    },
+    values: args.threadIds,
+  });
+}
+
 export function listActiveBackgroundTaskCountsByThreadIds(
   db: DbQueryConnection,
   args: ListActiveBackgroundTaskCountsByThreadIdsArgs,
@@ -3307,6 +3356,26 @@ export function listContextWindowUsageRows(
     eventType: "thread/contextWindowUsage/updated",
     contextWindowJsonPath: "$.contextWindowUsage.modelContextWindow",
   });
+}
+
+export function listThreadTokenUsageRows(
+  db: DbConnection,
+  args: ListThreadTokenUsageRowsArgs,
+): StoredEventRow[] {
+  return db
+    .select(storedEventRowFields)
+    .from(events)
+    .where(
+      and(
+        eq(events.threadId, args.threadId),
+        eq(events.type, "thread/tokenUsage/updated"),
+        isNotNestedTurnUsageEvent,
+      ),
+    )
+    .orderBy(desc(events.sequence))
+    .limit(args.limit)
+    .all()
+    .reverse();
 }
 
 export function getLatestThreadOutputEventRow(

@@ -860,6 +860,7 @@ function ThreadDetailViewInternal(props: ThreadRoutePathArgs) {
     activeBackgroundCommands,
     contextBoundarySeq,
     contextWindowUsage,
+    cost,
     goal,
     hasOlderTimelineRows,
     isLoadingOlderTimelineRows,
@@ -2512,6 +2513,7 @@ function ThreadDetailViewInternal(props: ThreadRoutePathArgs) {
       activeBackgroundAgentCount={thread.activeBackgroundAgentCount}
       canUseGitUi={canUseGitUi}
       contextWindowUsage={contextWindowUsage}
+      cost={cost}
       environmentCheckout={threadCheckoutDisplay}
       environmentCompactLabel={
         composerEnvironmentChrome?.environmentCompactLabel
