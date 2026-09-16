@@ -47,6 +47,7 @@ export interface UseThreadTimelineControllerResult {
   activeBackgroundCommands: ThreadTimelineResponse["activeBackgroundCommands"];
   contextBoundarySeq: ThreadTimelineResponse["contextBoundarySeq"];
   contextWindowUsage: ThreadTimelineResponse["contextWindowUsage"];
+  cost: ThreadTimelineResponse["cost"];
   goal: ThreadTimelineResponse["goal"];
   providerCommands: ThreadTimelineResponse["providerCommands"];
   sessionOptions: ThreadTimelineResponse["sessionOptions"];
@@ -326,6 +327,7 @@ export function useThreadTimelineController({
     activeBackgroundCommands: latestTimeline?.activeBackgroundCommands ?? [],
     contextBoundarySeq: latestTimeline?.contextBoundarySeq ?? null,
     contextWindowUsage: latestTimeline?.contextWindowUsage,
+    cost: latestTimeline?.cost,
     goal: latestTimeline?.goal ?? null,
     providerCommands: latestTimeline?.providerCommands ?? null,
     sessionOptions: latestTimeline?.sessionOptions ?? null,

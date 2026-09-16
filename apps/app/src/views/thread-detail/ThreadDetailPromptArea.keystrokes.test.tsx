@@ -130,6 +130,7 @@ function buildPromptArea({
         activePromptMode={null}
         activeWorkflows={[]}
         canUseGitUi={false}
+        cost={null}
         childThreadsSection={null}
         composerFocusRequestNonce={0}
         contextBannerMergeBase={null}
