@@ -63,16 +63,22 @@ export function applyThreadTimelineDelta(
   if (rows === null) {
     return null;
   }
-  const { contextWindowUsage, timelinePage, ...fields } = delta.fields;
-  const { contextWindowUsage: previousUsage, ...base } = previous;
+  const { contextWindowUsage, cost, timelinePage, ...fields } = delta.fields;
+  const {
+    contextWindowUsage: previousUsage,
+    cost: previousCost,
+    ...base
+  } = previous;
   const usage =
     contextWindowUsage === undefined
       ? previousUsage
       : (contextWindowUsage ?? undefined);
+  const nextCost = cost === undefined ? previousCost : (cost ?? undefined);
   return {
     ...base,
     ...fields,
     ...(usage === undefined ? {} : { contextWindowUsage: usage }),
+    ...(nextCost === undefined ? {} : { cost: nextCost }),
     timelinePage: applyTimelinePagePatch(previous.timelinePage, timelinePage),
     rows,
     maxSeq: response.maxSeq,
@@ -179,6 +185,9 @@ function diffFields(
   }
   if (!sameJson(previous.contextWindowUsage, current.contextWindowUsage)) {
     fields.contextWindowUsage = current.contextWindowUsage ?? null;
+  }
+  if (!sameJson(previous.cost, current.cost)) {
+    fields.cost = current.cost ?? null;
   }
   const timelinePage = diffTimelinePage(
     previous.timelinePage,
