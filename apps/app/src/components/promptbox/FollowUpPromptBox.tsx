@@ -57,7 +57,11 @@ import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { usePointerCoarse } from "@bb/shared-ui/hooks/use-pointer-coarse";
 import { ThreadTimelineScrollToBottomButton } from "@/views/thread-detail/ThreadTimelineScrollToBottomButton";
 import { useOptionalPaneContext } from "@/views/thread-detail/PaneContext";
-import { ThreadContextWindowIndicator } from "@/components/thread/timeline";
+import {
+  hasThreadCostReadout,
+  ThreadContextWindowIndicator,
+  ThreadCostIndicator,
+} from "@/components/thread/timeline";
 import {
   PROMPT_STACK_CARD_ROW_HEIGHT,
   PROMPT_STACK_TRACK_CLASS,
@@ -143,6 +147,8 @@ export interface FollowUpComposerProps {
   threadRuntimeDisplayStatus: ThreadRuntimeDisplayStatus;
 }
 
+type ThreadCostReadout = ComponentProps<typeof ThreadCostIndicator>["cost"];
+
 type ContextWindowUsage = ComponentProps<
   typeof ThreadContextWindowIndicator
 >["usage"];
@@ -155,6 +161,7 @@ export interface FollowUpPromptBoxProps {
   composer: FollowUpComposerProps | null;
   environmentSummary: ReactNode | null;
   contextWindowUsage: ContextWindowUsage | null;
+  cost: ThreadCostReadout | null;
   execution: ExecutionControlsProps;
   permission: ExecutionPermissionConfig;
   executionReadOnly?: boolean;
@@ -226,6 +233,7 @@ function FollowUpPromptBoxWithComposer({
   composer,
   environmentSummary,
   contextWindowUsage,
+  cost,
   execution,
   permission,
   executionReadOnly,
@@ -770,6 +778,9 @@ function FollowUpPromptBoxWithComposer({
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {permissionControl}
+            {cost && hasThreadCostReadout(cost) ? (
+              <ThreadCostIndicator cost={cost} />
+            ) : null}
             {contextWindowUsage ? (
               <ThreadContextWindowIndicator usage={contextWindowUsage} />
             ) : null}

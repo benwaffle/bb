@@ -10,6 +10,7 @@ import {
 import type { SDKResultMessage } from "@anthropic-ai/claude-agent-sdk";
 import {
   claudeAssistantUsageMessageSchema,
+  claudeModelSpendSchema,
   claudeModelUsageSchema,
   messageContentSchema,
   sdkUsageSchema,
@@ -309,6 +310,67 @@ export function extractClaudeContextWindowUsage(
   };
 }
 
+export interface ClaudeRequestModelUsage {
+  model: string;
+  breakdown: ThreadEventTokenUsageBreakdown;
+}
+
+export function extractClaudeRequestModelUsage(
+  message: ClaudeAssistantMessage,
+): ClaudeRequestModelUsage | null {
+  const parsedMessage = claudeAssistantUsageMessageSchema.safeParse(
+    message.message,
+  );
+  if (!parsedMessage.success) {
+    return null;
+  }
+  const { model, usage } = parsedMessage.data;
+  if (model === undefined || model.length === 0 || usage === undefined) {
+    return null;
+  }
+  return { model, breakdown: toTokenUsageBreakdown(usage) };
+}
+
+export interface ClaudeReportedModelUsage {
+  model: string;
+  breakdown: ThreadEventTokenUsageBreakdown;
+  costUsd?: number | undefined;
+}
+
+export function extractClaudeReportedModelUsage(
+  message: ClaudeResultMessage | SDKResultMessage,
+): ClaudeReportedModelUsage[] {
+  const parsed = claudeModelSpendSchema.safeParse(message.modelUsage);
+  if (!parsed.success) {
+    return [];
+  }
+  return Object.entries(parsed.data).map(([model, spend]) => {
+    const inputTokens = toNonNegativeNumber(spend.inputTokens);
+    const outputTokens = toNonNegativeNumber(spend.outputTokens);
+    const cachedInputTokens =
+      toNonNegativeNumber(spend.cacheReadInputTokens) +
+      toNonNegativeNumber(spend.cacheCreationInputTokens);
+    const costUsd =
+      spend.costUSD === undefined || !Number.isFinite(spend.costUSD)
+        ? undefined
+        : Math.max(0, spend.costUSD);
+    return {
+      model,
+      breakdown: {
+        totalTokens: inputTokens + outputTokens + cachedInputTokens,
+        inputTokens,
+        cachedInputTokens,
+        cacheWriteInputTokens: toNonNegativeNumber(
+          spend.cacheCreationInputTokens,
+        ),
+        outputTokens,
+        reasoningOutputTokens: 0,
+      },
+      ...(costUsd === undefined ? {} : { costUsd }),
+    };
+  });
+}
+
 export function extractClaudeRequestContextTokens(
   message: ClaudeAssistantMessage,
 ): number | null {
@@ -337,6 +399,7 @@ function toTokenUsageBreakdown(
     totalTokens: inputTokens + outputTokens + cachedInputTokens,
     inputTokens,
     cachedInputTokens,
+    cacheWriteInputTokens: cacheCreationTokens,
     outputTokens,
     reasoningOutputTokens: 0,
   };

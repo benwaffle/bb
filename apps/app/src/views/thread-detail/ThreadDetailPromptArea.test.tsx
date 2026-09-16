@@ -21,7 +21,10 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
-import type { TimelineWorkflowWorkRow } from "@bb/server-contract";
+import type {
+  ThreadTimelineResponse,
+  TimelineWorkflowWorkRow,
+} from "@bb/server-contract";
 import { createDeferredPromise } from "@bb/test-helpers";
 import {
   makeThreadQueuedMessage as makeThreadQueuedMessageFixture,
@@ -788,6 +791,7 @@ function makePluginPendingInteraction(): PendingInteraction {
 
 interface RenderPromptAreaOptions {
   activePromptMode?: ThreadTimelineActivePromptMode | null;
+  cost?: ThreadTimelineResponse["cost"] | null;
   activeWorkflows?: TimelineWorkflowWorkRow[];
   goal?: ThreadTimelineGoal | null;
   modelFallback?: ThreadTimelineModelFallback | null;
@@ -803,6 +807,7 @@ let testQueryClient: QueryClient;
 
 function buildPromptAreaElement({
   activePromptMode = null,
+  cost = null,
   activeWorkflows = [],
   goal = null,
   modelFallback = null,
@@ -821,6 +826,7 @@ function buildPromptAreaElement({
         activePromptMode={activePromptMode}
         activeWorkflows={activeWorkflows}
         canUseGitUi={false}
+        cost={cost}
         childPendingInteractions={childPendingInteractions}
         childThreadsSection={null}
         composerFocusRequestNonce={0}

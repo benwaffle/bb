@@ -290,6 +290,7 @@ export const threadEventTokenUsageBreakdownSchema = z.object({
   totalTokens: z.number(),
   inputTokens: z.number(),
   cachedInputTokens: z.number(),
+  cacheWriteInputTokens: z.number().optional(),
   outputTokens: z.number(),
   reasoningOutputTokens: z.number(),
 });
@@ -307,11 +308,23 @@ export type ThreadEventContextWindowUsage = z.infer<
   typeof threadEventContextWindowUsageSchema
 >;
 
-const threadEventTokenUsageSchema = z.object({
+export const threadEventModelTokenUsageSchema = z.object({
+  model: z.string(),
+  breakdown: threadEventTokenUsageBreakdownSchema,
+  reportedCostUsd: z.number().optional(),
+  unreportedBreakdown: threadEventTokenUsageBreakdownSchema.optional(),
+});
+export type ThreadEventModelTokenUsage = z.infer<
+  typeof threadEventModelTokenUsageSchema
+>;
+
+export const threadEventTokenUsageSchema = z.object({
   total: threadEventTokenUsageBreakdownSchema,
   last: threadEventTokenUsageBreakdownSchema,
   modelContextWindow: z.number().nullable(),
+  models: z.array(threadEventModelTokenUsageSchema).optional(),
 });
+export type ThreadEventTokenUsage = z.infer<typeof threadEventTokenUsageSchema>;
 
 export const threadEventWarningCategorySchema = z.enum([
   "deprecation",

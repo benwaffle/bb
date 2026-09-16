@@ -281,6 +281,8 @@ export {
   insertEvents,
   listActiveBackgroundTaskCountsByThreadIds,
   listContextWindowUsageRows,
+  listThreadTokenUsageRows,
+  listLatestTokenUsageByThreadIds,
   listEvents,
   listStoredConversationOutlineEventRows,
   listTimelineSegmentAnchorsDescending,
