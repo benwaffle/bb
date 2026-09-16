@@ -111,6 +111,7 @@ bb environment providers --json
 bb provider list --environment "$BB_ENVIRONMENT_ID" --json
 bb thread show "$BB_THREAD_ID" --json
 bb thread context --self --json
+bb thread cost --self --json
 bb plugin list --json
 bb skill list --environment "$BB_ENVIRONMENT_ID" --json
 ```
