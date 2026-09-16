@@ -129,6 +129,7 @@ function buildPromptArea({
         activeBackgroundCommands={[]}
         activePromptMode={null}
         activeWorkflows={[]}
+        cost={null}
         childThreadsSection={null}
         composerFocusRequestKey={0}
         composerId="thread-detail-follow-up-composer"
