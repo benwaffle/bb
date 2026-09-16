@@ -101,6 +101,9 @@ export const THREAD_DATA_ROUTE_SURFACES: Record<
   "GET /threads/:id/context": [
     { name: "context", path: ({ threadId }) => `/threads/${threadId}/context` },
   ],
+  "GET /threads/:id/cost": [
+    { name: "cost", path: ({ threadId }) => `/threads/${threadId}/cost` },
+  ],
   "GET /threads/:id/head-state": [
     {
       name: "head state",

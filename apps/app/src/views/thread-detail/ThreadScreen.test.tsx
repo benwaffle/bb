@@ -103,6 +103,7 @@ const TIMELINE: UseThreadTimelineControllerResult = {
   activeWorkflows: [],
   contextBoundarySeq: null,
   contextWindowUsage: undefined,
+  cost: undefined,
   hasOlderTimelineRows: false,
   isCatchingUpTimeline: false,
   isLoadingOlderTimelineRows: false,

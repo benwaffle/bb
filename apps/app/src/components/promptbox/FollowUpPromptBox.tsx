@@ -64,7 +64,11 @@ import { useBottomAnchoredScroll } from "@/components/ui/bottom-anchored-scroll-
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
 import { usePointerCoarse } from "@bb/shared-ui/hooks/use-pointer-coarse";
 import { ThreadTimelineScrollToBottomButton } from "@/views/thread-detail/ThreadTimelineScrollToBottomButton";
-import { ThreadContextWindowIndicator } from "@/components/thread/timeline";
+import {
+  hasThreadCostReadout,
+  ThreadContextWindowIndicator,
+  ThreadCostIndicator,
+} from "@/components/thread/timeline";
 import { formatCompactTokenCount } from "@/components/thread/timeline/thread-context-window-usage";
 import {
   CompactBeforeSendChip,
@@ -155,6 +159,8 @@ export interface FollowUpComposerProps {
   threadRuntimeDisplayStatus: ThreadRuntimeDisplayStatus;
 }
 
+type ThreadCostReadout = ComponentProps<typeof ThreadCostIndicator>["cost"];
+
 type ContextWindowUsage = ComponentProps<
   typeof ThreadContextWindowIndicator
 >["usage"];
@@ -169,6 +175,7 @@ export interface FollowUpPromptBoxProps {
   compactEnvironmentSummary?: ReactNode;
   contextWindowUsage: ContextWindowUsage | null;
   compactBeforeSend?: CompactBeforeSendOffer | null;
+  cost: ThreadCostReadout | null;
   execution: ExecutionControlsProps;
   permission: ExecutionPermissionConfig;
   sessionOptionsControl?: ReactNode;
@@ -242,6 +249,7 @@ function FollowUpPromptBoxWithComposer({
   compactEnvironmentSummary = null,
   contextWindowUsage,
   compactBeforeSend = null,
+  cost,
   execution,
   permission,
   sessionOptionsControl = null,
@@ -822,6 +830,9 @@ function FollowUpPromptBoxWithComposer({
           <div className="flex shrink-0 items-center gap-2 max-md:gap-0">
             {sessionOptionsControl}
             {permissionControl}
+            {cost && hasThreadCostReadout(cost) ? (
+              <ThreadCostIndicator cost={cost} />
+            ) : null}
             {contextWindowUsage ? (
               <ThreadContextWindowIndicator usage={contextWindowUsage} />
             ) : null}

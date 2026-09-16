@@ -236,6 +236,7 @@ function followUpSurface({
       <FollowUpPromptBox
         attachments={attachments}
         stack={null}
+        cost={null}
         composer={{
           history: {
             entries: [],

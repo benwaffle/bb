@@ -63,6 +63,7 @@ import type {
   ThreadBackgroundCommandsResponse,
   ThreadContextResponse,
   ThreadHeadStateResponse,
+  ThreadCostResponse,
   ThreadWithIncludesResponse,
   TimelineTurnSummaryDetailsResponse,
   ThreadOpenFile,
@@ -210,6 +211,7 @@ export type ThreadEventsListResult = ThreadEventRow[];
 export type ThreadEventWaitResult = ThreadEventRow | null;
 export type ThreadContextResult = ThreadContextResponse;
 export type ThreadHeadStateResult = ThreadHeadStateResponse;
+export type ThreadCostResult = ThreadCostResponse;
 export type ThreadTimelineResult = ThreadTimelineResponse;
 export type ThreadTimelineReadResult = ThreadTimelineReadResponse;
 export type ThreadArchiveResult = ThreadArchiveAllResponse;
@@ -826,6 +828,7 @@ export interface ThreadsArea {
   experimental_headState(
     args: ThreadStatusArgs,
   ): Promise<ThreadHeadStateResult>;
+  cost(args: ThreadStatusArgs): Promise<ThreadCostResult>;
   timeline(
     args: ThreadTimelineArgs & { afterTag?: undefined },
   ): Promise<ThreadTimelineResult>;
@@ -1808,6 +1811,14 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
     async experimental_headState(input) {
       return transport.readJson(
         transport.api.v1.threads[":id"]["head-state"].$get(
+          { param: { id: input.threadId } },
+          ...signalRequestArgs(input.signal),
+        ),
+      );
+    },
+    async cost(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"].cost.$get(
           { param: { id: input.threadId } },
           ...signalRequestArgs(input.signal),
         ),

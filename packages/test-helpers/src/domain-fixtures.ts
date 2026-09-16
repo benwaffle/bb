@@ -183,6 +183,7 @@ export function makeThreadListEntry(
     }),
     pinSortKey: null,
     statusChangedAt: 100,
+    cost: null,
     activity: {
       activeWorkflowCount: 0,
       activeBackgroundAgentCount: 0,
