@@ -181,6 +181,7 @@ interface ThreadDetailPromptAreaProps {
   canRestoreEnvironment: boolean;
   canUseGitUi: boolean;
   contextWindowUsage?: ThreadTimelineResponse["contextWindowUsage"];
+  cost: ThreadTimelineResponse["cost"] | null;
   environmentCheckout?: WorkspaceCheckoutDisplay;
   environmentCompactLabel?: string;
   environmentGoneStatus: "destroyed" | MachineRemovalStatus | null;
@@ -286,6 +287,7 @@ function buildInlineDraftComposer(options: InlineDraftComposerOptions) {
       textEffects={options.textEffects}
       environmentSummary={null}
       contextWindowUsage={null}
+      cost={null}
       execution={options.execution}
       executionReadOnly
       permission={options.permission}
@@ -395,6 +397,7 @@ export function ThreadDetailPromptArea({
   canRestoreEnvironment,
   canUseGitUi,
   contextWindowUsage,
+  cost,
   environmentCheckout,
   environmentCompactLabel,
   environmentGoneStatus,
@@ -2200,6 +2203,7 @@ export function ThreadDetailPromptArea({
       focusEndKey={bottomFocusEndKey}
       environmentSummary={environmentSummary}
       contextWindowUsage={contextWindowUsage ?? null}
+      cost={cost ?? null}
       execution={bottomExecutionConfig}
       permission={bottomPermissionConfig}
       typeahead={typeaheadConfig}

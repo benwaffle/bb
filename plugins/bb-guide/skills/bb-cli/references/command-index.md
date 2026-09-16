@@ -205,6 +205,7 @@ move and downloads the new server's bb-app package for its service.
 - `bb thread stop`
 - `bb thread compact`
 - `bb thread context`
+- `bb thread cost`
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
