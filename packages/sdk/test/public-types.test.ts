@@ -402,6 +402,7 @@ type ExpectedThreadsKey =
   | "clearGoal"
   | "compact"
   | "conversationOutline"
+  | "cost"
   | "count"
   | "defaultExecutionOptions"
   | "delete"
