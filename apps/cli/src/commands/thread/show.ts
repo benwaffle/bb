@@ -19,6 +19,7 @@ import {
 import { BbHttpError, type BbSdk } from "@bb/sdk";
 import type {
   EnvironmentDiffQuery,
+  ThreadCost,
   ThreadTimelineResponse,
   TimelineConversationRow,
 } from "@bb/server-contract";
@@ -39,6 +40,7 @@ import {
   printEnvironmentInfo,
 } from "../environment-helpers.js";
 import { fetchThreadPendingTodos, printPendingTodos } from "./pending-todos.js";
+import { fetchThreadCost, formatThreadCostLine } from "./cost.js";
 
 interface ThreadShowCommandOptions {
   self?: boolean;
@@ -78,6 +80,7 @@ type ThreadShowEnvironmentJsonPayload = Environment & {
 };
 
 interface ThreadShowJsonPayload extends ThreadStatusPayload {
+  cost: ThreadCost | null;
   environment: ThreadShowEnvironmentJsonPayload | null;
   pendingTodos: ThreadTimelinePendingTodos | null;
   workStatus?: WorkspaceStatus | null;
@@ -325,10 +328,19 @@ export function registerShowCommand(
           threadId,
         });
 
+        const cost = await fetchThreadCost({
+          sdk,
+          threadId,
+          onUnavailable: (message) => {
+            console.error(`Cost lookup failed: ${message}`);
+          },
+        });
+
         if (opts.json) {
           const environment = await getEnvironment();
           const jsonPayload: ThreadShowJsonPayload = {
             ...statusPayload,
+            cost,
             environment: threadShowEnvironmentJson(
               environment,
               fetchedPullRequest,
@@ -350,6 +362,10 @@ export function registerShowCommand(
         }
 
         printThreadStatus(statusPayload, environmentInfo, fetchedPullRequest);
+
+        if (cost) {
+          console.log(`  Cost: ${formatThreadCostLine(cost)}`);
+        }
 
         printPendingTodos(pendingTodos);
 
