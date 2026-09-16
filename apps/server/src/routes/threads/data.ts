@@ -67,6 +67,7 @@ import type {
   ThreadTimelinePageRequest,
 } from "../../services/threads/timeline-pagination.js";
 import { createSlowThreadTimelineBuildLogger } from "../../services/threads/timeline-build-log.js";
+import { loadThreadCost } from "../../services/threads/cost/load-thread-cost.js";
 import {
   buildThreadTimelineCacheKey,
   buildThreadTimelineParamsKey,
@@ -406,6 +407,19 @@ export function registerThreadDataRoutes(app: Hono, deps: AppDeps): void {
     });
     return context.json({
       usage: extractThreadContextWindowUsage(rows.map(toThreadEventWithMeta)),
+    });
+  });
+
+  get(routes.cost, (context) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    const breakdown = loadThreadCost(deps.db, {
+      providerId: thread.providerId,
+      threadId: thread.id,
+    });
+    return context.json({
+      cost: breakdown.cost,
+      turns: breakdown.turns,
+      turnsCoverRetainedWindowOnly: breakdown.coversRetainedWindowOnly,
     });
   });
 
