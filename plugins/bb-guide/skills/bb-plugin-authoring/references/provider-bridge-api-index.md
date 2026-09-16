@@ -306,6 +306,7 @@ Context breakdowns are optional snapshots on `contextWindow` deltas:
 - `ThreadEventContextWindowUsage`
 - `ThreadEventItemPresentation`
 - `ThreadEventItemStatus`
+- `ThreadEventModelTokenUsage`
 - `ThreadEventPlanStep`
 - `ThreadEventSearchMode`
 - `ThreadEventTokenUsageBreakdown`
