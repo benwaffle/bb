@@ -123,6 +123,7 @@ import {
 import { parseStoredEvent } from "./thread-data.js";
 import { readThreadHeadState } from "./thread-head-state.js";
 import { decodeStoredEventRowCached } from "./stored-event-decode-cache.js";
+import { loadThreadCost } from "./cost/load-thread-cost.js";
 import {
   keepTimelineProjection,
   type BuiltTimelineProjection,
@@ -283,6 +284,7 @@ type ThreadTimelineBuildProfileStage =
   | "event-json-decode"
   | "summary-compaction"
   | "head-state"
+  | "thread-cost-query"
   | "thread-view-projection"
   | "thread-view-rows"
   | "pagination-segmentation";
@@ -1636,6 +1638,15 @@ function buildThreadTimelineInternal(
           ),
         )
       : null;
+  const threadCost =
+    options.page.kind === "latest"
+      ? measureThreadTimelineStage(profile, "thread-cost-query", () =>
+          loadThreadCost(db, {
+            providerId: thread.providerId,
+            threadId: thread.id,
+          }),
+        )
+      : undefined;
   const projectionOptions = {
     completedTurnDisplay: options.completedTurnDisplay,
     includeDiagnosticOperations,
@@ -1841,6 +1852,7 @@ function buildThreadTimelineInternal(
     sessionOptions: headState?.sessionOptions ?? null,
     modelFallback: headState?.modelFallback ?? null,
     contextWindowUsage: headState?.contextWindowUsage ?? undefined,
+    cost: threadCost?.cost ?? undefined,
     timelinePage: {
       returnedSegmentCount: paginatedTimeline.returnedSegmentCount,
       olderCursor: bindTimelineCursor(
