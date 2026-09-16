@@ -54,6 +54,7 @@ import {
   isCommaSeparatedIncludeQueryValue,
   pathListIncludeQueryValueSchema,
   threadContextWindowUsageSchema,
+  threadCostSchema,
   workspaceFileListResponseSchema,
   workspacePathListResponseSchema,
 } from "./shared.js";
@@ -1357,6 +1358,7 @@ export const threadTimelineResponseSchema = z.object({
   rows: z.array(timelineRowSchema),
   ...threadTimelineWindowFieldsShape,
   contextWindowUsage: threadContextWindowUsageSchema.optional(),
+  cost: threadCostSchema.optional(),
   maxSeq: z.number().int().nonnegative(),
   tag: threadTimelineTagSchema,
 });
@@ -1388,6 +1390,7 @@ export const timelineDeltaFieldsSchema = z
   .object({
     ...threadTimelineWindowFieldsShape,
     contextWindowUsage: threadContextWindowUsageSchema.nullable(),
+    cost: threadCostSchema.nullable(),
     timelinePage: timelinePagePatchSchema,
   })
   .partial();
