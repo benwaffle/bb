@@ -151,6 +151,7 @@ export function Overview() {
               }}
               environmentSummary={null}
               contextWindowUsage={null}
+              cost={null}
               execution={execution}
               permission={permission}
               promptActions={[]}
