@@ -47,6 +47,7 @@ import type {
   ThreadTimelinePageKind,
   ThreadTimelinePageRequest,
 } from "../../services/threads/timeline-pagination.js";
+import { loadThreadCost } from "../../services/threads/cost/load-thread-cost.js";
 import {
   createThreadTimelineWindows,
   resolveThreadCompletedTurnDisplay,
@@ -233,6 +234,19 @@ export function registerThreadDataRoutes(app: Hono, deps: AppDeps): void {
         resolveThreadHeadStateOptions(deps, thread.providerId),
       ),
     );
+  });
+
+  get(routes.cost, (context) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    const breakdown = loadThreadCost(deps.db, {
+      providerId: thread.providerId,
+      threadId: thread.id,
+    });
+    return context.json({
+      cost: breakdown.cost,
+      turns: breakdown.turns,
+      turnsCoverRetainedWindowOnly: breakdown.coversRetainedWindowOnly,
+    });
   });
 
   get(routes.timeline, (context, query) => {
