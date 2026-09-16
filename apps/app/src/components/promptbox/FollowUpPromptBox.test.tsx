@@ -214,9 +214,16 @@ vi.mock("@/views/thread-detail/ThreadTimelineScrollToBottomButton", () => ({
   ThreadTimelineScrollToBottomButton: () => null,
 }));
 
-vi.mock("@/components/thread/timeline", () => ({
-  ThreadContextWindowIndicator: () => null,
-}));
+vi.mock("@/components/thread/timeline", async () => {
+  const indicator =
+    await import("@/components/thread/timeline/ThreadCostIndicator");
+  const helpers = await import("@/components/thread/timeline/thread-cost");
+  return {
+    ThreadContextWindowIndicator: () => null,
+    ThreadCostIndicator: indicator.ThreadCostIndicator,
+    hasThreadCostReadout: helpers.hasThreadCostReadout,
+  };
+});
 
 function createFollowUpPromptBoxProps(
   submitMode: FollowUpSubmitMode,
@@ -253,6 +260,7 @@ function createFollowUpPromptBoxProps(
     },
     environmentSummary: null,
     contextWindowUsage: null,
+    cost: null,
     execution: {
       provider: {
         selectedId: "codex",
@@ -1484,6 +1492,79 @@ describe("FollowUpPromptBox", () => {
     rerender(<FollowUpPromptBox {...props} focusEndKey="mobile" />);
 
     expect(screen.getByTestId("prompt-box")).toBe(initialPromptBox);
+  });
+
+  it("renders the cost pill from a timeline cost payload", () => {
+    const props = createFollowUpPromptBoxProps({ kind: "ready" });
+    props.environmentSummary = <span>Local environment</span>;
+    props.cost = {
+      totalUsd: 46.27,
+      source: "mixed",
+      tokens: {
+        totalTokens: 41_204_112,
+        inputTokens: 21_004,
+        cachedInputTokens: 40_902_108,
+        cacheWriteInputTokens: 612_004,
+        outputTokens: 281_000,
+        reasoningOutputTokens: 0,
+      },
+      models: [
+        {
+          model: "claude-opus-5",
+          costUsd: 45.9,
+          source: "mixed",
+          tokens: {
+            totalTokens: 41_000_000,
+            inputTokens: 20_000,
+            cachedInputTokens: 40_700_000,
+            cacheWriteInputTokens: 600_000,
+            outputTokens: 280_000,
+            reasoningOutputTokens: 0,
+          },
+        },
+        {
+          model: "claude-haiku-4-5",
+          costUsd: 0.37,
+          source: "reported",
+          tokens: {
+            totalTokens: 204_112,
+            inputTokens: 1_004,
+            cachedInputTokens: 202_108,
+            cacheWriteInputTokens: 12_004,
+            outputTokens: 1_000,
+            reasoningOutputTokens: 0,
+          },
+        },
+      ],
+    };
+    render(<FollowUpPromptBox {...props} />);
+
+    const footer = document.querySelector("[data-follow-up-composer-footer]");
+    const pill = screen.getByRole("button", { name: "Thread cost $46.27" });
+    expect(footer?.contains(pill)).toBe(true);
+    expect(pill.textContent).toContain("$46.27");
+  });
+
+  it("hides the cost pill for a thread that has recorded no usage", () => {
+    const props = createFollowUpPromptBoxProps({ kind: "ready" });
+    props.environmentSummary = <span>Local environment</span>;
+    props.cost = {
+      totalUsd: null,
+      source: "estimated",
+      tokens: {
+        totalTokens: 0,
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        cacheWriteInputTokens: 0,
+        outputTokens: 0,
+        reasoningOutputTokens: 0,
+      },
+      models: [],
+    };
+    render(<FollowUpPromptBox {...props} />);
+
+    expect(screen.queryByRole("button", { name: /Thread cost/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Thread usage/ })).toBeNull();
   });
 
   it("uses the caller-specific compact placeholder", () => {

@@ -114,6 +114,7 @@ bb environment providers --json
 bb provider list --environment "$BB_ENVIRONMENT_ID" --json
 bb thread show "$BB_THREAD_ID" --json
 bb thread context --self --json
+bb thread cost --self --json
 bb environment status "$BB_ENVIRONMENT_ID" --json
 bb plugin list --json
 bb skill list --environment "$BB_ENVIRONMENT_ID" --json
@@ -155,3 +156,4 @@ machines and in-progress lifecycle operations alone. Use `machine suspend` to
 request a new pause. Core does not schedule reconciliation polling.
 
 `bb thread list`, `bb thread show`, and `bb machine show` report `memoryUsage`: the resident memory of a thread's agent process tree (every descendant of the process the host daemon spawned for it, such as test runners and dev servers) sampled every few seconds, and the per-machine sum. `null` means no live agent process or a disconnected daemon; `sharedThreadCount > 1` means the provider hosts several threads in one process and the figure is that process tree's total.
+`bb thread cost` reports thread spend derived from recorded token usage. It prefers a provider-reported cost and marks `source` as `reported`, `estimated`, or `mixed`; providers without a per-token price report tokens instead of dollars. `bb thread show --json` and `bb thread list --json` carry the same total as `cost`.

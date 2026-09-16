@@ -7,6 +7,8 @@ import {
   gitBranchNameSchema,
   gitBranchSelectionSchema,
   jsonValueSchema,
+  threadCostSchema,
+  threadCostTurnSchema,
 } from "@bb/domain";
 
 export {
@@ -43,6 +45,30 @@ export const threadContextResponseSchema = z.object({
   usage: threadContextWindowUsageSchema.nullable(),
 });
 export type ThreadContextResponse = z.infer<typeof threadContextResponseSchema>;
+
+export {
+  threadCostModelSchema,
+  threadCostSchema,
+  threadCostSourceSchema,
+  threadCostSummarySchema,
+  threadCostTokensSchema,
+  threadCostTurnSchema,
+} from "@bb/domain";
+export type {
+  ThreadCost,
+  ThreadCostModel,
+  ThreadCostSource,
+  ThreadCostSummary,
+  ThreadCostTokens,
+  ThreadCostTurn,
+} from "@bb/domain";
+
+export const threadCostResponseSchema = z.object({
+  cost: threadCostSchema.nullable(),
+  turns: z.array(threadCostTurnSchema),
+  turnsCoverRetainedWindowOnly: z.boolean(),
+});
+export type ThreadCostResponse = z.infer<typeof threadCostResponseSchema>;
 
 export { gitBranchNameSchema };
 

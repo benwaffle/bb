@@ -197,6 +197,7 @@ Sections:
 Inspecting:
 
   bb thread context [id]                   Show recorded context usage and available breakdown (--self, --json)
+  bb thread cost [id]                      Show thread cost, per-model spend, and per-turn rows (--self, --json)
   bb thread show [id]                      Show thread details and pull request status
     --self                                 Target current thread
     --work-status                          Include git working-tree status
@@ -465,3 +466,14 @@ Lifecycle ownership:
   recursively deletes them after runtime/storage cleanup. Failed cleanup retries
   durably. Unarchive the owner before explicitly restoring a dependent. Stop does
   not cascade. Sidebar parents and ordinary forks retain their existing policies.
+
+`bb thread cost [id]` reports what the thread has spent. The server prices
+persisted token usage with a built-in table keyed by provider and model, and
+prefers a cost the provider reports itself: `source` is `reported` when every
+turn carried one, `estimated` when the price came from the table, and `mixed`
+while a running turn is still estimated. Providers with no per-token price
+report tokens instead of dollars. Per-turn rows cover the usage events still
+retained for the thread, so a long thread can report fewer turns than it ran.
+The same total appears as `cost` in `bb thread show --json` and on every entry
+of `bb thread list --json`, and in the app as the readout in the composer
+status bar.

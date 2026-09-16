@@ -170,6 +170,7 @@ export function makeThreadListEntry(
       titleFallback: null,
     }),
     pinSortKey: null,
+    cost: null,
     activity: {
       activeWorkflowCount: 0,
       activeBackgroundAgentCount: 0,

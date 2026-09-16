@@ -183,6 +183,7 @@ server.
 - `bb thread stop`
 - `bb thread compact`
 - `bb thread context`
+- `bb thread cost`
 - `bb thread clear`
 - `bb thread cancel-plan`
 - `bb thread clear-goal`
