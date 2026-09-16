@@ -175,6 +175,7 @@
       "last": "required",
       "modelContextWindow": "required",
       "promptCacheTtlMs": "optional",
+      "models": "optional",
       "providerTurnId": "optional"
     }
   },
