@@ -1832,6 +1832,7 @@ export function createDeltaAssembler(
             total: { ...delta.total },
             last: { ...delta.last },
             modelContextWindow: delta.modelContextWindow,
+            ...(delta.models === undefined ? {} : { models: delta.models }),
           },
         });
         return;

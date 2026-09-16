@@ -70,6 +70,7 @@ export * from "./thread-timeline-goal.js";
 export * from "./thread-timeline-model-fallback.js";
 export * from "./thread-timeline-pending-todos.js";
 export * from "./thread-visibility.js";
+export * from "./thread-cost.js";
 export * from "./thread.js";
 
 export * from "./project-attachment.js";

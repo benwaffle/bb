@@ -17,6 +17,7 @@ import { EMPTY_ORDERED_MENTION_SUGGESTIONS } from "@bb/client-core";
 import type {
   SystemExecutionOptionsModelLoadError,
   ThreadContextWindowUsage,
+  ThreadCost,
 } from "@bb/server-contract";
 import {
   FollowUpPromptBox,
@@ -287,6 +288,47 @@ const usage: ThreadContextWindowUsage = {
   estimated: false,
 };
 
+const threadCost: ThreadCost = {
+  totalUsd: 0.23,
+  source: "mixed",
+  tokens: {
+    totalTokens: 812_400,
+    inputTokens: 12_400,
+    cachedInputTokens: 780_000,
+    cacheWriteInputTokens: 24_000,
+    outputTokens: 20_000,
+    reasoningOutputTokens: 0,
+  },
+  models: [
+    {
+      model: "claude-opus-5",
+      costUsd: 0.21,
+      source: "reported",
+      tokens: {
+        totalTokens: 792_400,
+        inputTokens: 12_400,
+        cachedInputTokens: 760_000,
+        cacheWriteInputTokens: 24_000,
+        outputTokens: 20_000,
+        reasoningOutputTokens: 0,
+      },
+    },
+    {
+      model: "claude-haiku-4-5",
+      costUsd: 0.02,
+      source: "estimated",
+      tokens: {
+        totalTokens: 20_000,
+        inputTokens: 0,
+        cachedInputTokens: 20_000,
+        cacheWriteInputTokens: 0,
+        outputTokens: 0,
+        reasoningOutputTokens: 0,
+      },
+    },
+  ],
+};
+
 const typeaheadBase: TypeaheadConfig = {
   mention: {
     results: EMPTY_ORDERED_MENTION_SUGGESTIONS,
@@ -515,6 +557,7 @@ interface RowConfig {
   promptPlaceholder?: string;
   environmentSummary?: ReactNode | null;
   contextWindowUsage?: ThreadContextWindowUsage | null;
+  cost?: ThreadCost | null;
   stack?: ReactNode | null;
   queuedMessages?: readonly ThreadQueuedMessage[];
   collapseResetKey?: string;
@@ -555,6 +598,7 @@ function Row({
   promptPlaceholder,
   environmentSummary = localEnvironmentSummary,
   contextWindowUsage = null,
+  cost = null,
   stack = null,
   queuedMessages: initialQueuedMessages,
   collapseResetKey = "thr_demo",
@@ -666,6 +710,7 @@ function Row({
                 }}
                 environmentSummary={null}
                 contextWindowUsage={null}
+                cost={null}
                 execution={execution}
                 executionReadOnly
                 permission={permission}
@@ -761,6 +806,7 @@ function Row({
         }
         environmentSummary={environmentSummary}
         contextWindowUsage={contextWindowUsage}
+        cost={cost}
         execution={execution}
         permission={permission}
         activePromptMode={activePromptMode}
@@ -784,6 +830,7 @@ function StackedCardsWithPillsRow() {
       stack={contextBannerElement}
       queuedMessages={queuedMessages}
       contextWindowUsage={usage}
+      cost={threadCost}
       environmentSummary={multiMachineEnvironmentSummary}
     />
   );

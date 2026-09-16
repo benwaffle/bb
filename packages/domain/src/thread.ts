@@ -14,6 +14,7 @@ import {
   reasoningLevelSchema,
   serviceTierSchema,
 } from "./shared-types.js";
+import { threadCostSummarySchema } from "./thread-cost.js";
 import { threadStatusSchema, threadStatusValues } from "./thread-status.js";
 import { threadOriginKindSchema } from "./thread-origin-kind.js";
 import { threadVisibilitySchema } from "./thread-visibility.js";
@@ -440,6 +441,7 @@ export type ThreadQueuedWork = z.infer<typeof threadQueuedWorkSchema>;
 
 export const threadListEntrySchema = threadWithRuntimeSchema.extend({
   activity: threadActivityStateSchema,
+  cost: threadCostSummarySchema.nullable(),
   queuedWork: threadQueuedWorkSchema,
   pinSortKey: z.string().nullable(),
   hasPendingInteraction: z.boolean(),

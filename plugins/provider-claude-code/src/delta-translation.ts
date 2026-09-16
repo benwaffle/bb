@@ -22,6 +22,7 @@ import {
   experimental_COMPACTION_PRESENTATION as COMPACTION_PRESENTATION,
   experimental_planStepsPresentation as planStepsPresentation,
 } from "@get-bb/plugin-sdk/provider-bridge";
+import { ModelUsageLedger } from "./model-usage-ledger.js";
 import {
   claudeApiRetryMessageSchema,
   claudeAssistantMessageSchema,
@@ -70,7 +71,9 @@ import {
   extractAssistantText,
   extractClaudeCommandExecutionOutput,
   extractClaudeContextWindowUsage,
+  extractClaudeReportedModelUsage,
   extractClaudeRequestContextTokens,
+  extractClaudeRequestModelUsage,
   extractClaudeResultTokenUsage,
   extractStreamTextDelta,
   extractStreamThinkingDelta,
@@ -380,9 +383,15 @@ interface ClaudeTurnMirror {
   segment: number;
 }
 
+const NESTED_USAGE_EMIT_TOKEN_THRESHOLD = 25_000;
+
 interface ClaudeThreadDialectState {
   mirror: ClaudeTurnMirror;
   cumulativeTokens: ThreadEventTokenUsageBreakdown;
+  cumulativeTokensAtTurnStart: ThreadEventTokenUsageBreakdown;
+  turnRequestTokens: ThreadEventTokenUsageBreakdown;
+  unemittedNestedTokens: number;
+  modelUsage: ModelUsageLedger;
   latestRequestContextTokens: number | undefined;
   latestProviderCheckpointId: string | undefined;
   lastModelFallback:
@@ -401,6 +410,10 @@ function createThreadState(): ClaudeThreadDialectState {
   return {
     mirror: { turnOpen: false, pendingInputs: 0, segment: 0 },
     cumulativeTokens: ZERO_TOKEN_USAGE,
+    cumulativeTokensAtTurnStart: ZERO_TOKEN_USAGE,
+    turnRequestTokens: ZERO_TOKEN_USAGE,
+    unemittedNestedTokens: 0,
+    modelUsage: new ModelUsageLedger(),
     latestRequestContextTokens: undefined,
     latestProviderCheckpointId: undefined,
     lastModelFallback: undefined,
@@ -452,6 +465,10 @@ export function createClaudeDeltaTranslator(
     state.mirror.turnOpen = true;
     state.mirror.segment += 1;
     state.mirror.pendingInputs = 0;
+    state.cumulativeTokensAtTurnStart = state.cumulativeTokens;
+    state.turnRequestTokens = ZERO_TOKEN_USAGE;
+    state.unemittedNestedTokens = 0;
+    state.modelUsage.beginTurn();
     state.latestRequestContextTokens = undefined;
     state.latestProviderCheckpointId = undefined;
     state.armedHardRateLimitRejection = undefined;
@@ -459,6 +476,10 @@ export function createClaudeDeltaTranslator(
   }
 
   function mirrorCloseTurn(state: ClaudeThreadDialectState): void {
+    state.cumulativeTokens = addTokenUsage(
+      state.cumulativeTokensAtTurnStart,
+      state.turnRequestTokens,
+    );
     state.mirror.turnOpen = false;
     state.armedHardRateLimitRejection = undefined;
     state.startedTools.clear();
@@ -853,6 +874,38 @@ export function createClaudeDeltaTranslator(
       }
     }
 
+    const requestModelUsage = extractClaudeRequestModelUsage(message);
+    if (requestModelUsage !== null) {
+      state.modelUsage.recordRequest(
+        requestModelUsage.model,
+        requestModelUsage.breakdown,
+      );
+      state.turnRequestTokens = addTokenUsage(
+        state.turnRequestTokens,
+        requestModelUsage.breakdown,
+      );
+      const nested = parentToolCallId !== undefined;
+      state.unemittedNestedTokens = nested
+        ? state.unemittedNestedTokens + requestModelUsage.breakdown.totalTokens
+        : 0;
+      if (
+        !nested ||
+        state.unemittedNestedTokens >= NESTED_USAGE_EMIT_TOKEN_THRESHOLD
+      ) {
+        state.unemittedNestedTokens = 0;
+        deltas.push({
+          kind: "usage",
+          total: addTokenUsage(
+            state.cumulativeTokensAtTurnStart,
+            state.turnRequestTokens,
+          ),
+          last: requestModelUsage.breakdown,
+          modelContextWindow: state.selectedModelContextWindow,
+          models: state.modelUsage.snapshot(),
+        });
+      }
+    }
+
     for (const thinking of extractThinkingBlocks(message)) {
       deltas.push({
         kind: "item.textClose",
@@ -1060,14 +1113,20 @@ export function createClaudeDeltaTranslator(
     const tokenUsage = extractClaudeResultTokenUsage(message);
     if (tokenUsage !== undefined) {
       state.cumulativeTokens = addTokenUsage(
-        state.cumulativeTokens,
+        state.cumulativeTokensAtTurnStart,
         tokenUsage.last,
       );
+      state.turnRequestTokens = tokenUsage.last;
+      state.unemittedNestedTokens = 0;
+      state.modelUsage.reconcileTurn(extractClaudeReportedModelUsage(message));
       deltas.push({
         kind: "usage",
         total: state.cumulativeTokens,
         last: tokenUsage.last,
         modelContextWindow: tokenUsage.modelContextWindow,
+        ...(state.modelUsage.isEmpty()
+          ? {}
+          : { models: state.modelUsage.snapshot() }),
       });
     }
 

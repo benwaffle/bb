@@ -51,6 +51,7 @@ import type {
   ThreadTimelineResponse,
   ThreadBackgroundCommandStopResponse,
   ThreadContextResponse,
+  ThreadCostResponse,
   ThreadWithIncludesResponse,
   TimelineTurnSummaryDetailsResponse,
   TimelineWorkflowWorkRow,
@@ -181,6 +182,7 @@ export type ThreadInteractionCancelResult = PendingInteraction;
 export type ThreadEventsListResult = ThreadEventRow[];
 export type ThreadEventWaitResult = ThreadEventRow | null;
 export type ThreadContextResult = ThreadContextResponse;
+export type ThreadCostResult = ThreadCostResponse;
 export type ThreadTimelineResult = ThreadTimelineResponse;
 export type ThreadArchiveResult = ThreadArchiveAllResponse;
 export type ThreadOpenResult = ThreadOpenResponse;
@@ -656,6 +658,7 @@ export interface ThreadsArea {
   stop(args: ThreadActionArgs): Promise<ThreadStopResult>;
   tabs: ThreadTabsArea;
   context(args: ThreadStatusArgs): Promise<ThreadContextResult>;
+  cost(args: ThreadStatusArgs): Promise<ThreadCostResult>;
   timeline(args: ThreadTimelineArgs): Promise<ThreadTimelineResult>;
   timelineTurnSummaryDetails(
     args: ThreadTimelineTurnSummaryDetailsArgs,
@@ -1451,6 +1454,14 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
     async context(input) {
       return transport.readJson(
         transport.api.v1.threads[":id"].context.$get(
+          { param: { id: input.threadId } },
+          ...signalRequestArgs(input.signal),
+        ),
+      );
+    },
+    async cost(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"].cost.$get(
           { param: { id: input.threadId } },
           ...signalRequestArgs(input.signal),
         ),

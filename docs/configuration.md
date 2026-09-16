@@ -1661,7 +1661,9 @@ applies to the project's clone, setup script, terminals, and agent turns, but
 not to git commands an environment provider plugin runs on the machine, which
 use the global value. Project-scoped contributions require daemon protocol 211.
 Stopping a background command from the UI or `bb thread commands stop`
-requires protocol 214. Older daemons update before the server accepts their
+requires protocol 214. Per-model token usage with provider-reported cost on
+`thread/tokenUsage/updated`, which the thread cost readout prices, requires
+protocol 215. Older daemons update before the server accepts their
 session.
 
 For non-primary hosts, the built-in GitHub row uses `gh auth token --hostname

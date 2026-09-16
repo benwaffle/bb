@@ -14,10 +14,12 @@ import {
   type ThreadWithPendingInteractionState,
 } from "@bb/db";
 import { LEGACY_CODEX_GOAL_EXTENSION_KIND } from "@bb/domain";
+import { buildThreadCostSummaryByThreadId } from "./cost/thread-cost-summaries.js";
 import type {
   Thread,
   ThreadActivityState,
   ThreadChangeMetadata,
+  ThreadCostSummary,
   ThreadListEntry,
   ThreadMemoryUsage,
   ThreadQueuedWork,
@@ -86,6 +88,7 @@ interface ToThreadListEntryResponsesArgs {
 
 interface ToThreadListEntryResponseFromLatestSessionArgs {
   activity: ThreadActivityState;
+  cost: ThreadCostSummary | null;
   hostConnected: boolean;
   latestSession: HostDaemonSessionRow | null;
   memoryUsage: ThreadMemoryUsage | null;
@@ -575,10 +578,14 @@ export function toThreadListEntryResponses(
     deps,
     args.threads,
   );
+  const costByThreadId = buildThreadCostSummaryByThreadId(deps.db, {
+    threads: args.threads,
+  });
   return args.threads.map((thread) => {
     const entry = toThreadListEntryResponseFromLatestSession({
       activity: activityByThreadId.get(thread.id) ?? EMPTY_THREAD_ACTIVITY,
       memoryUsage: deps.hub.getThreadMemoryUsage(thread.id),
+      cost: costByThreadId.get(thread.id) ?? null,
       queuedWork: queuedWorkByThreadId.get(thread.id) ?? "none",
       hostConnected:
         thread.environmentHostId !== null &&
@@ -607,6 +614,7 @@ function toThreadListEntryResponseFromLatestSession(
   return {
     ...thread,
     activity: args.activity,
+    cost: args.cost,
     queuedWork: args.queuedWork,
     pinSortKey: args.thread.pinSortKey,
     environmentBranchName: args.thread.environmentBranchName,
