@@ -107,6 +107,11 @@ describe("bb thread show command output", () => {
         }),
       ),
       "v1.threads.:id.head-state.$get": fixtures.makeEmptyHeadStateGetMock(),
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(["thread", "show", "thread-archived-1"], register);
@@ -133,6 +138,11 @@ describe("bb thread show command output", () => {
     stubServerApi({
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(["thread", "show", "thread-pinned-1"], register);
@@ -168,6 +178,11 @@ describe("bb thread show command output", () => {
     stubServerApi({
       "v1.threads.:id.$get": vi.fn(async () => thread),
       "v1.threads.:id.head-state.$get": fixtures.makeEmptyHeadStateGetMock(),
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(["thread", "show", "thread-memory-1"], register);
@@ -175,6 +190,44 @@ describe("bb thread show command output", () => {
     const lines = collectLogLines(vi.mocked(console.log));
     expect(lines).toContain(
       "  Memory: 2.7 GB (40 processes, shared by 2 threads)",
+    );
+  });
+
+  it("bb thread show prints the thread cost when usage has been recorded", async () => {
+    const thread: domain.Thread = fixtures.makeThread({
+      id: "thread-cost-1",
+      projectId: "proj-1",
+      providerId: "claude-code",
+      status: "idle",
+      createdAt: 1,
+      updatedAt: 2,
+    });
+    stubServerApi({
+      "v1.threads.:id.$get": vi.fn(async () => thread),
+      "v1.threads.:id.head-state.$get": fixtures.makeEmptyHeadStateGetMock(),
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: {
+          totalUsd: 0.23,
+          source: "mixed",
+          tokens: {
+            totalTokens: 100,
+            inputTokens: 40,
+            cachedInputTokens: 40,
+            cacheWriteInputTokens: 10,
+            outputTokens: 20,
+            reasoningOutputTokens: 0,
+          },
+          models: [],
+        },
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
+    });
+
+    await runCommand(["thread", "show", "thread-cost-1"], register);
+
+    expect(collectLogLines(vi.mocked(console.log))).toContain(
+      "  Cost: $0.23 (mixed)",
     );
   });
 
@@ -193,6 +246,11 @@ describe("bb thread show command output", () => {
     stubServerApi({
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(["thread", "show", "--self"], register);
@@ -233,6 +291,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": environmentGet,
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(
@@ -317,6 +380,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": environmentGet,
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(
@@ -362,6 +430,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": vi.fn(async () => environment),
       "v1.threads.:id.$get": vi.fn(async () => thread),
       "v1.threads.:id.head-state.$get": fixtures.makeEmptyHeadStateGetMock(),
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(
@@ -427,6 +500,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": environmentGet,
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(
@@ -487,6 +565,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": environmentGet,
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(["thread", "show", "thread-show-pr"], register);
@@ -540,6 +623,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": environmentGet,
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(["thread", "show", "thread-show-pr-down"], register);
@@ -579,6 +667,11 @@ describe("bb thread show command output", () => {
       "v1.environments.:id.$get": environmentGet,
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(
@@ -597,6 +690,7 @@ describe("bb thread show command output", () => {
           pullRequest,
         },
       },
+      cost: null,
       pendingTodos: null,
     });
   });
@@ -615,6 +709,11 @@ describe("bb thread show command output", () => {
     stubServerApi({
       "v1.threads.:id.$get": get,
       "v1.threads.:id.head-state.$get": headStateGet,
+      "v1.threads.:id.cost.$get": vi.fn(async () => ({
+        cost: null,
+        turns: [],
+        turnsCoverRetainedWindowOnly: false,
+      })),
     });
 
     await runCommand(
@@ -626,6 +725,7 @@ describe("bb thread show command output", () => {
       JSON.parse(String(vi.mocked(console.log).mock.calls[0]?.[0])),
     ).toEqual({
       thread,
+      cost: null,
       environment: null,
       pendingTodos: null,
     });
