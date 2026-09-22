@@ -245,6 +245,23 @@ export const BUNDLED_PLUGINS: readonly BundledPluginDefinition[] = [
 
 const builtinPluginsModuleDir = path.dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Whether a `builtin:<name>` registration still corresponds to a plugin this
+ * build ships. `shipped` is what the running app resolved on disk; the
+ * compiled-in registry is consulted too so that a packaging fault which hides
+ * the plugin directories does not read as the plugin having been removed.
+ */
+export function isRegisteredBuiltinName(
+  name: string | null,
+  shipped: readonly BundledPluginDefinition[],
+): boolean {
+  if (name === null) return false;
+  return (
+    shipped.some((bundled) => bundled.name === name) ||
+    BUNDLED_PLUGINS.some((bundled) => bundled.name === name)
+  );
+}
+
 export function builtinPluginSource(name: string): string {
   return `builtin:${name}`;
 }
