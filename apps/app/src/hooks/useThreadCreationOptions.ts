@@ -243,6 +243,7 @@ export function useThreadCreationOptions(
     preferenceProjectId,
     resolveProviderRouting,
     resetKey,
+    retainUnavailableModel = false,
     scope = "new-thread",
     sessionOptionSelections: sessionOptionSelectionsOverride,
   } = options ?? {};
@@ -615,6 +616,7 @@ export function useThreadCreationOptions(
         sessionOptionSelections: requestedSessionOptionSelections,
         provider: selectedProviderInfo,
         catalogIsVerified: modelCatalogIsVerified,
+        retainUnavailableSelection: retainUnavailableModel,
         formatModelLabel,
       }),
     [
@@ -624,6 +626,7 @@ export function useThreadCreationOptions(
       preferredReasoningLevel,
       rawSelectedModel,
       requestedSessionOptionSelections,
+      retainUnavailableModel,
       selectedProviderInfo,
     ],
   );

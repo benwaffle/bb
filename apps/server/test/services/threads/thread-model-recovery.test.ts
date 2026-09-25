@@ -150,4 +150,62 @@ describe("stale model recovery", () => {
       });
     });
   });
+
+  it("keeps an extended-context override when the send names its base id", async () => {
+    await withTestHarness(async (harness) => {
+      const { host, session } = seedHostSession(harness.deps, {
+        id: "host-context-variant-recovery",
+      });
+      const { project } = seedProjectWithSource(harness.deps, {
+        hostId: host.id,
+        path: "/tmp/context-variant-recovery",
+      });
+      const environment = seedEnvironment(harness.deps, {
+        hostId: host.id,
+        projectId: project.id,
+        path: "/tmp/context-variant-recovery",
+        status: "ready",
+      });
+      const thread = seedThread(harness.deps, {
+        environmentId: environment.id,
+        projectId: project.id,
+        providerId: "claude-code",
+        status: "idle",
+      });
+      setThreadExecutionOverride(harness.db, {
+        threadId: thread.id,
+        modelOverride: "claude-opus-5-5[1m]",
+        reasoningLevelOverride: null,
+      });
+      registerProviderHostRpcResponder(harness, {
+        hostId: host.id,
+        sessionId: session.id,
+        modelsByProviderId: {
+          "claude-code": {
+            models: [
+              availableModelFixture({
+                model: "claude-sonnet-5",
+                isDefault: true,
+              }),
+              availableModelFixture({ model: "claude-opus-5-5" }),
+            ],
+            selectedOnlyModels: [],
+          },
+        },
+      });
+
+      await recoverThreadModelOverride(harness.deps, {
+        model: "claude-opus-5-5",
+        modelSource: "explicit",
+        reasoningLevel: undefined,
+        reasoningLevelSource: undefined,
+        thread,
+      });
+
+      expect(getThreadExecutionOverride(harness.db, thread.id)).toEqual({
+        modelOverride: "claude-opus-5-5[1m]",
+        reasoningLevelOverride: null,
+      });
+    });
+  });
 });
