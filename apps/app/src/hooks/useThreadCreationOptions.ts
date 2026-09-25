@@ -235,6 +235,7 @@ export function useThreadCreationOptions(
     preferenceProjectId,
     resolveProviderRouting,
     resetKey,
+    retainUnavailableModel = false,
     scope = "new-thread",
   } = options ?? {};
   const { setValue: setStoredProviderId, value: storedProviderId } =
@@ -584,6 +585,7 @@ export function useThreadCreationOptions(
         preferredReasoningLevel,
         provider: selectedProviderInfo,
         catalogIsVerified: modelCatalogIsVerified,
+        retainUnavailableSelection: retainUnavailableModel,
         formatModelLabel,
       }),
     [
@@ -592,6 +594,7 @@ export function useThreadCreationOptions(
       modelCatalogIsVerified,
       preferredReasoningLevel,
       rawSelectedModel,
+      retainUnavailableModel,
       selectedProviderInfo,
     ],
   );

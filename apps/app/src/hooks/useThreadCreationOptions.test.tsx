@@ -1173,6 +1173,96 @@ describe("useThreadCreationOptions", () => {
     });
   });
 
+  it("keeps an existing thread's base model id when the catalog lists only its [1m] variant", async () => {
+    vi.mocked(sdk.system.executionOptions).mockResolvedValue(
+      claudeExecutionOptionsResponse(),
+    );
+    const { wrapper } = createQueryClientTestHarness();
+    const { result } = renderHook(
+      () =>
+        useThreadCreationOptions({
+          ...claudeThreadCreationArgs("thr_base_variant", "claude-opus-4-8"),
+          retainUnavailableModel: true,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.modelCatalogIsVerified).toBe(true);
+    });
+    expect(result.current.selectedModel).toBe("claude-opus-4-8");
+    expect(result.current.executionInputSources.model).toBeUndefined();
+    expect(result.current.activeModel?.displayName).toBe("Opus 4.8 (1M)");
+    expect(result.current.modelOptions.map((option) => option.value)).toEqual([
+      "claude-opus-4-8",
+      "claude-sonnet-5",
+    ]);
+  });
+
+  it("keeps an existing thread's [1m] model id when the catalog lists only its base id", async () => {
+    const response = claudeExecutionOptionsResponse();
+    vi.mocked(sdk.system.executionOptions).mockResolvedValue({
+      ...response,
+      models: response.models.map((model) =>
+        model.model === "claude-opus-4-8[1m]"
+          ? { ...model, id: "claude-opus-4-8", model: "claude-opus-4-8" }
+          : model,
+      ),
+    });
+    const { wrapper } = createQueryClientTestHarness();
+    const { result } = renderHook(
+      () =>
+        useThreadCreationOptions(
+          claudeThreadCreationArgs(
+            "thr_extended_variant",
+            "claude-opus-4-8[1m]",
+          ),
+        ),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.modelCatalogIsVerified).toBe(true);
+    });
+    expect(result.current.selectedModel).toBe("claude-opus-4-8[1m]");
+    expect(result.current.executionInputSources.model).toBeUndefined();
+  });
+
+  it("retains an existing thread's absent model as an unavailable picker entry", async () => {
+    vi.mocked(sdk.system.executionOptions).mockResolvedValue(
+      claudeExecutionOptionsResponse(),
+    );
+    const { wrapper } = createQueryClientTestHarness();
+    const { result } = renderHook(
+      () =>
+        useThreadCreationOptions({
+          ...claudeThreadCreationArgs("thr_absent_model", "claude-mythos-5"),
+          retainUnavailableModel: true,
+        }),
+      { wrapper },
+    );
+
+    await waitFor(() => {
+      expect(result.current.modelCatalogIsVerified).toBe(true);
+    });
+    expect(result.current.selectedModel).toBe("claude-mythos-5");
+    expect(result.current.executionInputSources.model).toBeUndefined();
+    expect(result.current.modelOptions[0]).toMatchObject({
+      value: "claude-mythos-5",
+      label: expect.stringContaining("(unavailable)"),
+    });
+    expect(result.current.modelOptions.map((option) => option.value)).toContain(
+      "claude-sonnet-5",
+    );
+
+    act(() => {
+      result.current.setSelectedModel("claude-sonnet-5");
+    });
+
+    expect(result.current.selectedModel).toBe("claude-sonnet-5");
+    expect(result.current.executionInputSources.model).toBe("explicit");
+  });
+
   it("overrides a stale project model default when creating a new thread", async () => {
     const { wrapper } = createQueryClientTestHarness();
     const { result } = renderHook(
