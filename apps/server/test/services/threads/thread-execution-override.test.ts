@@ -158,4 +158,19 @@ describe("resolveThreadExecutionOverrideUpdate", () => {
       reasoningLevelOverride: "high",
     });
   });
+
+  it("accepts the extended-context variant of a catalog model and keeps its id", () => {
+    expect(
+      resolveThreadExecutionOverrideUpdate(registry, {
+        existing: EMPTY,
+        patch: { model: "claude-opus-4-8[1m]", reasoningLevel: "max" },
+        models: CATALOG,
+        providerId: "claude-code",
+        fallbackModel: null,
+      }),
+    ).toEqual({
+      modelOverride: "claude-opus-4-8[1m]",
+      reasoningLevelOverride: "max",
+    });
+  });
 });
