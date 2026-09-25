@@ -42,6 +42,7 @@ export interface UsePromptModelReasoningOptions {
   initialPermissionMode?: PermissionMode;
   initialEnvironmentSelectionValue?: string;
   preferenceProjectId?: string | null;
+  retainUnavailableModel?: boolean;
   resolveProviderRouting?: (
     environmentSelectionValue: string,
   ) => SystemProvidersQuery;
