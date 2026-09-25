@@ -248,6 +248,7 @@ function EmbeddedThreadChatWithComposer({
   const threadCreationOptions = useThreadCreationOptions({
     enabled: true,
     scope: "component-local",
+    retainUnavailableModel: true,
     environmentId: composer.executionEnvironmentId,
     environmentHostId: composer.executionEnvironmentHostId,
     resetKey: composer.executionResetKey,

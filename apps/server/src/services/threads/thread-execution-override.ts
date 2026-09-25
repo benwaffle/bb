@@ -5,6 +5,7 @@ import {
   type ThreadExecutionOverride,
 } from "@bb/db";
 import {
+  modelsShareContextBase,
   reconcileReasoningLevel,
   type AvailableModel,
   type CallerExecutionInputSource,
@@ -56,9 +57,12 @@ export function resolveThreadExecutionOverrideUpdate(
     if (patch.model === null || patch.model === undefined) {
       nextModel = null;
     } else {
-      const target = models.find(
-        (candidate) => candidate.model === patch.model,
-      );
+      const requestedModel = patch.model;
+      const target =
+        models.find((candidate) => candidate.model === requestedModel) ??
+        models.find((candidate) =>
+          modelsShareContextBase(candidate.model, requestedModel),
+        );
       if (!target) {
         throw new ApiError(
           400,
@@ -72,7 +76,10 @@ export function resolveThreadExecutionOverrideUpdate(
 
   const effectiveModel = nextModel ?? fallbackModel;
   const effectiveModelEntry = effectiveModel
-    ? models.find((candidate) => candidate.model === effectiveModel)
+    ? (models.find((candidate) => candidate.model === effectiveModel) ??
+      models.find((candidate) =>
+        modelsShareContextBase(candidate.model, effectiveModel),
+      ))
     : undefined;
   const supportedReasoning: readonly ReasoningLevel[] = effectiveModelEntry
     ? effectiveModelEntry.supportedReasoningEfforts.map(
@@ -157,7 +164,7 @@ export async function recoverThreadModelOverride(
     args.model !== undefined &&
     args.modelSource === "explicit" &&
     existing?.modelOverride != null &&
-    existing.modelOverride !== args.model
+    !modelsShareContextBase(existing.modelOverride, args.model)
   ) {
     patch.model = args.model;
   }
