@@ -713,6 +713,7 @@ export function ThreadDetailPromptArea({
     environmentId: thread.environmentId ?? undefined,
     environmentHostId,
     scope: "component-local",
+    retainUnavailableModel: true,
     resetKey: thread.id,
     initialProviderId: thread.providerId,
     initialModel:
