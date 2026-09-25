@@ -762,6 +762,7 @@ export function ThreadDetailPromptArea({
     environmentId: thread.environmentId ?? undefined,
     environmentHostId,
     scope: "component-local",
+    retainUnavailableModel: true,
     resetKey: thread.id,
     sessionOptionSelections: liveSessionOptionSelections,
     initialProviderId: thread.providerId,

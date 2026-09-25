@@ -49,6 +49,7 @@ export interface UsePromptModelReasoningOptions {
   sessionOptionSelections?: SessionOptionSelections;
   preferenceProjectId?: string | null;
   catalogProjectId?: string;
+  retainUnavailableModel?: boolean;
   resolveProviderRouting?: (
     environmentSelectionValue: string,
   ) => SystemProvidersQuery;
