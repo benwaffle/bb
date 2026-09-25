@@ -3,6 +3,7 @@ import {
   describeSessionOptionConflict,
   effectiveSessionOptionSelections,
   modelSessionOptionConflict,
+  modelsShareContextBase,
   reconcileReasoningLevel,
   type AvailableModel,
   type ReasoningLevel,
@@ -24,6 +25,7 @@ interface ResolveModelCatalogSelectionArgs {
   sessionOptionSelections?: SessionOptionSelections;
   provider: ReasoningLabelSource | undefined;
   catalogIsVerified: boolean;
+  retainUnavailableSelection?: boolean;
   formatModelLabel: (displayName: string) => string;
 }
 
@@ -56,15 +58,32 @@ export function resolveModelReasoningLevel(
       );
 }
 
+const UNAVAILABLE_MODEL_LABEL_SUFFIX = " (unavailable)";
+
+function unavailableSelectedModel(model: string): AvailableModel {
+  return {
+    id: model,
+    model,
+    displayName: model,
+    description: "",
+    supportedReasoningEfforts: [],
+    defaultReasoningEffort: "medium",
+    isDefault: false,
+  };
+}
+
 function toModelPickerOption(
   model: AvailableModel,
   formatModelLabel: (displayName: string) => string,
   sessionOptionSelections: SessionOptionSelections,
+  unavailable = false,
 ): ModelPickerOption {
   const conflict = modelSessionOptionConflict(model, sessionOptionSelections);
   return {
     value: model.model,
-    label: formatModelLabel(model.displayName || model.model),
+    label: `${formatModelLabel(model.displayName || model.model)}${
+      unavailable ? UNAVAILABLE_MODEL_LABEL_SUFFIX : ""
+    }`,
     ...(model.routeProviderId
       ? { routeProviderId: model.routeProviderId }
       : {}),
@@ -85,6 +104,7 @@ export function resolveModelCatalogSelection({
   sessionOptionSelections: requestedSessionOptionSelections,
   provider,
   catalogIsVerified,
+  retainUnavailableSelection = false,
   formatModelLabel,
 }: ResolveModelCatalogSelectionArgs): ResolvedModelCatalogSelection {
   const fullCatalog = [...models, ...selectedOnlyModels];
@@ -114,6 +134,35 @@ export function resolveModelCatalogSelection({
     );
     if (selectedOnlyModel) {
       availableModels.unshift(selectedOnlyModel);
+    }
+  }
+
+  let unavailableModel: string | null = null;
+  let substitutedSelectedOnlyModel: string | null = null;
+  if (
+    selectedModelSelection &&
+    !availableModels.some((model) => model.model === selectedModelSelection)
+  ) {
+    const equivalentIndex = availableModels.findIndex((model) =>
+      modelsShareContextBase(model.model, selectedModelSelection),
+    );
+    const equivalentSelectedOnly = selectedOnlyModels.find((model) =>
+      modelsShareContextBase(model.model, selectedModelSelection),
+    );
+    if (equivalentIndex >= 0) {
+      availableModels[equivalentIndex] = {
+        ...availableModels[equivalentIndex],
+        model: selectedModelSelection,
+      };
+    } else if (equivalentSelectedOnly) {
+      substitutedSelectedOnlyModel = equivalentSelectedOnly.model;
+      availableModels.unshift({
+        ...equivalentSelectedOnly,
+        model: selectedModelSelection,
+      });
+    } else if (catalogIsVerified && retainUnavailableSelection) {
+      unavailableModel = selectedModelSelection;
+      availableModels.unshift(unavailableSelectedModel(selectedModelSelection));
     }
   }
 
@@ -186,11 +235,17 @@ export function resolveModelCatalogSelection({
     selectedModel,
     activeModel,
     modelOptions: availableModels.map((model) =>
-      toModelPickerOption(model, formatModelLabel, sessionOptionSelections),
+      toModelPickerOption(
+        model,
+        formatModelLabel,
+        sessionOptionSelections,
+        model.model === unavailableModel,
+      ),
     ),
     moreModelOptions: selectedOnlyModels
       .filter(
         (model) =>
+          model.model !== substitutedSelectedOnlyModel &&
           !availableModels.some((active) => active.model === model.model),
       )
       .map((model) =>
