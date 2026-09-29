@@ -202,6 +202,13 @@ app's own relaunch update) separately. `pnpm dev`, `bb-server`, and a standalone
 `bb-host-daemon` do not offer in-app updates. Updating restarts bb,
 which interrupts running threads; the app and CLI ask first.
 
+The desktop app updates itself only when it is launched with
+`BB_DESKTOP_AUTO_UPDATE=1` in its environment, packaged or not. Without it the
+app never reads the release feed, downloads an update, or installs one on quit,
+and Settings → Updates shows the bb app row as "Updates disabled by
+configuration". The variable is startup-only; relaunch the app after changing
+it.
+
 `BB_APP_UPDATE_MODE` is an internal marker the launcher passes to its server
 child; do not set it yourself.
 
