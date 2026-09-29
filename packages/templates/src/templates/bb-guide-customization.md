@@ -127,6 +127,11 @@ General. Machine-related keys (`machineServerUrl`, `defaultMachineAccess`,
   the SDK) during a screen share. The entries stay in the config file; a
   request that names a hidden model still runs with it, and default model
   resolution still sees the full list.
+- `pluginUpdatesFromUi` (default false; no app switch): while false the
+  Plugins page shows available updates with the hint "Updates are applied from
+  the CLI after review: bb plugin update <id>" and the server rejects
+  cookie-authenticated update requests with 403. `bb plugin update` and the
+  SDK are unaffected.
 - `allowFastServiceTier` (default true; Settings → Providers): false hides the
   service tier control and runs new turns at the default service tier,
   including explicit requests for any other tier (fast, Codex ultrafast), saved

@@ -305,7 +305,7 @@ describe("plugin settings + storage", () => {
       const app = new Hono();
       registerPluginRoutes(
         app,
-        { config: { serverPort: 3334 }, db },
+        { config: { serverPort: 3334, apiToken: null }, db },
         service,
         createPluginInstallJobs({ notifyChanged: () => {} }),
         createPluginUpdateJobs({ notifyChanged: () => {} }),
@@ -365,7 +365,7 @@ describe("plugin settings + storage", () => {
       const app = new Hono();
       registerPluginRoutes(
         app,
-        { config: { serverPort: 3334 }, db },
+        { config: { serverPort: 3334, apiToken: null }, db },
         service,
         createPluginInstallJobs({ notifyChanged: () => {} }),
         createPluginUpdateJobs({ notifyChanged: () => {} }),
@@ -405,7 +405,7 @@ describe("plugin settings + storage", () => {
       const app = new Hono();
       registerPluginRoutes(
         app,
-        { config: { serverPort: 3334 }, db },
+        { config: { serverPort: 3334, apiToken: null }, db },
         service,
         createPluginInstallJobs({ notifyChanged: () => {} }),
         createPluginUpdateJobs({ notifyChanged: () => {} }),
