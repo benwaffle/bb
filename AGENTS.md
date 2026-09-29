@@ -111,6 +111,9 @@ here, so they cost the fork no commits to rebase.
 
 - `voice-whisper-local` installs with
   `bb plugin install git:https://github.com/benwaffle/bb-plugins.git@main --plugin voice-whisper-local`.
+- `nav-shortcuts` binds `Mod+[` and `Mod+]` to back and forward navigation
+  and installs with
+  `bb plugin install git:https://github.com/benwaffle/bb-plugins.git@main --plugin nav-shortcuts`.
 - `chrome-github-bb-button` loads unpacked from that repository's
   `extensions/` directory.
 
