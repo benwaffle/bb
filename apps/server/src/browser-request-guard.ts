@@ -3,10 +3,12 @@ import {
   buildLocalAppOrigins,
   type BuildLocalAppOriginsArgs,
 } from "@bb/config/local-app-origins";
+import { getAppSettings, type DbConnection } from "@bb/db";
 import type { ServerRuntimeConfig } from "./types.js";
 
 interface BrowserRequestGuardDeps {
   config: Pick<ServerRuntimeConfig, "serverPort" | "appUrl" | "devAppPort">;
+  db: DbConnection;
 }
 
 export interface BrowserRequestProblem {
@@ -26,7 +28,9 @@ interface BrowserRequestContext {
   };
 }
 
-export function allowedAppOrigins(deps: BrowserRequestGuardDeps): Set<string> {
+export function allowedAppOrigins(
+  deps: Pick<BrowserRequestGuardDeps, "config">,
+): Set<string> {
   const args: BuildLocalAppOriginsArgs = {
     serverPort: deps.config.serverPort,
   };
@@ -94,8 +98,21 @@ function isTrustedHostname(
     isIP(address) !== 0 ||
     [...allowedAppOrigins(deps)].some(
       (origin) => new URL(origin).hostname === hostname,
-    )
+    ) ||
+    hostname === machineServerHostname(deps)
   );
+}
+
+function machineServerHostname(deps: BrowserRequestGuardDeps): string | null {
+  const url = getAppSettings(deps.db).machineServerUrl;
+  if (url === null || url === undefined) {
+    return null;
+  }
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return null;
+  }
 }
 
 export function requestHostProblem(
@@ -110,7 +127,7 @@ export function requestHostProblem(
   return {
     status: 403,
     error:
-      'Host must be localhost, an IP address, or the hostname configured in BB_APP_URL. To allow your custom hostname, run "npx bb-app config set BB_APP_URL https://bb.example.com" on the machine running BB (including the desktop app), replacing https://bb.example.com with your app URL, then reload this page.',
+      'Host must be localhost, an IP address, or the hostname configured in BB_APP_URL or machineServerUrl. To allow your custom hostname, run "npx bb-app config set BB_APP_URL https://bb.example.com" on the machine running BB (including the desktop app), replacing https://bb.example.com with your app URL, then reload this page.',
   };
 }
 
