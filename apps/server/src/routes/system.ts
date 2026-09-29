@@ -332,6 +332,8 @@ export function registerSystemRoutes(
         settings.onboardingCompletedAt === undefined
           ? current.onboardingCompletedAt
           : settings.onboardingCompletedAt,
+      pluginUpdatesFromUi:
+        settings.pluginUpdatesFromUi ?? current.pluginUpdatesFromUi,
       showDiagnosticEvents:
         diagnosticValue === undefined ||
         (showUnhandledProviderEvents !== undefined &&
