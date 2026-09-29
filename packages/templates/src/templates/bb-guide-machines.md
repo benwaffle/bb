@@ -148,7 +148,10 @@ running one and restarts into it. It does not roll back if the new version
 fails to start. Source checkouts update only from a clean `main` that
 fast-forwards to `origin/main`.
 Desktop users update through the desktop app's relaunch; development servers
-and `bb-server` cannot update themselves. Connected daemons follow the server
+and `bb-server` cannot update themselves. The desktop app checks for,
+downloads, and installs its own updates only when it is launched with
+`BB_DESKTOP_AUTO_UPDATE=1`; otherwise Settings → Updates reports updates as
+disabled by configuration. Connected daemons follow the server
 version automatically.
 
 For source installs, `bb updates` shows the checkout commit and explains manual
