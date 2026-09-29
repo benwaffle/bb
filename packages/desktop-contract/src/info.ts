@@ -22,6 +22,7 @@ export const bbDesktopInfoSchema = z.object({
   serverDaemonLogsAvailable: z.boolean().optional(),
   updateAvailable: z.boolean(),
   updateDownloaded: z.boolean(),
+  updatesEnabled: z.boolean().optional(),
   version: z.string().min(1),
 });
 export type BbDesktopInfo = z.infer<typeof bbDesktopInfoSchema>;

@@ -156,4 +156,4 @@ pkill -f 'bb.app/Contents/MacOS/bb'
 open apps/desktop/release/mac-arm64/bb.app
 ```
 
-`package` builds the bb-app runtime through Turbo, compiles the desktop shell, and writes an unsigned `.app` directory. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
+`package` builds the bb-app runtime through Turbo, compiles the desktop shell, and writes an unsigned `.app` directory. The packaged fork app does not self-update: the desktop updater pulls upstream `get-bb/bb` releases, so it stays off unless the app is launched with `BB_DESKTOP_AUTO_UPDATE=1`. Update the fork by rebuilding it. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
