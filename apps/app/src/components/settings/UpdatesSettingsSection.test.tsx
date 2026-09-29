@@ -1524,6 +1524,38 @@ The canonical release summary.
     expect(screen.queryByText("Downloading in the background…")).toBeNull();
   });
 
+  it("says desktop updates are disabled instead of claiming up to date", () => {
+    const desktopInfo: BbDesktopInfo = {
+      lastCheckedAt: null,
+      latestVersion: null,
+      pendingVersion: null,
+      platform: "macos",
+      updateAvailable: false,
+      updateDownloaded: false,
+      updatesEnabled: false,
+      version: "0.0.5",
+    };
+    useDesktopUpdateInfoMock.mockReturnValue({
+      desktopApi: {
+        checkForUpdates: vi.fn().mockResolvedValue(desktopInfo),
+      } as unknown as BbDesktopApi,
+      desktopInfo,
+      isDesktop: true,
+    });
+    useUpdateInventoryMock.mockReturnValue(makeInventory({ desktopInfo }));
+
+    renderSection();
+
+    const appRow = screen
+      .getByText("Updates disabled by configuration")
+      .closest("div");
+    expect(appRow).not.toBeNull();
+    expect(within(appRow as HTMLElement).getByText("bb app")).toBeDefined();
+    expect(
+      appRow?.querySelector('[data-update-state="up-to-date"]'),
+    ).toBeNull();
+  });
+
   it("retries a failed desktop download through the desktop bridge", async () => {
     const desktopInfo: BbDesktopInfo = {
       downloadState: "failed",
