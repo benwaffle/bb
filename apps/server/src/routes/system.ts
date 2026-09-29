@@ -313,6 +313,8 @@ export function registerSystemRoutes(
       showGitChanges: settings.showGitChanges ?? current.showGitChanges,
       confirmThreadArchive:
         settings.confirmThreadArchive ?? current.confirmThreadArchive,
+      pluginUpdatesFromUi:
+        settings.pluginUpdatesFromUi ?? current.pluginUpdatesFromUi,
       showDiagnosticEvents:
         diagnosticValue === undefined ||
         (showUnhandledProviderEvents !== undefined &&
