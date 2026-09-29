@@ -33,7 +33,12 @@ import { useUpdateInventory } from "@/hooks/useUpdateInventory";
 import { getProviderIconInfo } from "@/lib/provider-icon";
 import { getSettingsRoutePath } from "@/lib/route-paths";
 import {
+  PluginCliUpdateHint,
+  usePluginUpdatesFromUi,
+} from "@/components/plugin/management/PluginCliUpdateHint";
+import {
   buildSidebarUpdateModel,
+  sidebarCliOnlyPluginIds,
   sidebarUpdateModelIsEmpty,
   type SidebarBbUpdate,
   type SidebarUpdateModel,
@@ -54,6 +59,7 @@ export function SidebarUpdatesBadge({ onNavigate }: SidebarUpdatesBadgeProps) {
   const providerJobs = useProviderCliInstallRunner();
   const pluginJobs = usePluginUpdateJobs().data ?? [];
   const startPluginUpdates = useStartPluginUpdates(inventory.plugins);
+  const pluginUpdatesFromUi = usePluginUpdatesFromUi();
   const appUpdateStart = useStartAppUpdate();
   const machineAttention = useMachineAttention(
     inventory.machines.map((machine) => machine.host),
@@ -100,6 +106,7 @@ export function SidebarUpdatesBadge({ onNavigate }: SidebarUpdatesBadgeProps) {
     plugins: inventory.plugins,
     providerJobs,
     pluginJobs,
+    pluginUpdatesFromUi,
   });
 
   function updateAll(): void {
@@ -297,6 +304,7 @@ function SidebarUpdateCardBody({
   onUpdateAll: () => void;
   onRestartBb: () => void;
 }) {
+  const cliOnlyPluginIds = sidebarCliOnlyPluginIds(model);
   return (
     <>
       {model.bb === null ? null : (
@@ -320,13 +328,25 @@ function SidebarUpdateCardBody({
           ))}
         </ul>
       )}
+      {cliOnlyPluginIds.length === 0 ? null : (
+        <div className="mt-2" data-testid="sidebar-update-cli-hint">
+          <PluginCliUpdateHint
+            pluginId={
+              cliOnlyPluginIds.length === 1
+                ? (cliOnlyPluginIds[0] ?? "<id>")
+                : "<id>"
+            }
+          />
+        </div>
+      )}
       <div className="mt-3 flex gap-2">
         <Button asChild variant="outline" size="sm" className="h-7 flex-1">
           <Link to={getSettingsRoutePath("updates")} onClick={onDetails}>
             Details
           </Link>
         </Button>
-        {model.rows.length === 0 ? null : (
+        {model.rows.length === 0 ||
+        (model.startableCount === 0 && !model.updating) ? null : (
           <Button
             size="sm"
             className="h-7 flex-1"

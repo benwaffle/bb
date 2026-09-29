@@ -27,6 +27,8 @@ import {
   type PluginListItem,
 } from "@/hooks/queries/plugin-settings-queries";
 import { createQueryClientTestHarness } from "@/test/queryClientTestHarness";
+import { makePluginUpdatesSystemConfig } from "@/test/fixtures/system-config";
+import { systemConfigQueryKey } from "@/hooks/queries/query-keys";
 import { TooltipProvider } from "@bb/shared-ui/tooltip";
 import {
   resetPluginSlotStoreForTest,
@@ -543,7 +545,13 @@ describe("PluginDetail official catalog lifecycle", () => {
         availableLabel: "1.5.0",
       },
     };
-    renderPluginDetail(plugin);
+    renderPluginDetail(plugin, {}, {
+      seedQueryClient: (queryClient) =>
+        queryClient.setQueryData(
+          systemConfigQueryKey(),
+          makePluginUpdatesSystemConfig(true),
+        ),
+    });
 
     const version = screen.getByText(GITHUB_PLUGIN.version);
     const update = screen.getByRole("button", {
@@ -660,14 +668,24 @@ describe("PluginDetail official catalog lifecycle", () => {
   ])(
     "places $state information below metadata and keeps its action in the section header",
     ({ updateState, expected, actionName }) => {
-      renderPluginDetail({
-        ...GITHUB_PLUGIN,
-        source: "npm:@example/github@^1.0.0",
-        provenance: "direct",
-        catalogEntryId: null,
-        publisherLabel: null,
-        updateState,
-      });
+      renderPluginDetail(
+        {
+          ...GITHUB_PLUGIN,
+          source: "npm:@example/github@^1.0.0",
+          provenance: "direct",
+          catalogEntryId: null,
+          publisherLabel: null,
+          updateState,
+        },
+        {},
+        {
+          seedQueryClient: (queryClient) =>
+            queryClient.setQueryData(
+              systemConfigQueryKey(),
+              makePluginUpdatesSystemConfig(true),
+            ),
+        },
+      );
 
       const updateLabel = screen.getByText("Update", { selector: "p" });
       const updateRow = updateLabel.parentElement;
