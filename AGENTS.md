@@ -81,7 +81,7 @@ These rules are absolute for agents working in this checkout:
 
 ### Syncing With Upstream
 
-A bb automation ("Daily upstream sync of fork/main", 6:00 America/New_York) rebases `fork/main` onto upstream each day. It lands the rebase only when verification is green and every conflict was replayed mechanically, and it reports redundancy findings — fork features upstream has since absorbed — to the orchestrator thread. Otherwise it leaves a dated `bi/upstream-sync-YYYYMMDD` branch for a human decision.
+A bb automation ("Daily upstream sync of fork/main", 11:00 America/New_York) rebases `fork/main` onto upstream each day. It lands the rebase only when verification is green and every conflict was replayed mechanically, and it reports redundancy findings — fork features upstream has since absorbed — to the orchestrator thread. Otherwise it leaves a dated `bi/upstream-sync-YYYYMMDD` branch for a human decision.
 
 ```sh
 git fetch upstream main:main
