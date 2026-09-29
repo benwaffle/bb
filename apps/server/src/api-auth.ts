@@ -3,7 +3,9 @@ import {
   API_SESSION_TOKEN_QUERY_PARAM,
   API_TOKEN_COOKIE_NAME,
 } from "@bb/config/api-auth";
-import { isLoopbackHostname } from "@bb/config/loopback";
+import { isLoopbackAddress, isLoopbackHostname } from "@bb/config/loopback";
+import { getAppSettings, type DbConnection } from "@bb/db";
+import { getTrustedRemoteAddress } from "./request-context.js";
 import type { ServerRuntimeConfig } from "./types.js";
 
 interface ApiAuthDeps {
@@ -11,6 +13,11 @@ interface ApiAuthDeps {
     ServerRuntimeConfig,
     "apiToken" | "appUrl" | "restrictHostHeaderToLoopback"
   >;
+}
+
+interface HostHeaderDeps {
+  config: Pick<ServerRuntimeConfig, "appUrl" | "restrictHostHeaderToLoopback">;
+  db: DbConnection;
 }
 
 interface ApiAuthRequestContext {
@@ -180,12 +187,12 @@ function requestHostname(context: ApiAuthRequestContext): string | null {
   }
 }
 
-function appUrlHostname(appUrl: string | undefined): string | null {
-  if (appUrl === undefined) {
+function urlHostname(url: string | null | undefined): string | null {
+  if (url === null || url === undefined) {
     return null;
   }
   try {
-    return new URL(appUrl).hostname;
+    return new URL(url).hostname;
   } catch {
     return null;
   }
@@ -196,7 +203,7 @@ function appUrlHostname(appUrl: string | undefined): string | null {
 // so rejecting foreign Host headers closes DNS rebinding at the door.
 export function hostHeaderProblem(
   context: ApiAuthRequestContext,
-  deps: ApiAuthDeps,
+  deps: HostHeaderDeps,
 ): ApiAuthProblem | null {
   if (!deps.config.restrictHostHeaderToLoopback) {
     return null;
@@ -211,7 +218,8 @@ export function hostHeaderProblem(
   }
   if (
     isLoopbackHostname(hostname) ||
-    hostname === appUrlHostname(deps.config.appUrl)
+    hostname === urlHostname(deps.config.appUrl) ||
+    hostname === urlHostname(getAppSettings(deps.db).machineServerUrl)
   ) {
     return null;
   }
@@ -220,6 +228,28 @@ export function hostHeaderProblem(
     code: "misdirected_request",
     error: `Host "${hostname}" is not served by this loopback-only bb server`,
   };
+}
+
+export function isServerMachineRequest(
+  context: ApiAuthRequestContext &
+    Parameters<typeof getTrustedRemoteAddress>[0],
+  deps: { config: Pick<ServerRuntimeConfig, "apiToken"> },
+): boolean {
+  if (bearerTokenAuthenticated(context, deps)) {
+    return true;
+  }
+  const remoteAddress = getTrustedRemoteAddress(context);
+  if (remoteAddress === undefined || !isLoopbackAddress(remoteAddress)) {
+    return false;
+  }
+  if (!isLoopbackHostname(new URL(context.req.url).hostname)) {
+    return false;
+  }
+  if (context.req.header("host") === undefined) {
+    return true;
+  }
+  const hostname = requestHostname(context);
+  return hostname !== null && isLoopbackHostname(hostname);
 }
 
 export function buildSessionCookie(args: {
