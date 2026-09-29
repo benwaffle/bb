@@ -35,3 +35,11 @@ export function makeSystemConfig(
     ...overrides,
   };
 }
+
+export function makePluginUpdatesSystemConfig(
+  pluginUpdatesFromUi: boolean,
+): SystemConfigResponse {
+  return makeSystemConfig({
+    generalSettings: { ...defaultAppSettings, pluginUpdatesFromUi },
+  });
+}
