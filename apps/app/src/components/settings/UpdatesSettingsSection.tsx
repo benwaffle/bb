@@ -102,6 +102,10 @@ import {
 } from "@/hooks/queries/plugin-update-job-queries";
 import { applyPluginUpdateJob } from "@/hooks/cache-owners/plugin-cache-owner";
 import { PluginIcon } from "@/components/plugin/PluginIcon";
+import {
+  PluginCliUpdateSignal,
+  usePluginUpdatesFromUi,
+} from "@/components/plugin/management/PluginCliUpdateHint";
 import { pluginAdminErrorMessage } from "@/lib/plugin-admin-error";
 import { useHostDaemon } from "@/hooks/useHostDaemon";
 import { useDesktopUpdateInfo } from "@/hooks/useDesktopUpdateInfo";
@@ -1843,10 +1847,12 @@ function blockedPluginReason(
 function PluginUpdateRow({
   item,
   updating,
+  updatesFromUi,
   onStartUpdate,
 }: {
   item: UpdateInventoryPlugin;
   updating: boolean;
+  updatesFromUi: boolean;
   onStartUpdate: (pluginId: string) => void;
 }) {
   const { plugin } = item;
@@ -1895,6 +1901,8 @@ function PluginUpdateRow({
           <span className="text-2xs font-semibold text-subtle-foreground">
             Blocked
           </span>
+        ) : !updatesFromUi ? (
+          <PluginCliUpdateSignal pluginId={plugin.id} version={item.version} />
         ) : failure !== null ? (
           <>
             <FailureIndicator
@@ -1932,6 +1940,7 @@ interface PluginUpdatesSectionProps {
   plugins: UpdateInventoryPlugins;
   updatingPluginIds: ReadonlySet<string>;
   checking: boolean;
+  updatesFromUi: boolean;
   onStartUpdates: (pluginIds: string[]) => void;
 }
 
@@ -1939,12 +1948,15 @@ export function PluginUpdatesSection({
   plugins,
   updatingPluginIds,
   checking,
+  updatesFromUi,
   onStartUpdates,
 }: PluginUpdatesSectionProps) {
   const remainingJobs = updatingPluginIds.size;
-  const startable = plugins.items
-    .filter((item) => item.kind === "update")
-    .map((item) => item.plugin.id);
+  const startable = updatesFromUi
+    ? plugins.items
+        .filter((item) => item.kind === "update")
+        .map((item) => item.plugin.id)
+    : [];
   const bulkActions =
     remainingJobs === 0 && startable.length === 0 ? null : (
       <div
@@ -2000,6 +2012,7 @@ export function PluginUpdatesSection({
                 key={item.plugin.id}
                 item={item}
                 updating={updatingPluginIds.has(item.plugin.id)}
+                updatesFromUi={updatesFromUi}
                 onStartUpdate={(pluginId) => onStartUpdates([pluginId])}
               />
             ))}
@@ -2083,6 +2096,7 @@ export function UpdatesSettingsSection() {
   const appUpdate = appUpdateStatus.data;
   const [openReleaseNotes, setOpenReleaseNotes] =
     useState<ReleaseNotesRow | null>(null);
+  const pluginUpdatesFromUi = usePluginUpdatesFromUi();
   const pluginUpdateCheck = usePluginUpdateCheck(null, {
     enabled: inventory.plugins !== null,
   });
@@ -2383,6 +2397,7 @@ export function UpdatesSettingsSection() {
           plugins={inventory.plugins}
           updatingPluginIds={updatingPluginIds}
           checking={pluginUpdateCheck.isFetching}
+          updatesFromUi={pluginUpdatesFromUi}
           onStartUpdates={startPluginUpdates}
         />
       )}
