@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { API_TOKEN_COOKIE_NAME } from "@bb/config/api-auth";
+import { defaultAppSettings } from "@bb/domain";
+import { setAppSettings } from "@bb/db";
 import { createTestAppHarness } from "../helpers/test-app.js";
 
 const TOKEN = "0123456789abcdef0123456789abcdef";
@@ -88,6 +90,103 @@ describe("local API token", () => {
           { headers: { authorization: `Bearer ${TOKEN}`, host } },
         );
         expect(local.status, host).toBe(200);
+      }
+    } finally {
+      await harness.cleanup();
+    }
+  });
+
+  it("accepts the machineServerUrl hostname when bound to loopback", async () => {
+    const harness = await createTestAppHarness({
+      apiToken: TOKEN,
+      restrictHostHeaderToLoopback: true,
+    });
+    const request = (host: string) =>
+      harness.app.request(`https://${host}/api/v1/system/config`, {
+        headers: { authorization: `Bearer ${TOKEN}`, host },
+      });
+    try {
+      const tailnetHost = "box.tail1234.ts.net";
+      expect((await request(tailnetHost)).status).toBe(421);
+      setAppSettings(harness.db, {
+        ...defaultAppSettings,
+        machineServerUrl: `https://${tailnetHost}`,
+      });
+      expect((await request(tailnetHost)).status).toBe(200);
+      expect((await request("attacker.example")).status).toBe(421);
+    } finally {
+      await harness.cleanup();
+    }
+  });
+
+  it("serves server-machine-only internal routes to a loopback Host or the API token", async () => {
+    const harness = await createTestAppHarness({
+      apiToken: TOKEN,
+      restrictHostHeaderToLoopback: true,
+    });
+    const tailnetHost = "box.tail1234.ts.net";
+    setAppSettings(harness.db, {
+      ...defaultAppSettings,
+      machineServerUrl: `https://${tailnetHost}`,
+    });
+    const proxiedFromLoopback = {
+      incoming: { socket: { remoteAddress: "127.0.0.1" } },
+    };
+    const request = (
+      path: string,
+      host: string,
+      init: { method: string; authorization?: string },
+    ) =>
+      harness.app.request(
+        `http://${host}${path}`,
+        {
+          method: init.method,
+          headers: {
+            host,
+            "content-type": "application/json",
+            ...(init.authorization
+              ? { authorization: init.authorization }
+              : {}),
+          },
+          ...(init.method === "POST" ? { body: "{}" } : {}),
+        },
+        proxiedFromLoopback,
+      );
+    try {
+      const enrollKey = "/internal/hosts/enroll-key";
+      const tailnet = await request(enrollKey, tailnetHost, { method: "POST" });
+      expect(tailnet.status).toBe(400);
+      expect(await tailnet.json()).toMatchObject({ code: "unsupported_host" });
+      expect(
+        (await request(enrollKey, "127.0.0.1:3334", { method: "POST" })).status,
+      ).toBe(201);
+      expect(
+        (
+          await request(enrollKey, tailnetHost, {
+            method: "POST",
+            authorization: `Bearer ${TOKEN}`,
+          })
+        ).status,
+      ).toBe(201);
+
+      const pending = "/internal/server-move/pending";
+      const tailnetPending = await request(pending, tailnetHost, {
+        method: "GET",
+      });
+      expect(tailnetPending.status).toBe(403);
+      expect(await tailnetPending.json()).toMatchObject({
+        code: "loopback_only",
+      });
+      for (const response of [
+        await request(pending, "localhost:3334", { method: "GET" }),
+        await request(pending, tailnetHost, {
+          method: "GET",
+          authorization: `Bearer ${TOKEN}`,
+        }),
+      ]) {
+        expect(await response.json()).toMatchObject({
+          code: "server_move_not_pending",
+        });
       }
     } finally {
       await harness.cleanup();
