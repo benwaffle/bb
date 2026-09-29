@@ -124,14 +124,23 @@ beside the provider plugin, and it calls
 `sdk.threads.experimental_providerSessions`, a fork-only route that upstream
 does not have; an external copy would work on no other bb.
 
+bb installs a git-sourced plugin's dependencies with
+`npm install --omit=dev --omit=optional --ignore-scripts` in the clone. It
+deletes the plugin's own `.npmrc`, `.yarnrc`, and `.yarnrc.yml` first, so npm
+uses the global `~/.npmrc` and pulls every dependency from whatever registry
+that file points at. On this Mac that is a CodeArtifact registry whose token
+expires, so run `~/dev/scripts/npm/npm-login` before `bb plugin install` or
+`bb plugin update` of a git plugin.
+
 Two limits shape what an external plugin can do. bb aliases only the bare
-`@get-bb/plugin-sdk` specifier when it loads a server entry, and it never
-installs a git-sourced plugin's dependencies, so a server entry that imports an
-SDK subpath fails to build on install; mirror the subpath's exports in the
-plugin instead, and keep type-only imports on the SDK because `import type` is
-erased before bundling. A bundled plugin id is also reserved, so a builtin has
-to leave the registry here before the external copy of the same plugin can
-install. Upstream bb frees the id itself: on the next startup it removes a
+`@get-bb/plugin-sdk` specifier when it loads a server entry. A server entry
+that imports an SDK subpath bundles it from the plugin's own installed copy of
+the SDK, which is the published npm release and must be a runtime dependency,
+not a devDependency; a subpath or export that exists only in the fork fails to
+build on install, so mirror it in the plugin instead. Keep type-only imports on
+the SDK, because `import type` is erased before bundling. A bundled plugin id
+is also reserved, so a builtin has to leave the registry here before the
+external copy of the same plugin can install. Upstream bb frees the id itself: on the next startup it removes a
 builtin it no longer bundles, together with that plugin's settings, secrets,
 and schedules, so the external copy installs fresh and starts without the old
 settings.
