@@ -274,6 +274,12 @@ Updates are manual: `bb plugin outdated` checks tracking sources and
 `bb plugin update` applies compatible candidates. Reinstalling an installed
 managed plugin is refused; use `bb plugin update`. A failed activation restores
 the previous version and leaves the failure visible.
+`pluginUpdatesFromUi` defaults to false: the Plugins page shows available
+updates with the hint "Updates are applied from the CLI after review: bb
+plugin update <id>", and the server rejects cookie-authenticated app update
+requests with 403. `bb plugin update` and the SDK use the bearer API token and
+are unaffected. `bb settings general pluginUpdatesFromUi on` restores the app's
+Update actions.
 
 Exact npm versions, Git tags and commits, path sources, and bundled official
 plugins are pinned. npm ranges, dist-tags, and omitted specs, omitted Git refs

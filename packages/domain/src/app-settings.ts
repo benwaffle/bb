@@ -58,6 +58,7 @@ export const appSettingsSchema = z
     defaultMachineAccess: z.string().min(1).nullable(),
     onboardingCompletedAt: z.string().min(1).nullable(),
     earlyAdopter: z.boolean(),
+    pluginUpdatesFromUi: z.boolean(),
   })
   .strict();
 export type AppSettings = z.infer<typeof appSettingsSchema>;
@@ -84,6 +85,7 @@ export const defaultAppSettings: AppSettings = {
   machineGitCredentialsEnabled: true,
   onboardingCompletedAt: null,
   earlyAdopter: false,
+  pluginUpdatesFromUi: false,
 };
 
 export const disabledProviderIdsSchema = z.array(z.string().min(1));
@@ -99,6 +101,7 @@ export const appSettingsUpdateSchema = z.union([
     showGitChanges: z.boolean().optional(),
     keepHistoryAfterContextClear: z.boolean().optional(),
     summarizeShellCommands: z.boolean().optional(),
+    pluginUpdatesFromUi: z.boolean().optional(),
     showUnhandledProviderEvents: z.boolean().optional(),
     onboardingCompletedAt: z.string().min(1).nullable().optional(),
     earlyAdopter: z.boolean().optional(),
@@ -113,6 +116,7 @@ export const appSettingsUpdateSchema = z.union([
     showGitChanges: z.boolean().optional(),
     keepHistoryAfterContextClear: z.boolean().optional(),
     summarizeShellCommands: z.boolean().optional(),
+    pluginUpdatesFromUi: z.boolean().optional(),
     showUnhandledProviderEvents: z.boolean(),
     onboardingCompletedAt: z.string().min(1).nullable().optional(),
     earlyAdopter: z.boolean().optional(),
