@@ -182,7 +182,7 @@ async function createPluginUpdateFixture(
   registerPluginUpdateJobRoutes(app, updateJobs);
   registerPluginRoutes(
     app,
-    { config: { serverPort: 3334 }, db },
+    { config: { serverPort: 3334, apiToken: null }, db },
     service,
     createPluginInstallJobs({ notifyChanged: () => {} }),
     updateJobs,
