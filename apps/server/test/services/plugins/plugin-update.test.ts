@@ -364,7 +364,11 @@ describe("plugin update service and routes", () => {
     });
     await service.install(`git:${repo}@main`, { kind: "root" });
     app = new Hono();
-    registerPluginRoutes(app, { config: { serverPort: 3334 }, db }, service);
+    registerPluginRoutes(
+      app,
+      { config: { serverPort: 3334, apiToken: null }, db },
+      service,
+    );
   });
 
   afterEach(async () => {
