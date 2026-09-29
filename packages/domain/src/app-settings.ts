@@ -43,6 +43,7 @@ export const appSettingsSchema = z
       .nullable(),
     machineGitCredentialsEnabled: z.boolean(),
     defaultMachineAccess: z.string().min(1).nullable(),
+    pluginUpdatesFromUi: z.boolean(),
   })
   .strict();
 export type AppSettings = z.infer<typeof appSettingsSchema>;
@@ -62,6 +63,7 @@ export const defaultAppSettings: AppSettings = {
   machineServerUrl: null,
   defaultMachineAccess: null,
   machineGitCredentialsEnabled: true,
+  pluginUpdatesFromUi: false,
 };
 
 export const disabledProviderIdsSchema = z.array(z.string().min(1));
@@ -71,12 +73,14 @@ export const appSettingsUpdateSchema = z.union([
     allowFastServiceTier: z.boolean().optional(),
     telemetryEnabled: z.boolean().optional(),
     confirmThreadArchive: z.boolean().optional(),
+    pluginUpdatesFromUi: z.boolean().optional(),
     showUnhandledProviderEvents: z.boolean().optional(),
   }),
   appSettingsSchema.omit({ showDiagnosticEvents: true }).extend({
     allowFastServiceTier: z.boolean().optional(),
     telemetryEnabled: z.boolean().optional(),
     confirmThreadArchive: z.boolean().optional(),
+    pluginUpdatesFromUi: z.boolean().optional(),
     showUnhandledProviderEvents: z.boolean(),
   }),
 ]);
