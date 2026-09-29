@@ -1460,6 +1460,17 @@ database, host-managed settings/storage/schedules, secrets, and registration.
 A failed activation restores that snapshot and records the latest failure on
 the plugin so it can be surfaced as needing attention.
 
+`pluginUpdatesFromUi` defaults to false, so the app does not apply plugin
+updates. The server rejects a `POST /api/v1/plugins/<id>/update` authenticated
+by the app's session cookie with 403 and the message "Plugin updates are
+applied from the CLI after review: bb plugin update <id>". Requests that
+present the API token as a bearer header (`bb plugin update`, the SDK) are
+unaffected. The Plugins page keeps showing that an update is available but
+replaces the Update and Retry actions with that hint, so each update goes
+through an agent session that reviews the change first. Turn the app actions
+back on with `bb settings general pluginUpdatesFromUi on`. The background
+update check is unchanged.
+
 ### Claude Code provider
 
 bb forwards only two environment variables to the Claude Code CLI, stripping

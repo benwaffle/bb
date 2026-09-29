@@ -310,6 +310,8 @@ export function registerSystemRoutes(
       telemetryEnabled: settings.telemetryEnabled ?? current.telemetryEnabled,
       confirmThreadArchive:
         settings.confirmThreadArchive ?? current.confirmThreadArchive,
+      pluginUpdatesFromUi:
+        settings.pluginUpdatesFromUi ?? current.pluginUpdatesFromUi,
       showDiagnosticEvents:
         diagnosticValue === undefined ||
         (showUnhandledProviderEvents !== undefined &&

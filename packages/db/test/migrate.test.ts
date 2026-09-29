@@ -1770,6 +1770,7 @@ describe("migrate", () => {
         allowFastServiceTier: true,
         telemetryEnabled: true,
         managedBranchPrefix: "bb/",
+        pluginUpdatesFromUi: false,
       });
       expect(
         db.$client
