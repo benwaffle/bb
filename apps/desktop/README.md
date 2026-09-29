@@ -386,8 +386,10 @@ feature surface. The installer path uses `electron-updater` against the same
 checks run in parallel on launch, hourly, and when the app becomes active: the
 JSON feed can show "update available" even when CI has published metadata only,
 while the Electron updater only flips the toast to "ready to install" after a
-signed update has actually downloaded. Local dev builds skip Electron auto-update
-unless `BB_DESKTOP_AUTO_UPDATE=1` is set.
+signed update has actually downloaded. Both checks, the background download,
+and install-on-quit run only when `BB_DESKTOP_AUTO_UPDATE=1` is set, for packaged
+and dev builds alike; without it Settings → Updates reports updates as disabled
+by configuration.
 
 `bb Nightly` follows the equivalent isolated `desktop-nightly` release and
 `nightly-mac.yml`; it never reads or moves the stable feed. The scheduled
