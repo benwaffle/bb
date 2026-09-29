@@ -26,6 +26,7 @@ import { Icon } from "@bb/shared-ui/icon";
 import { useNavigate } from "react-router-dom";
 import { getPluginConfigurationRoutePath } from "@/lib/route-paths";
 import { reviewableRangeUpgrade } from "@/components/plugin/management/plugin-status";
+import { usePluginUpdatesFromUi } from "@/components/plugin/management/PluginCliUpdateHint";
 import {
   PluginDetailReleaseControl,
   PluginDetailReleaseStatus,
@@ -404,6 +405,7 @@ export function PluginDetail({
   configurationPath?: string;
 }) {
   const navigate = useNavigate();
+  const pluginUpdatesFromUi = usePluginUpdatesFromUi();
   const { settingsSections } = usePluginSlots();
   const sourceQuery = usePluginSource(plugin?.id ?? "", {
     enabled: plugin !== null && !plugin.source.startsWith("builtin:"),
@@ -445,6 +447,7 @@ export function PluginDetail({
         ? "Loading…"
         : "Install date unavailable";
   const hasReleaseControl =
+    pluginUpdatesFromUi &&
     hasUpdateManagement &&
     (plugin.updateState.availableVersion !== null ||
       reviewableRangeUpgrade(plugin) !== null);
