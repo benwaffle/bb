@@ -404,6 +404,9 @@ const bbDesktopApi: BbDesktopApi = {
   get updateDownloaded() {
     return currentInfo.updateDownloaded;
   },
+  get updatesEnabled() {
+    return currentInfo.updatesEnabled;
+  },
   version: currentInfo.version,
   checkForUpdates() {
     return invokeDesktopInfo(BB_DESKTOP_CHECK_FOR_UPDATES_CHANNEL);
