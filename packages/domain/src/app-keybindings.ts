@@ -60,8 +60,6 @@ export const APP_COMMAND_IDS = [
   "window.new",
   "window.find",
   "app.back",
-  "history.back",
-  "history.forward",
   "settings.open",
   "settings.openServers",
   "sidebar.toggle",
