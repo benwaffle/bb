@@ -146,6 +146,18 @@ vi.mock("@/hooks/queries/plugin-update-job-queries", async (original) => ({
   usePluginUpdateJobs: () => ({ data: pluginUpdateJobs.current }),
 }));
 
+const pluginUpdatesFromUi = vi.hoisted(() => ({ current: true }));
+
+vi.mock(
+  "@/components/plugin/management/PluginCliUpdateHint",
+  async (original) => ({
+    ...(await original<
+      typeof import("@/components/plugin/management/PluginCliUpdateHint")
+    >()),
+    usePluginUpdatesFromUi: () => pluginUpdatesFromUi.current,
+  }),
+);
+
 vi.mock("@/components/provider-cli/provider-cli-install", async (original) => {
   const actual =
     await original<
@@ -370,6 +382,7 @@ function useWebApp(): void {
 beforeEach(() => {
   hostDaemon.localDaemonHostId = null;
   pluginUpdateJobs.current = [];
+  pluginUpdatesFromUi.current = true;
   vi.mocked(sdk.system.appUpdate).mockResolvedValue(
     makeAppUpdateStatus({
       available: null,
@@ -2110,6 +2123,40 @@ The published lede.
     expect(progress()).toBeNull();
     expect(
       within(section()).getByRole("button", { name: "Update all 3 plugins" }),
+    ).toBeDefined();
+  });
+
+  it("points plugin updates at the CLI while pluginUpdatesFromUi is off", () => {
+    useWebApp();
+    pluginUpdatesFromUi.current = false;
+    useUpdateInventoryMock.mockReturnValue(
+      makeInventory({
+        plugins: buildUpdateInventoryPlugins([
+          makePluginListItem({
+            id: "notes",
+            name: "Notes",
+            source: "npm:@acme/notes@^1.0.0",
+            version: "1.0.0",
+            updateState: {
+              outcome: "update-available",
+              availableVersion: "1.2.0",
+              availableLabel: "1.2.0",
+            },
+          }),
+        ]),
+      }),
+    );
+
+    renderSection();
+
+    const section = document.querySelector(
+      '[data-updates-domain="plugins"]',
+    ) as HTMLElement;
+    expect(within(section).queryByRole("button")).toBeNull();
+    expect(
+      within(section).getByRole("img", {
+        name: "Update to 1.2.0 available. Updates are applied from the CLI after review: bb plugin update notes",
+      }),
     ).toBeDefined();
   });
 
