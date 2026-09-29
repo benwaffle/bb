@@ -1,5 +1,4 @@
 import { upsertHost } from "@bb/db";
-import { isLoopbackAddress } from "@bb/config/loopback";
 import {
   hostDaemonEnrollKeyRequestSchema,
   hostDaemonEnrollRequestSchema,
@@ -7,19 +6,22 @@ import {
   type HostDaemonInternalSchema,
 } from "@bb/host-daemon-contract";
 import type { Hono } from "hono";
+import { isServerMachineRequest } from "../api-auth.js";
 import type { AppDeps } from "../types.js";
 import { ApiError } from "../errors.js";
 import {
   getGateAuthKind,
   getGateMachineId,
-  getTrustedRemoteAddress,
   type GateAuthHeaderReader,
 } from "../request-context.js";
 import { issueHostEnrollKey } from "../services/hosts/host-enrollment.js";
 import { requireBearerToken } from "./auth.js";
 
-function assertLoopbackRequest(remoteAddress: string | undefined): void {
-  if (remoteAddress && isLoopbackAddress(remoteAddress)) {
+function assertServerMachineRequest(
+  context: Parameters<typeof isServerMachineRequest>[0],
+  deps: AppDeps,
+): void {
+  if (isServerMachineRequest(context, deps)) {
     return;
   }
   throw new ApiError(
@@ -61,7 +63,7 @@ export function registerInternalHostRoutes(app: Hono, deps: AppDeps): void {
           "Machine credentials cannot mint host enrollment keys",
         );
       }
-      assertLoopbackRequest(getTrustedRemoteAddress(context));
+      assertServerMachineRequest(context, deps);
       const issued = await issueHostEnrollKey(deps, {
         enrollSource: "loopback",
         ...(payload.hostId ? { hostId: payload.hostId } : {}),
