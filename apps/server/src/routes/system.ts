@@ -322,6 +322,8 @@ export function registerSystemRoutes(
           : settings.onboardingCompletedAt,
       setupChecklistVisible:
         settings.setupChecklistVisible ?? current.setupChecklistVisible,
+      pluginUpdatesFromUi:
+        settings.pluginUpdatesFromUi ?? current.pluginUpdatesFromUi,
       showDiagnosticEvents:
         diagnosticValue === undefined ||
         (showUnhandledProviderEvents !== undefined &&
