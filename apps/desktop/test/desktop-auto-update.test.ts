@@ -402,12 +402,9 @@ describe("desktop auto-update service", () => {
     });
   });
 
-  it("does not initialize electron-updater in dev mode without the override", async () => {
+  it("does not initialize electron-updater without the opt-in", async () => {
     const updater = new DesktopAutoUpdaterAdapterStub();
-    const enabled = shouldEnableDesktopAutoUpdate({
-      env: {},
-      isPackaged: false,
-    });
+    const enabled = shouldEnableDesktopAutoUpdate({ env: {} });
     const service = createDesktopAutoUpdateService({
       currentVersion: "0.0.1",
       enabled,
@@ -427,12 +424,16 @@ describe("desktop auto-update service", () => {
     expect(updater.autoDownload).toBeNull();
   });
 
-  it("allows the dev-mode auto-update override", () => {
+  it("enables auto-update only when BB_DESKTOP_AUTO_UPDATE is exactly 1", () => {
+    expect(shouldEnableDesktopAutoUpdate({ env: {} })).toBe(false);
     expect(
-      shouldEnableDesktopAutoUpdate({
-        env: { BB_DESKTOP_AUTO_UPDATE: "1" },
-        isPackaged: false,
-      }),
+      shouldEnableDesktopAutoUpdate({ env: { BB_DESKTOP_AUTO_UPDATE: "0" } }),
+    ).toBe(false);
+    expect(
+      shouldEnableDesktopAutoUpdate({ env: { BB_DESKTOP_AUTO_UPDATE: "" } }),
+    ).toBe(false);
+    expect(
+      shouldEnableDesktopAutoUpdate({ env: { BB_DESKTOP_AUTO_UPDATE: "1" } }),
     ).toBe(true);
   });
 });
