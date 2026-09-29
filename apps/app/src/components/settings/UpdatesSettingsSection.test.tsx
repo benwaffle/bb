@@ -2629,6 +2629,47 @@ The canonical release summary.
     ).toBeNull();
   });
 
+  it("says updates are disabled on the Server row of a desktop that runs the server with updates off", async () => {
+    const desktopInfo: BbDesktopInfo = {
+      lastCheckedAt: null,
+      latestVersion: null,
+      pendingVersion: null,
+      platform: "macos",
+      updateAvailable: false,
+      updateDownloaded: false,
+      updatesEnabled: false,
+      version: "0.0.5",
+    };
+    useDesktopUpdateInfoMock.mockReturnValue({
+      desktopApi: {
+        checkForUpdates: vi.fn().mockResolvedValue(desktopInfo),
+      } as unknown as BbDesktopApi,
+      desktopInfo,
+      isDesktop: true,
+    });
+    hostDaemon.localDaemonHostId = "host_primary";
+    useUpdateInventoryMock.mockReturnValue(desktopFleet());
+    vi.mocked(sdk.system.appUpdate).mockResolvedValue(
+      makeAppUpdateStatus({
+        available: null,
+        support: { kind: "unsupported", reason: "desktop" },
+      }),
+    );
+
+    renderSection();
+
+    const caption = await screen.findByText(
+      "Updates disabled by configuration",
+    );
+    const appRow = caption.closest("div");
+    expect(appRow).not.toBeNull();
+    expect(within(appRow as HTMLElement).getByText("Server")).toBeDefined();
+    expect(
+      appRow?.querySelector('[data-update-state="up-to-date"]'),
+    ).toBeNull();
+    expect(screen.queryByText("Desktop")).toBeNull();
+  });
+
   it.each(["host_laptop", null])(
     "shows a desktop-hosted server's own version when the viewing host is %s",
     async (localHostId) => {
