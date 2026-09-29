@@ -62,7 +62,6 @@ interface CreateDesktopAutoUpdateServiceArgs {
 
 interface ShouldEnableDesktopAutoUpdateArgs {
   env: NodeJS.ProcessEnv;
-  isPackaged: boolean;
 }
 
 interface ApplyUpdateAvailableArgs {
@@ -113,7 +112,7 @@ function formatCheckedAt(now: () => number): string {
 export function shouldEnableDesktopAutoUpdate(
   args: ShouldEnableDesktopAutoUpdateArgs,
 ): boolean {
-  return args.isPackaged || args.env.BB_DESKTOP_AUTO_UPDATE === "1";
+  return args.env.BB_DESKTOP_AUTO_UPDATE === "1";
 }
 
 export function createElectronAutoUpdaterAdapter(
