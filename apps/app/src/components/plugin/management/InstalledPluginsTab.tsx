@@ -23,6 +23,10 @@ import {
   type PluginCatalogSearchEntry,
 } from "@/hooks/queries/plugin-catalog-queries";
 import { UpdatePluginDialog } from "./UpdatePluginDialog";
+import {
+  PluginCliUpdateSignal,
+  usePluginUpdatesFromUi,
+} from "./PluginCliUpdateHint";
 import { PluginLogo } from "./plugin-ui";
 
 export function InstalledPluginsTab({
@@ -86,6 +90,7 @@ export function InstalledPluginRow({
   onOpenPlugin: (pluginId: string, trigger: HTMLButtonElement) => void;
 }) {
   const { toggle, enabled } = usePluginEnabledMutation(plugin);
+  const updatesFromUi = usePluginUpdatesFromUi();
   const isLocal = plugin.source.startsWith("path:");
   const signal = pluginRowSignal(plugin);
   const statusSignal = signal?.kind === "status" ? signal : null;
@@ -156,11 +161,18 @@ export function InstalledPluginRow({
           <span className="flex items-center gap-2">
             {updateSignal !== null ? (
               <span data-testid={`plugin-update-signal-${plugin.id}`}>
-                <PluginRowSignalView
-                  signal={updateSignal}
-                  onUpdateClick={onUpdateClick}
-                  onStatusClick={openDetail}
-                />
+                {updatesFromUi ? (
+                  <PluginRowSignalView
+                    signal={updateSignal}
+                    onUpdateClick={onUpdateClick}
+                    onStatusClick={openDetail}
+                  />
+                ) : (
+                  <PluginCliUpdateSignal
+                    pluginId={plugin.id}
+                    version={updateSignal.version}
+                  />
+                )}
               </span>
             ) : undefined}
             {notRunning ? (
