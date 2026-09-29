@@ -403,6 +403,7 @@ let currentAppKeybindings: AppKeybindings = [];
 let currentApplicationMenuAccelerators = DEFAULT_APPLICATION_MENU_ACCELERATORS;
 let desktopUpdateService: DesktopUpdateService | null = null;
 let desktopAutoUpdateService: DesktopAutoUpdateService | null = null;
+let desktopUpdatesEnabled = false;
 let currentRuntime: DesktopRuntime | null = null;
 let currentWindowUrl: string | null = null;
 let logViewerLineBuffer: LogLineBuffer | null = null;
@@ -553,6 +554,7 @@ function getCurrentDesktopInfo(): BbDesktopInfo | null {
   return {
     ...info,
     serverDaemonLogsAvailable: shouldEnableServerDaemonLogsMenu(),
+    updatesEnabled: desktopUpdatesEnabled,
   };
 }
 
@@ -2981,10 +2983,14 @@ async function runDesktopApp(): Promise<void> {
     env: process.env,
     platform: desktopPlatform,
   });
+  desktopUpdatesEnabled = shouldEnableDesktopAutoUpdate({
+    env: process.env,
+  });
   desktopUpdateService = createDesktopUpdateService({
     channel: DESKTOP_RELEASE_CHANNEL,
     currentVersion: desktopVersion,
     enabled:
+      desktopUpdatesEnabled &&
       desktopUpdateSupport.versionCheck &&
       (app.isPackaged || process.env.BB_DESKTOP_VERSION_CHECK === "1"),
     feedUrl: desktopUpdateFeedUrl,
@@ -2993,14 +2999,8 @@ async function runDesktopApp(): Promise<void> {
   });
   desktopAutoUpdateService = createDesktopAutoUpdateService({
     currentVersion: desktopVersion,
-    enabled:
-      desktopUpdateSupport.autoUpdate &&
-      shouldEnableDesktopAutoUpdate({
-        env: process.env,
-        isPackaged: app.isPackaged,
-      }),
-    forceDevUpdateConfig:
-      !app.isPackaged && process.env.BB_DESKTOP_AUTO_UPDATE === "1",
+    enabled: desktopUpdatesEnabled && desktopUpdateSupport.autoUpdate,
+    forceDevUpdateConfig: desktopUpdatesEnabled && !app.isPackaged,
     logger: desktopLogger,
     platform: desktopPlatform,
     updater: createElectronAutoUpdaterAdapter(autoUpdater),
