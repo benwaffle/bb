@@ -37,6 +37,7 @@ export type SidebarUpdateRow =
       detail: string;
       state: SidebarUpdateRowState;
       startable: boolean;
+      cliOnly: boolean;
     };
 
 export interface SidebarBbUpdate {
@@ -116,6 +117,7 @@ function providerRows(
 function pluginRows(
   plugins: UpdateInventoryPlugins | null,
   jobs: readonly PluginUpdateJob[],
+  updatesFromUi: boolean,
 ): SidebarUpdateRow[] {
   if (plugins === null) return [];
   return plugins.items.flatMap((item) => {
@@ -139,7 +141,8 @@ function pluginRows(
         label: item.plugin.name ?? item.plugin.id,
         detail: `${item.plugin.version} → ${item.version}`,
         state,
-        startable: state !== "updating",
+        startable: updatesFromUi && state !== "updating",
+        cliOnly: !updatesFromUi && state !== "updating",
       },
     ];
   });
@@ -154,12 +157,13 @@ export function buildSidebarUpdateModel(input: {
   showProviderCliUpdates: boolean;
   providerJobs: ProviderCliJobs;
   pluginJobs: readonly PluginUpdateJob[];
+  pluginUpdatesFromUi: boolean;
 }): SidebarUpdateModel {
   const rows = [
     ...(input.showProviderCliUpdates
       ? providerRows(input.machines, input.providerJobs)
       : []),
-    ...pluginRows(input.plugins, input.pluginJobs),
+    ...pluginRows(input.plugins, input.pluginJobs, input.pluginUpdatesFromUi),
   ];
   const startable = rows.filter((row) =>
     row.kind === "provider" ? row.start !== null : row.startable,
@@ -185,4 +189,10 @@ export function buildSidebarUpdateModel(input: {
       startable.length > 0 && startable.every((row) => row.state === "failed"),
     updating,
   };
+}
+
+export function sidebarCliOnlyPluginIds(model: SidebarUpdateModel): string[] {
+  return model.rows.flatMap((row) =>
+    row.kind === "plugin" && row.cliOnly ? [row.pluginId] : [],
+  );
 }

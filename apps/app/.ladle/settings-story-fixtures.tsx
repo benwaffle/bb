@@ -305,6 +305,7 @@ export function SettingsUpdatesStory() {
         plugins={{ trackedCount: 0, items: [] }}
         updatingPluginIds={noJobs}
         checking={false}
+        updatesFromUi
         onStartUpdates={noop}
       />
     </div>

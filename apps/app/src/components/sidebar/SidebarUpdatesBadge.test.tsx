@@ -48,6 +48,7 @@ const preferences = vi.hoisted(() => ({ showProviderCliUpdates: true }));
 const startInstallMock = vi.hoisted(() => vi.fn());
 const appUpdateState = vi.hoisted(() => ({
   status: undefined as SystemAppUpdateStatus | undefined,
+  pluginUpdatesFromUi: true,
 }));
 const applyAppUpdateMock = vi.hoisted(() => vi.fn());
 const startPluginUpdateMock = vi.hoisted(() => vi.fn());
@@ -124,7 +125,10 @@ vi.mock("@/hooks/queries/system-queries", async (original) => ({
   ...(await original<typeof import("@/hooks/queries/system-queries")>()),
   useSystemConfig: () => ({
     data: {
-      generalSettings: { resumeThreadsAfterRestart: true },
+      generalSettings: {
+        resumeThreadsAfterRestart: true,
+        pluginUpdatesFromUi: appUpdateState.pluginUpdatesFromUi,
+      },
     },
   }),
 }));
@@ -168,6 +172,7 @@ afterEach(() => {
   live.pluginJobs = [];
   startInstallMock.mockReset();
   appUpdateState.status = undefined;
+  appUpdateState.pluginUpdatesFromUi = true;
   applyAppUpdateMock.mockReset();
   startPluginUpdateMock.mockReset();
   desktopState.isDesktop = false;
@@ -661,6 +666,54 @@ describe("SidebarUpdatesBadge", () => {
     );
     expect(onNavigate).toHaveBeenCalledTimes(1);
     expect(updateButton().getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("leaves plugin updates to the CLI while pluginUpdatesFromUi is off", async () => {
+    appUpdateState.pluginUpdatesFromUi = false;
+    const codex = providerIssue("codex", "Codex");
+    renderBadge({
+      machines: [machine({ issues: [codex] })],
+      plugins: {
+        trackedCount: 1,
+        items: [{ kind: "update", plugin: plugin("linear"), version: "1.2.0" }],
+      },
+    });
+
+    const card = await openCard();
+    expect(
+      within(card).getByTestId("sidebar-update-cli-hint").textContent,
+    ).toBe(
+      "Updates are applied from the CLI after review: bb plugin update linear",
+    );
+    fireEvent.click(within(card).getByRole("button", { name: "Update 1 agent CLI" }));
+
+    expect(startInstallMock).toHaveBeenCalledWith({
+      hostId: "host-1",
+      issue: codex,
+    });
+    expect(startPluginUpdateMock).not.toHaveBeenCalled();
+  });
+
+  it("drops the update button when only CLI-applied plugin updates remain", async () => {
+    appUpdateState.pluginUpdatesFromUi = false;
+    renderBadge({
+      plugins: {
+        trackedCount: 2,
+        items: [
+          { kind: "update", plugin: plugin("linear"), version: "1.2.0" },
+          { kind: "update", plugin: plugin("jira"), version: "2.0.0" },
+        ],
+      },
+    });
+
+    const card = await openCard();
+    expect(within(card).queryByRole("button", { name: /^Update/ })).toBeNull();
+    expect(
+      within(card).getByTestId("sidebar-update-cli-hint").textContent,
+    ).toBe(
+      "Updates are applied from the CLI after review: bb plugin update <id>",
+    );
+    expect(startPluginUpdateMock).not.toHaveBeenCalled();
   });
 
   it("spins while updates run and shows each row's progress", async () => {

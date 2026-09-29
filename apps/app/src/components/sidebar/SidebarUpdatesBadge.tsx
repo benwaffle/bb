@@ -30,7 +30,12 @@ import { useStartPluginUpdates } from "@/hooks/useStartPluginUpdates";
 import { useUpdateInventory } from "@/hooks/useUpdateInventory";
 import { getProviderIconInfo } from "@/lib/provider-icon";
 import {
+  PluginCliUpdateHint,
+  usePluginUpdatesFromUi,
+} from "@/components/plugin/management/PluginCliUpdateHint";
+import {
   buildSidebarUpdateModel,
+  sidebarCliOnlyPluginIds,
   type SidebarBbUpdate,
   type SidebarUpdateModel,
   type SidebarUpdateRow,
@@ -57,6 +62,7 @@ export function SidebarUpdatesBadge({ onNavigate }: SidebarUpdatesBadgeProps) {
   const providerJobs = useProviderCliInstallRunner();
   const pluginJobs = usePluginUpdateJobs().data ?? [];
   const startPluginUpdates = useStartPluginUpdates(inventory.plugins);
+  const pluginUpdatesFromUi = usePluginUpdatesFromUi();
   const appUpdateStart = useStartAppUpdate();
   const machineAttention = useMachineAttention(
     inventory.machines.map((machine) => machine.host),
@@ -109,6 +115,7 @@ export function SidebarUpdatesBadge({ onNavigate }: SidebarUpdatesBadgeProps) {
     showProviderCliUpdates,
     providerJobs,
     pluginJobs,
+    pluginUpdatesFromUi,
   });
 
   function updateAll(): void {
@@ -349,6 +356,7 @@ function SidebarUpdateCardBody({
   onRestartBb: () => void;
   onSkip: () => void;
 }) {
+  const cliOnlyPluginIds = sidebarCliOnlyPluginIds(model);
   return (
     <>
       <div className="mb-3 flex items-center gap-3 text-muted-foreground max-md:pointer-coarse:mb-4">
@@ -393,14 +401,28 @@ function SidebarUpdateCardBody({
               />
             ))}
           </ul>
-          <Button
-            size="sm"
-            className={UPDATE_CARD_BUTTON_CLASS}
-            disabled={model.startableCount === 0}
-            onClick={onUpdateAll}
-          >
-            {sidebarUpdateAllLabel(model)}
-          </Button>
+          {cliOnlyPluginIds.length === 0 ? null : (
+            <div className="mt-2" data-testid="sidebar-update-cli-hint">
+              <PluginCliUpdateHint
+                pluginId={
+                  cliOnlyPluginIds.length === 1
+                    ? (cliOnlyPluginIds[0] ?? "<id>")
+                    : "<id>"
+                }
+                range={null}
+              />
+            </div>
+          )}
+          {model.startableCount === 0 && !model.updating ? null : (
+            <Button
+              size="sm"
+              className={UPDATE_CARD_BUTTON_CLASS}
+              disabled={model.startableCount === 0}
+              onClick={onUpdateAll}
+            >
+              {sidebarUpdateAllLabel(model)}
+            </Button>
+          )}
         </>
       )}
     </>

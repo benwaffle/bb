@@ -15,6 +15,10 @@ import {
   reviewableRangeUpgrade,
 } from "./plugin-status";
 import { UpdatePluginDialog } from "./UpdatePluginDialog";
+import {
+  PluginCliUpdateHint,
+  usePluginUpdatesFromUi,
+} from "./PluginCliUpdateHint";
 
 function pluginCompatibilityBlockedVersion(
   plugin: PluginListItem,
@@ -39,6 +43,7 @@ export function PluginDetailReleaseControl({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const queryClient = useQueryClient();
   const notificationAction = usePluginNotificationAction();
+  const updatesFromUi = usePluginUpdatesFromUi();
   const availableVersion = plugin.updateState.availableLabel;
   const failure = plugin.updateState.lastFailure;
   const retry = useMutation({
@@ -56,6 +61,7 @@ export function PluginDetailReleaseControl({
   });
 
   if (!pluginHasUpdateSurfaces(plugin)) return null;
+  if (!updatesFromUi) return null;
   const rangeUpgrade = reviewableRangeUpgrade(plugin);
   if (availableVersion === null) {
     if (rangeUpgrade === null) return null;
@@ -165,6 +171,27 @@ export function PluginDetailReleaseStatus({
 }: {
   plugin: PluginListItem;
 }) {
+  const updatesFromUi = usePluginUpdatesFromUi();
+  const rangeUpgrade = reviewableRangeUpgrade(plugin);
+  if (
+    updatesFromUi ||
+    !pluginHasUpdateSurfaces(plugin) ||
+    (plugin.updateState.availableVersion === null && rangeUpgrade === null)
+  ) {
+    return <PluginDetailReleaseStatusBody plugin={plugin} />;
+  }
+  return (
+    <div className="space-y-1.5">
+      <PluginDetailReleaseStatusBody plugin={plugin} />
+      <PluginCliUpdateHint
+        pluginId={plugin.id}
+        range={rangeUpgrade?.range ?? null}
+      />
+    </div>
+  );
+}
+
+function PluginDetailReleaseStatusBody({ plugin }: { plugin: PluginListItem }) {
   const failure = plugin.updateState.lastFailure;
   const blockedVersion = pluginCompatibilityBlockedVersion(plugin);
   const blockedReasons = plugin.updateState.blockedReasons;

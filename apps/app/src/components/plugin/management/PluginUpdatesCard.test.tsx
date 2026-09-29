@@ -11,6 +11,8 @@ import {
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createQueryClientTestHarness } from "@/test/queryClientTestHarness";
+import { makePluginUpdatesSystemConfig } from "@/test/fixtures/system-config";
+import { systemConfigQueryKey } from "@/hooks/queries/query-keys";
 import {
   EMPTY_PLUGIN_UPDATE_STATE,
   type PluginListItem,
@@ -63,7 +65,11 @@ describe("pluginHasUpdateSurfaces", () => {
 
 describe("PluginDetailReleaseControl", () => {
   it("offers a compatible update as a compact release action", () => {
-    const { wrapper } = createQueryClientTestHarness();
+    const { queryClient, wrapper } = createQueryClientTestHarness();
+    queryClient.setQueryData(
+      systemConfigQueryKey(),
+      makePluginUpdatesSystemConfig(true),
+    );
     render(
       <PluginDetailReleaseControl
         plugin={plugin({
@@ -132,10 +138,13 @@ describe("PluginDetailReleaseControl", () => {
       breaking: true,
       reasons: [],
     };
+    const harness = createQueryClientTestHarness();
+    harness.queryClient.setQueryData(
+      systemConfigQueryKey(),
+      makePluginUpdatesSystemConfig(true),
+    );
     const wrapper = ({ children }: { children: import("react").ReactNode }) => (
-      <MemoryRouter>
-        {createQueryClientTestHarness().wrapper({ children })}
-      </MemoryRouter>
+      <MemoryRouter>{harness.wrapper({ children })}</MemoryRouter>
     );
     const offered = plugin({
       updateState: {
@@ -202,7 +211,11 @@ describe("PluginDetailReleaseControl", () => {
       ),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const { wrapper } = createQueryClientTestHarness();
+    const { queryClient, wrapper } = createQueryClientTestHarness();
+    queryClient.setQueryData(
+      systemConfigQueryKey(),
+      makePluginUpdatesSystemConfig(true),
+    );
     const failedThenOffered = plugin({
       version: "3.4.1",
       source: "npm:@example/linear@^3.4.0",
@@ -294,7 +307,11 @@ describe("PluginDetailReleaseControl", () => {
         }),
     );
     vi.stubGlobal("fetch", fetchMock);
-    const { wrapper, queryClient } = createQueryClientTestHarness();
+    const { queryClient, wrapper } = createQueryClientTestHarness();
+    queryClient.setQueryData(
+      systemConfigQueryKey(),
+      makePluginUpdatesSystemConfig(true),
+    );
     render(
       <>
         <PluginDetailReleaseControl
