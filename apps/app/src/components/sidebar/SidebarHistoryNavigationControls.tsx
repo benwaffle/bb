@@ -4,8 +4,6 @@ import { Button } from "@bb/shared-ui/button";
 import { Icon, type IconName } from "@bb/shared-ui/icon";
 import { COARSE_POINTER_HEADER_ICON_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { useRouteStateHistoryNavigation } from "@/lib/app-route-history";
-import { useAppCommandShortcut } from "@/components/commands/AppCommandProvider";
-import type { AppShortcutPresentation } from "@/lib/app-keybindings";
 
 interface SidebarHistoryNavigationControlsProps {
   onNavigate?: () => void;
@@ -17,7 +15,6 @@ interface SidebarHistoryNavButtonProps {
   label: string;
   disabled: boolean;
   onClick: () => void;
-  shortcut: AppShortcutPresentation | null;
 }
 
 const SIDEBAR_HISTORY_NAV_BUTTON_CLASS = cn(
@@ -30,7 +27,6 @@ function SidebarHistoryNavButton({
   label,
   disabled,
   onClick,
-  shortcut,
 }: SidebarHistoryNavButtonProps) {
   return (
     <Button
@@ -41,7 +37,6 @@ function SidebarHistoryNavButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={label}
-      aria-keyshortcuts={shortcut?.ariaKeyshortcuts}
     >
       <Icon name={icon} aria-hidden />
     </Button>
@@ -54,8 +49,6 @@ export function SidebarHistoryNavigationControls({
 }: SidebarHistoryNavigationControlsProps) {
   const { canGoBack, canGoForward, goBack, goForward } =
     useRouteStateHistoryNavigation();
-  const backShortcut = useAppCommandShortcut("history.back");
-  const forwardShortcut = useAppCommandShortcut("history.forward");
 
   const handleBack = useCallback(() => {
     if (!canGoBack) {
@@ -80,14 +73,12 @@ export function SidebarHistoryNavigationControls({
         label="Go back"
         disabled={!canGoBack}
         onClick={handleBack}
-        shortcut={backShortcut}
       />
       <SidebarHistoryNavButton
         icon="ChevronRight"
         label="Go forward"
         disabled={!canGoForward}
         onClick={handleForward}
-        shortcut={forwardShortcut}
       />
     </div>
   );
