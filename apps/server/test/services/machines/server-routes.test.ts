@@ -638,7 +638,7 @@ describe("server routes", () => {
       });
     });
 
-    it("keeps a route's address through a failed check and drops it on a definite answer, or for core routes with the experiment off", async () => {
+    it("keeps a route's address through a failed check and drops it on a definite answer, and admits the machineServerUrl host with the experiment off", async () => {
       await withTestHarness(async (h) => {
         setExperiments(h.db, { serverRoutes: true });
         const routeSettings = {
@@ -683,7 +683,7 @@ describe("server routes", () => {
         setExperiments(h.db, { serverRoutes: false });
         await serverAccessOverview(h.deps);
         expect(await status()).toBe(200);
-        expect(await manualStatus()).toBe(403);
+        expect(await manualStatus()).toBe(200);
       });
     });
   });

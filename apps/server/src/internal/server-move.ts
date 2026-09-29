@@ -1,11 +1,10 @@
 import { createReadStream } from "node:fs";
 import { stat } from "node:fs/promises";
 import { Readable } from "node:stream";
-import { isLoopbackAddress } from "@bb/config/loopback";
 import type { Context, Hono } from "hono";
 import type { AppDeps } from "../types.js";
 import { ApiError } from "../errors.js";
-import { getTrustedRemoteAddress } from "../request-context.js";
+import { isServerMachineRequest } from "../api-auth.js";
 import type {
   ServerMoveCoordinator,
   ServerMoveDownloadKind,
@@ -78,8 +77,7 @@ export function registerInternalServerMoveRoutes(
   args: RegisterInternalServerMoveRoutesArgs,
 ): void {
   app.get("/server-move/pending", (context) => {
-    const remoteAddress = getTrustedRemoteAddress(context);
-    if (remoteAddress === undefined || !isLoopbackAddress(remoteAddress)) {
+    if (!isServerMachineRequest(context, deps)) {
       throw new ApiError(
         403,
         "loopback_only",
