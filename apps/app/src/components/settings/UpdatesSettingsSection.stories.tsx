@@ -1378,6 +1378,7 @@ export function PluginSectionVariations() {
             plugins={STORY_PLUGINS}
             updatingPluginIds={NO_JOBS}
             checking={false}
+            updatesFromUi
             onStartUpdates={noop}
           />
         </div>
@@ -1391,6 +1392,21 @@ export function PluginSectionVariations() {
             plugins={STORY_PLUGINS}
             updatingPluginIds={new Set(["github-pr-status", "linear"])}
             checking={false}
+            updatesFromUi
+            onStartUpdates={noop}
+          />
+        </div>
+      </StoryRow>
+      <StoryRow
+        label="CLI only"
+        hint="pluginUpdatesFromUi is off: rows point at bb plugin update instead of offering buttons."
+      >
+        <div className="w-full">
+          <PluginUpdatesSection
+            plugins={STORY_PLUGINS}
+            updatingPluginIds={NO_JOBS}
+            checking={false}
+            updatesFromUi={false}
             onStartUpdates={noop}
           />
         </div>
@@ -1401,6 +1417,7 @@ export function PluginSectionVariations() {
             plugins={{ trackedCount: 6, items: [] }}
             updatingPluginIds={NO_JOBS}
             checking={false}
+            updatesFromUi
             onStartUpdates={noop}
           />
         </div>
@@ -1411,6 +1428,7 @@ export function PluginSectionVariations() {
             plugins={{ trackedCount: 6, items: [] }}
             updatingPluginIds={NO_JOBS}
             checking
+            updatesFromUi
             onStartUpdates={noop}
           />
         </div>
