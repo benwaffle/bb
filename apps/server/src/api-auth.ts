@@ -72,7 +72,7 @@ export function presentedApiToken(
 
 export function bearerTokenAuthenticated(
   context: ApiAuthRequestContext,
-  deps: ApiAuthDeps,
+  deps: { config: Pick<ServerRuntimeConfig, "apiToken"> },
 ): boolean {
   const expected = deps.config.apiToken;
   if (expected === null) {
