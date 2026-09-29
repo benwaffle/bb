@@ -233,6 +233,15 @@ fails, confirmed support is retained and installation is blocked until a retry
 succeeds. Desktop/server IPC stays within the bundled process tree and does not
 change the host-daemon protocol.
 
+The desktop app updates itself only when it is launched with
+`BB_DESKTOP_AUTO_UPDATE=1` in its environment, packaged or not. Without it the
+app never reads the release feed, downloads an update, or installs one on quit,
+and Settings → Updates shows its row as "Updates disabled by configuration". A
+server that desktop hosts then reports no desktop update support, so
+`bb updates app apply` and `sdk.system.applyAppUpdate` refuse with
+`app_update_unsupported`. The variable is startup-only; relaunch the app after
+changing it.
+
 ## Common Keys
 
 | Key                            | Set with                                           | When to set             | Used for                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |

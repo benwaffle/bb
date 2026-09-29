@@ -578,6 +578,15 @@ export function BbAppUpdateRows({
       />
     );
 
+    if (desktopInfo.updatesEnabled === false) {
+      return row(
+        name,
+        <RowStateControl state="latest-unknown" />,
+        <RowStateCaption state="latest-unknown">
+          Updates disabled by configuration
+        </RowStateCaption>,
+      );
+    }
     if (desktopInfo.updateDownloaded) {
       return row(
         name,

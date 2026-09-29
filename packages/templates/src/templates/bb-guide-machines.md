@@ -155,7 +155,11 @@ bb itself when it was started from `npx bb-app` (or a global `bb-app`) without
 `--no-in-app-updates`: it installs the new version next to the running one and
 restarts into it. It does not roll back if the new version fails to start.
 Desktop users update through the desktop app's relaunch, and `bb-server` cannot
-update itself. Connected daemons follow the server version automatically.
+update itself. The desktop app checks for, downloads, and installs its own
+updates only when it is launched with `BB_DESKTOP_AUTO_UPDATE=1`; otherwise
+Settings → Updates reports updates as disabled by configuration and
+`bb updates app apply` refuses to update a server that desktop hosts.
+Connected daemons follow the server version automatically.
 
 Targeting machines
 
