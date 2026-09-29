@@ -12,6 +12,8 @@ import type {
 } from "@get-bb/plugin-sdk";
 import type { ServerRuntimeConfig } from "../types.js";
 import { ApiError } from "../errors.js";
+import { bearerTokenAuthenticated } from "../api-auth.js";
+import { getAppSettings } from "@bb/db";
 import {
   browserRequestProblem,
   type BrowserRequestProblem,
@@ -45,7 +47,10 @@ import {
 } from "@bb/server-contract";
 
 interface PluginRoutesDeps {
-  config: Pick<ServerRuntimeConfig, "serverPort" | "appUrl" | "devAppPort">;
+  config: Pick<
+    ServerRuntimeConfig,
+    "serverPort" | "appUrl" | "devAppPort" | "apiToken"
+  >;
   db: import("@bb/db").DbConnection;
 }
 
@@ -670,6 +675,18 @@ export function registerPluginRoutes(
   });
 
   app.post("/plugins/:id/update", async (context) => {
+    if (
+      deps.config.apiToken !== null &&
+      !getAppSettings(deps.db).pluginUpdatesFromUi &&
+      !bearerTokenAuthenticated(context, deps)
+    ) {
+      return context.json(
+        {
+          error: `Plugin updates are applied from the CLI after review: bb plugin update ${context.req.param("id")}`,
+        },
+        403,
+      );
+    }
     const json: unknown = await context.req.json().catch(() => null);
     const body = pluginApplyUpdateRequestSchema.safeParse(json);
     if (!body.success) {

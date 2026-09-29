@@ -130,6 +130,15 @@ so they carry over between navigation plugins.
   provider default, and the next send records that default. Select the custom
   model again after you turn streamer mode off.
 
+## Plugin updates from the app
+
+- `pluginUpdatesFromUi` defaults to false. The Plugins page then shows
+  available updates with the hint "Updates are applied from the CLI after
+  review: bb plugin update <id>", and the server rejects cookie-authenticated
+  update requests with 403. `bb plugin update` and the SDK are unaffected.
+- Set it with `bb settings general pluginUpdatesFromUi <true|false|on|off>`.
+  The app has no switch for it.
+
 ## Fast service tier
 
 - `allowFastServiceTier` defaults to true. Set it with

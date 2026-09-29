@@ -303,6 +303,8 @@ export function registerSystemRoutes(
       allowFastServiceTier:
         settings.allowFastServiceTier ?? current.allowFastServiceTier,
       telemetryEnabled: settings.telemetryEnabled ?? current.telemetryEnabled,
+      pluginUpdatesFromUi:
+        settings.pluginUpdatesFromUi ?? current.pluginUpdatesFromUi,
       showDiagnosticEvents:
         diagnosticValue === undefined ||
         (showUnhandledProviderEvents !== undefined &&

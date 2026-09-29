@@ -122,6 +122,11 @@
     install. A local path plugin is never removed to change it: edit it in
     place and `bb plugin reload <id>`, or `bb plugin install path:<new dir>`
     to move it; both keep its configuration.
+    The app cannot apply updates while `pluginUpdatesFromUi` is false (the
+    default): the server answers its cookie-authenticated update request with
+    403 "Plugin updates are applied from the CLI after review: bb plugin
+    update <id>". Review the change, then run `bb plugin update <id>`.
+    `bb settings general pluginUpdatesFromUi on` restores the app's actions.
   - `bb plugin list` — status, background services, schedules, handler timings,
     and each plugin's contributed `bb` command.
   - `bb plugin source <id> [--json]` — requested and resolved source, the

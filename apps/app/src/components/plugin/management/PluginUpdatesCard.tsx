@@ -10,6 +10,10 @@ import type { PluginListItem } from "@/hooks/queries/plugin-settings-queries";
 import { pluginAdminErrorMessage } from "@/lib/plugin-admin-error";
 import { DetailsDisclosure, displayPluginVersion } from "./plugin-ui";
 import { UpdatePluginDialog } from "./UpdatePluginDialog";
+import {
+  PluginCliUpdateHint,
+  usePluginUpdatesFromUi,
+} from "./PluginCliUpdateHint";
 
 export function pluginHasUpdateSurfaces(plugin: PluginListItem): boolean {
   if (plugin.source.startsWith("builtin:") || plugin.source.startsWith("path:"))
@@ -39,6 +43,7 @@ export function PluginDetailReleaseControl({
 }) {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const queryClient = useQueryClient();
+  const updatesFromUi = usePluginUpdatesFromUi();
   const availableVersion = plugin.updateState.availableVersion;
   const failure = plugin.updateState.lastFailure;
   const retry = useMutation({
@@ -79,6 +84,7 @@ export function PluginDetailReleaseControl({
 
   if (!pluginHasUpdateSurfaces(plugin)) return null;
   if (availableVersion === null) return null;
+  if (!updatesFromUi) return null;
 
   if (failure !== null) {
     return (
@@ -129,6 +135,23 @@ export function PluginDetailReleaseStatus({
 }: {
   plugin: PluginListItem;
 }) {
+  const updatesFromUi = usePluginUpdatesFromUi();
+  if (
+    updatesFromUi ||
+    !pluginHasUpdateSurfaces(plugin) ||
+    plugin.updateState.availableVersion === null
+  ) {
+    return <PluginDetailReleaseStatusBody plugin={plugin} />;
+  }
+  return (
+    <div className="space-y-1.5">
+      <PluginDetailReleaseStatusBody plugin={plugin} />
+      <PluginCliUpdateHint pluginId={plugin.id} />
+    </div>
+  );
+}
+
+function PluginDetailReleaseStatusBody({ plugin }: { plugin: PluginListItem }) {
   const failure = plugin.updateState.lastFailure;
   const blockedVersion = pluginCompatibilityBlockedVersion(plugin);
   const blockedReasons = plugin.updateState.blockedReasons;
