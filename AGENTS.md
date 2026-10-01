@@ -83,7 +83,7 @@ These rules are absolute for agents working in this checkout:
 
 ### Syncing With Upstream
 
-A bb automation ("Daily upstream sync of fork/main", 11:00 America/New_York) rebases `fork/main` onto upstream each day. It lands the rebase only when verification is green and every conflict was replayed mechanically, and it reports redundancy findings — fork features upstream has since absorbed — to the orchestrator thread. Otherwise it leaves a dated `bi/upstream-sync-YYYYMMDD` branch for a human decision.
+A bb automation ("Daily upstream sync of fork/main", 11:00 America/New_York) rebases `fork/main` onto upstream each day. It runs as a bb thread on the enrolled machine `ben-bigbox` in `/home/ubuntu/dev/bb` (environment `env_4spc6ygatm`) and pushes to `origin`. It lands the rebase only when verification is green and every conflict was replayed mechanically, and it reports redundancy findings — fork features upstream has since absorbed — to the orchestrator thread. Otherwise it leaves a dated `bi/upstream-sync-YYYYMMDD` branch for a human decision. Afterwards the orchestrator updates the Mac's local `main` and `fork/main` from `origin`.
 
 ```sh
 git fetch upstream main:main
@@ -149,12 +149,67 @@ settings.
 
 ### Running The Fork
 
-The fork is used through the packaged desktop app at `apps/desktop/release/mac-arm64/bb.app`. That bundle embeds its own copy of the server and host daemon, so source changes do nothing until the app is rebuilt and relaunched. After landing any feature on `fork/main`, or after an upstream sync:
+The fork is used through the packaged desktop app at `apps/desktop/release/mac-arm64/bb.app`. That bundle embeds its own copy of the server and host daemon, so source changes do nothing until the app is rebuilt and relaunched. After landing any feature on `fork/main`, or after an upstream sync, rebuild it on `ben-bigbox` and install it on the Mac.
+
+The Mac never runs `pnpm`, `turbo`, tests, or `electron-builder` for bb. Every install, build, typecheck, test, and package step runs on `ben-bigbox`, an enrolled Linux bb machine reachable over the tailnet.
+
+#### Building On ben-bigbox
+
+`ben-bigbox` cross-builds the app for mac-arm64:
 
 ```sh
-pnpm --filter @bb/desktop package
-pkill -f 'bb.app/Contents/MacOS/bb'
-open apps/desktop/release/mac-arm64/bb.app
+/home/ubuntu/bbx-cross-build.sh <fork/main sha>
 ```
 
-`package` builds the bb-app runtime through Turbo, compiles the desktop shell, and writes an unsigned `.app` directory. The packaged fork app does not self-update: the desktop updater pulls upstream `get-bb/bb` releases, so it stays off unless the app is launched with `BB_DESKTOP_AUTO_UPDATE=1`. Update the fork by rebuilding it. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
+The script checks out the sha, installs dependencies, builds the bb-app runtime and desktop shell through Turbo, and runs `electron-builder --mac --arm64 --dir` unsigned with `npmRebuild: false`. Native modules are copied, not compiled: `better-sqlite3`, `node-pty`, and `fs-native-extensions` ship darwin-arm64 prebuilds, and `@parcel/watcher-darwin-arm64` is fetched with `npm pack` and linked into `node_modules/.pnpm`. The Electron load and smoke test in `scripts/prepare-native-modules.cjs` cannot run on Linux, so an afterPack hook (`/home/ubuntu/bbx-cross-afterpack.cjs`) runs that script in standalone mode. The script writes the app tarball and `entitlements.mac.plist`, each with a sha256, to `/tmp/bbx-artifact`.
+
+#### Installing On The Mac
+
+Serve the artifact from the box on its tailnet address:
+
+```sh
+cd /tmp/bbx-artifact && timeout 1200 python3 -m http.server --bind 100.105.97.28 8765
+```
+
+On the Mac, from `apps/desktop/release`, fetch both files, check them against the box's sha256 values, and ad-hoc sign the bundle. An unsigned bundle can stall launches system-wide, so signing is required.
+
+```sh
+mkdir -p staging && cd staging
+curl -fO http://100.105.97.28:8765/<tarball>
+curl -fO http://100.105.97.28:8765/entitlements.mac.plist
+shasum -a 256 <tarball> entitlements.mac.plist
+tar -xf <tarball>
+codesign --force --deep --options runtime --entitlements entitlements.mac.plist --sign - bb.app
+codesign --verify --deep --strict bb.app
+```
+
+Relaunch only when bb is quiet, because quitting the app stops its server, and the server runs work besides threads: a provider CLI update started from Settings -> Updates on any machine, plugin install and update jobs, automation runs including script-mode runs, background commands and background agents in idle threads, environment provisioning and teardown, machine lifecycle changes, a server move, and an in-app update. `scripts/bb-quiet.sh` checks all of them across every project, including Personal. It takes the thread ids allowed to stay active, prints one `busy:` line per blocker, and exits 0 only when nothing is running. It exits 1 when something is busy and 2 when a check cannot be read, which also counts as busy. Provider CLI updates have no API: the server tracks them only in memory, so the script runs `ps` on each connected machine through a short-lived `bb terminal` and looks for the installer processes.
+
+Poll until two consecutive readings 30 seconds apart are quiet. Pass the relaunching thread's id, plus the parent thread when the relaunch is delegated:
+
+```sh
+quiet="$(git rev-parse --show-toplevel)/scripts/bb-quiet.sh"
+until "$quiet" "$BB_THREAD_ID" && sleep 30 && "$quiet" "$BB_THREAD_ID"; do
+  sleep 30
+done
+```
+
+Keep the previous bundle as `bb.app.prev`, swap the signed bundle in, and relaunch. Killing the app kills its host daemon and every agent shell under it, so schedule the reopen from a detached process before the kill. `pkill` alone leaves the main Electron process running; kill its pid explicitly (the `ps -axo pid,command | rg 'bb.app/Contents/MacOS/bb'` row with no arguments).
+
+```sh
+rm -rf mac-arm64/bb.app.prev
+mv mac-arm64/bb.app mac-arm64/bb.app.prev
+mv staging/bb.app mac-arm64/bb.app
+(nohup sh -c 'sleep 8; pkill -9 -f "bb.app/Contents/MacOS/bb"; sleep 2; open /Users/beniofel/dev/bb/apps/desktop/release/mac-arm64/bb.app' >/dev/null 2>&1 &)
+kill <main-pid>
+```
+
+The first launch on the Mac is the smoke test the box skips: confirm the server starts and a terminal works. If it fails, swap `bb.app.prev` back.
+
+After a successful swap, move the build artifacts out of `~/Downloads` to the Trash: the tarball, its `.sha256`, and the `entitlements.mac.plist` copy that were used, plus every older `bb-mac-arm64-*` artifact and numbered `entitlements.mac N.plist` duplicate. Keep none of them; `bb.app.prev` is the rollback, not the tarball.
+
+```sh
+cd ~/Downloads && trash bb-mac-arm64-* entitlements.mac*.plist
+```
+
+The packaged fork app does not self-update: the desktop updater pulls upstream `get-bb/bb` releases, so it stays off unless the app is launched with `BB_DESKTOP_AUTO_UPDATE=1`. Update the fork by rebuilding it. Quitting the desktop app also stops its server and host daemon. Existing agent shells keep the old daemon environment until their threads are restarted.
