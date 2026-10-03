@@ -73,6 +73,8 @@ import { TimelineSelectionMenu } from "./TimelineSelectionMenu.js";
 import type { MessageProseSelection } from "./SelectableMessageProse.js";
 import { TimelineReasoningDetail } from "./TimelineReasoningDetail.js";
 import { ExpandableTimelineRow } from "./ExpandableTimelineRow.js";
+import { TimelineSummaryHoverPreview } from "./TimelineSummaryHoverPreview.js";
+import { TimelineHoverPreviewGroupProvider } from "./TimelineHoverPreviewGroup.js";
 import {
   TimelineLeadingIcon,
   TimelineStaticRowHeader,
@@ -1533,6 +1535,31 @@ const MemoizedTimelineRowView = memo(
   areTimelineRowViewPropsEqual,
 );
 
+type TimelineRowHoverPreviewKind = "body" | "summary" | null;
+
+function timelineRowHoverPreviewKind(
+  row: ThreadTimelineViewRow,
+): TimelineRowHoverPreviewKind {
+  switch (row.kind) {
+    case "system":
+      return "body";
+    case "bundle-summary":
+    case "step-summary":
+      return row.children.length > 0 ? "summary" : null;
+    case "work":
+      return row.workKind === "command" ||
+        row.workKind === "tool" ||
+        row.workKind === "file-change"
+        ? "body"
+        : null;
+    case "conversation":
+    case "turn":
+      return null;
+    default:
+      return assertNever(row);
+  }
+}
+
 function TimelineExpandableRowView({
   activeLatestBundleId,
   compactActivityIntents,
@@ -1565,6 +1592,21 @@ function TimelineExpandableRowView({
       showAssistantMessageActions,
     ],
   );
+
+  const hoverPreviewKind = timelineRowHoverPreviewKind(row);
+  const renderSummaryHoverPreview = useCallback(
+    () =>
+      row.kind === "bundle-summary" || row.kind === "step-summary" ? (
+        <TimelineSummaryHoverPreview rows={row.children} />
+      ) : null,
+    [row],
+  );
+  const renderHoverPreview =
+    hoverPreviewKind === "body"
+      ? renderBody
+      : hoverPreviewKind === "summary"
+        ? renderSummaryHoverPreview
+        : undefined;
 
   const leadingIcon = leadingIconForRow(row);
   const leadingIconUrl = useLeadingIconUrlForRow(row);
@@ -1602,6 +1644,7 @@ function TimelineExpandableRowView({
       terminalAutoExpanded={terminalAutoExpandedRowIds.has(row.id)}
       onTitleAction={onTitleAction}
       renderBody={renderBody}
+      renderHoverPreview={renderHoverPreview}
     />
   );
 }
@@ -2151,32 +2194,34 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
                     <TimelineWindowingMeasurementsContext.Provider
                       value={windowingMeasurements}
                     >
-                      <AutoHeightContainer
-                        snapRevision={heightSnapRevision}
-                        animateGrowth={!scopeActive}
-                      >
-                        <TimelineRowsList
-                          hasOlderTimelineRows={props.hasOlderTimelineRows}
-                          isLoadingOlderTimelineRows={
-                            props.isLoadingOlderTimelineRows
-                          }
-                          navigationTargetRowId={
-                            props.timelineNavigationTargetRowId
-                          }
-                          onLoadOlderRows={props.onLoadOlderRows}
-                          rows={rows}
-                          scopeActive={scopeActive}
-                          showAssistantMessageActions={true}
-                          compactActivityIntents={false}
-                          spacing="top-level"
-                          unreadDividerAutoScroll={
-                            props.unreadDividerAutoScroll ?? true
-                          }
-                          unreadDividerPlacement={
-                            props.unreadDividerPlacement ?? null
-                          }
-                        />
-                      </AutoHeightContainer>
+                      <TimelineHoverPreviewGroupProvider>
+                        <AutoHeightContainer
+                          snapRevision={heightSnapRevision}
+                          animateGrowth={!scopeActive}
+                        >
+                          <TimelineRowsList
+                            hasOlderTimelineRows={props.hasOlderTimelineRows}
+                            isLoadingOlderTimelineRows={
+                              props.isLoadingOlderTimelineRows
+                            }
+                            navigationTargetRowId={
+                              props.timelineNavigationTargetRowId
+                            }
+                            onLoadOlderRows={props.onLoadOlderRows}
+                            rows={rows}
+                            scopeActive={scopeActive}
+                            showAssistantMessageActions={true}
+                            compactActivityIntents={false}
+                            spacing="top-level"
+                            unreadDividerAutoScroll={
+                              props.unreadDividerAutoScroll ?? true
+                            }
+                            unreadDividerPlacement={
+                              props.unreadDividerPlacement ?? null
+                            }
+                          />
+                        </AutoHeightContainer>
+                      </TimelineHoverPreviewGroupProvider>
                     </TimelineWindowingMeasurementsContext.Provider>
                     {hasSelectionActions ? (
                       <TimelineSelectionMenu
