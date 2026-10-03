@@ -291,6 +291,9 @@ export {
 export const experimental_useExperiment = runtimeFunction(
   "experimental_useExperiment",
 );
+export const experimental_useSidebarThreadGroups = runtimeFunction(
+  "experimental_useSidebarThreadGroups",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );

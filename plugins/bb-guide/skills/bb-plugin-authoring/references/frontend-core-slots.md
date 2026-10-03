@@ -262,6 +262,10 @@ projectId, experimental_hostId? }` (nullable fields). The optional host ID
   back to it. Pair with `bb.sdk.files` (rpc from your server) to load and
   CAS-save the content.
 
+### Sidebar thread list slots
+
+Slots that change bb's sidebar thread list are in sidebar-slots.md.
+
 ### The provider directory
 
 `experimental_useProviders()` returns `{ status, providers }` — every
