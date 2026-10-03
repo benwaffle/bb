@@ -45,6 +45,13 @@ import {
   type ExperimentalSidebarNavigationRegistration,
   type ExperimentalSidebarNavigationSplit,
   type ExperimentalSidebarNavigationState,
+  type ExperimentalResolvedSidebarThreadGroup,
+  type ExperimentalSidebarThreadGroupsRegistration,
+  type ExperimentalResolvedSidebarProjectDecoration,
+  type ExperimentalSidebarProjectDecorationRegistration,
+  type ExperimentalResolvedSidebarThreadDecoration,
+  type ExperimentalResolvedSidebarThreadRowDecoration,
+  type ExperimentalSidebarThreadDecorationRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
   type PluginAppSetup,
@@ -374,6 +381,19 @@ interface SlotEnv {
   threadActions: TestThreadActionsResolver;
   threadBulkActions: TestThreadBulkActionsResolver;
   threadActionRegistrations: readonly PluginThreadActionRegistrationInfo[];
+  sidebarThreadGroups: readonly ExperimentalResolvedSidebarThreadGroup[];
+  sidebarProjectDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarProjectDecoration
+  >;
+  sidebarThreadDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarThreadDecoration
+  >;
+  sidebarThreadRowDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarThreadRowDecoration
+  >;
   sidebarDraftThreadIds: ReadonlySet<string>;
   experiments: ReadonlySet<string>;
   threadContextKind: ExperimentalThreadContextKind;
@@ -2036,6 +2056,37 @@ const testPluginSdkApp = {
   experimental_useComposerCommandSearch(): ExperimentalComposerCommandSearch {
     return IDLE_COMPOSER_COMMAND_SEARCH;
   },
+  experimental_useSidebarThreadGroups(): readonly ExperimentalResolvedSidebarThreadGroup[] {
+    return useSlotEnv("experimental_useSidebarThreadGroups")
+      .sidebarThreadGroups;
+  },
+  experimental_useSidebarProjectDecoration(
+    projectId,
+  ): ExperimentalResolvedSidebarProjectDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarProjectDecoration",
+      ).sidebarProjectDecorations.get(projectId) ?? null
+    );
+  },
+  experimental_useSidebarThreadDecoration(
+    projectId,
+  ): ExperimentalResolvedSidebarThreadDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarThreadDecoration",
+      ).sidebarThreadDecorations.get(projectId) ?? null
+    );
+  },
+  experimental_useSidebarThreadRowDecoration(
+    threadId,
+  ): ExperimentalResolvedSidebarThreadRowDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarThreadRowDecoration",
+      ).sidebarThreadRowDecorations.get(threadId) ?? null
+    );
+  },
   useComposerView(): ComposerView {
     const composer = useSlotEnv("useComposerView").composer;
     const version = useSyncExternalStore(
@@ -2098,6 +2149,9 @@ export interface CapturedPluginApp {
   experimentalSidebarFooterItems: CollectedExperimentalSidebarFooterItem[];
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: ExperimentalSidebarNavigationRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
+  sidebarProjectDecorations: ExperimentalSidebarProjectDecorationRegistration[];
+  sidebarThreadDecorations: ExperimentalSidebarThreadDecorationRegistration[];
   threadHeaderActions: import("../internal/plugin-app-registration-collector.js").LegacyThreadHeaderActionRegistration[];
   threadContextSegments: ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
@@ -2378,6 +2432,34 @@ export interface RenderSlotOptions<
   branchesState?: Partial<BranchesState>;
   /** Checkout facts `experimental_useCheckoutState()` reports. */
   checkoutState?: Partial<CheckoutState>;
+  /**
+   * Groups `experimental_useSidebarThreadGroups()` reports. Omitted → none.
+   */
+  sidebarThreadGroups?: readonly ExperimentalResolvedSidebarThreadGroup[];
+  /**
+   * Decorations `experimental_useSidebarProjectDecoration()` reports, keyed
+   * by project id. Omitted → every project reports none.
+   */
+  sidebarProjectDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarProjectDecoration
+  >;
+  /**
+   * Decorations `experimental_useSidebarThreadDecoration()` reports, keyed
+   * by project id. Omitted → every project reports none.
+   */
+  sidebarThreadDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarThreadDecoration
+  >;
+  /**
+   * Decorations `experimental_useSidebarThreadRowDecoration()` reports,
+   * keyed by thread id. Omitted → every thread reports none.
+   */
+  sidebarThreadRowDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarThreadRowDecoration
+  >;
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
    * report as holding an unsent draft. Omitted → none.
@@ -3388,6 +3470,16 @@ export function renderSlot<
     threadBulkActions: options.threadBulkActions ?? NO_THREAD_BULK_ACTIONS,
     threadActionRegistrations:
       options.threadActionRegistrations ?? NO_THREAD_ACTION_REGISTRATIONS,
+    sidebarThreadGroups: options.sidebarThreadGroups ?? [],
+    sidebarProjectDecorations: new Map(
+      Object.entries(options.sidebarProjectDecorations ?? {}),
+    ),
+    sidebarThreadDecorations: new Map(
+      Object.entries(options.sidebarThreadDecorations ?? {}),
+    ),
+    sidebarThreadRowDecorations: new Map(
+      Object.entries(options.sidebarThreadRowDecorations ?? {}),
+    ),
     sidebarDraftThreadIds,
     experiments: new Set(options.experiments ?? []),
     threadContextKind: options.threadContextKind ?? "banner",

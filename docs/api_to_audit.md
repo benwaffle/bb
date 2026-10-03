@@ -2933,6 +2933,217 @@ Docs: `frontend-registration.md`.
    actions. Audit empty machine sections, machine removal, rename updates, and
    loading behavior for `experimental_hosts`.
 
+## `app.slots.experimental_sidebarThreadGroups` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-03).** Consumer: the pr-review plugin (benwaffle/bb-plugins),
+which nests review threads under their Jira ticket.
+
+**What it does.** A plugin registers `{ id, title, useGroups }`. The host
+mounts one hidden component per registration inside the plugin's context
+(crash boundary included) and calls `useGroups()` there, so the hook can use
+`useRpc`, `useRealtime`, and other plugin hooks. Each returned group names a
+`projectId`, a provider-unique `key`, a `label`, optional `keyLabel`, `icon`,
+`style` (`"flat"`, `"card"`, or `"minimal"`), and `tooltip`, the `threadIds` to nest,
+`rows`, and an optional `keepOrder`. `rows` mixes placeholder rows `{ id,
+title, depth?, description?, tooltip?, icon?, trailing?, onSelect, variant?,
+action? }` for
+work that has no thread with placed threads `{ threadId, depth?,
+description?, icon?, trailing? }` that decorate a real thread row. `icon` is
+`{ name, tone }` and `trailing` is `{ kind: "dot", tone }` or `{ kind:
+"text", text }`, with `tone` one of `success`, `muted`, `accent`, `danger`.
+The host drops malformed groups and rows, ignores a non-positive or
+fractional `depth`, a `variant` other than `"ghost"`, and malformed
+`icon`/`trailing` values, folds placed
+thread ids into `threadIds`, defaults `keepOrder` to `false` and `style` to
+`"flat"`, then publishes
+every provider's groups, in plugin id order and with a host-assigned `id`
+(`<pluginId>/<slotId>:<key>`) and `pluginId`, through
+`experimental_useSidebarThreadGroups()`. Hosts that predate placed threads
+and `keepOrder` drop the entries and ignore the flag, so providers list
+placed threads in `threadIds` too.
+
+The bundled Thread list applies the groups in Organize → By project. Among a
+project's root threads, a group takes the threads it names that no earlier
+group claimed. It renders as a collapsible header when it holds at least two
+threads or any placeholder rows; otherwise its thread stays a plain row.
+Plugin groups apply before worktree grouping. Without `keepOrder` the group's
+threads follow the list's sort, above its placeholder rows; with it, threads
+only `threadIds` lists come first in that order, then `rows` as given. A
+placeholder row's or placed thread's `depth` renders as one indent step per
+level, each with a 1px connector rail in the sidebar border color, and a
+placed thread's `description` as muted text after the title, hidden while
+renaming. Placeholder titles render whitespace as given, so a provider that
+still prefixes them with non-breaking spaces and a `└` glyph keeps its
+alignment. The header draws
+`icon` (default Layers), then `keyLabel` in a muted monospace style, then
+the label, and right-aligns `<threads>/<rows>` when the group has
+placeholder rows, counting the threads shown out of every row. A `card`
+group wraps the header and rows in a 1px bordered, 6px-radius card whose
+header stays sticky within it. A `minimal` group draws no card and, when it
+has a `keyLabel`, shows it in place of the icon as a pill at the start of the
+header (muted sidebar-accent background, monospace `text-2xs`, 4px radius).
+Row icons are 14px and toned (success green,
+muted grey, accent purple, danger red); a trailing dot uses the same tones.
+A `variant: "ghost"` placeholder row draws subtle-foreground text with no
+border or extra padding, so its icon and title start at the same inset as
+thread rows at the same depth.
+A placeholder row's action is shown on hover or focus, and always on coarse
+pointers: an outlined button, or a compact round ghost button when its label
+is a single character such as `+`. Group threads keep their rows, drag, pin, archive,
+and rename behavior; dragging the header moves the group's threads like a
+worktree group, and the group sorts among the project's items by its
+highest-sorting thread either way. Collapsed state shares the `collapsedEnvironments`
+preference, keyed by the group id, and navigating to a grouped thread expands
+its group.
+
+The bundled Inbox list places each group in its most urgent member's
+section and draws the header's `icon`, `keyLabel`, and label with the
+group's threads and placeholder rows below it.
+
+**Audit before stabilizing.**
+
+1. **Modes.** The Thread list applies groups only in By project mode.
+   Decide whether chronological and machine modes should apply them, and
+   how a group spans custom sections there.
+2. **Placeholder rows.** Rows carry plugin callbacks into host-rendered UI.
+   Confirm a click handler plus one button is enough, whether the four tones
+   and the dot/text trailing cover providers' states, and whether rows need
+   keyboard navigation with the thread rows. The compact action's accessible
+   name is its one-character label, such as "+"; decide whether actions need
+   an icon name and a separate accessible label instead of inferring the
+   compact style from label length.
+3. **Claiming.** First claimant wins across plugins. Confirm that is
+   acceptable, or whether groups need priorities or nesting.
+4. **Hook lifetime.** Providers stay mounted while the plugin is enabled,
+   whether or not the sidebar is visible. Confirm that cost is acceptable,
+   or mount providers only with the thread list.
+5. **Collapse storage.** Decide whether group collapse state deserves its own
+   preference instead of sharing `collapsedEnvironments`.
+6. **Decorations.** `depth` draws a host rail on placeholder rows and placed
+   threads alike. Decide whether providers still need glyph-prefixed
+   placeholder titles once they adopt `depth`, whether a title override is
+   needed (it conflicts with inline rename), and whether dragging within a
+   `keepOrder` group should be disabled since the provider owns the order.
+7. **Header.** Decide whether the `<threads>/<rows>` count should be
+   provider-supplied, and whether `card` should become the default once
+   other providers adopt it.
+
+**Pull requests (added 2026-10-21).** A placed thread takes an optional
+`pullRequest: { number, state }` (`ExperimentalSidebarThreadRowPullRequest`);
+the host drops a non-positive or fractional number or an unknown state.
+Consumer: the pr-review plugin, whose review threads work on a PR their
+branch lookup does not find. No bundled list draws it.
+
+**Key label link (added 2026-10-22).** A group also takes `labelHref`, an
+HTTP(S) URL that turns the header's `keyLabel` into a link opened with
+`useBbNavigate().openUrl`, the path core's link handling uses, so it honors
+the BB browser preference. The host drops other schemes and a `labelHref`
+without `keyLabel`. Consumer: the pr-review plugin, linking ticket keys to
+their Jira pages. Core caller: the bundled Inbox list's group header. The
+Thread list draws `keyLabel` without the link.
+
+8. **Pull request source.** No bundled list draws `pullRequest`. Decide
+   whether a list should show it, whether it should override the branch
+   lookup or only fill in when it finds none, and whether the host should
+   fetch state itself from the number.
+9. **Link parity.** Decide whether the Thread list should link `keyLabel`
+   like the Inbox list does.
+
+## `app.slots.experimental_sidebarProjectDecoration` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-09).** Consumer: the project-emoji plugin
+(benwaffle/bb-plugins), which returns each project's emoji and hue. No
+bundled list calls `experimental_useSidebarProjectDecoration`: the Thread
+list draws project headers without decorations, and the Inbox list draws
+its own project icons. A replacement thread list can call it.
+
+**What it does.** A plugin registers `{ id, title, useDecoration }`.
+`experimental_useSidebarProjectDecoration(projectId)` requests a project; for
+every requested project the host mounts one hidden component per
+registration inside the plugin's context (crash boundary included) and calls
+`useDecoration(projectId)` there, so the hook can use `useRpc`,
+`useRealtime`, and other plugin hooks. The request lasts while any caller for
+that project stays mounted. The hook returns
+`{ leading?, accentColor?, labelClassName?, tint? }` or `null`. The host drops
+an `accentColor` the browser's `CSS.supports("color", …)` rejects, blank
+`labelClassName`, and `tint` without a valid `accentColor`. It merges every
+plugin's output for the project in plugin id order: `leading` collects each
+plugin's node, mounted in that plugin's own `PluginSlotMount`; `accentColor`,
+`labelClassName`, and `tint` come from the first plugin that sets a color or
+classes. The resolved value always carries every field (`null`/`false` for
+absence), or the hook returns `null` when no plugin decorates the project.
+
+**Audit before stabilizing.**
+
+1. **Core caller.** No bundled list renders this slot. Before stabilizing,
+   render it in a bundled list or remove it.
+2. **Merging.** First plugin by id wins the style fields. Decide whether
+   several plugins should be able to color a header, or whether a priority or
+   a single-owner rule is needed.
+3. **Leading content.** Plugins receive no drag or collapse contract for
+   interactive nodes beyond stopping propagation themselves. Decide whether
+   the host should wrap `leading` with those guards.
+4. **Color validation.** `CSS.supports` is skipped where the runtime lacks
+   it. Decide whether the host should normalize colors, and whether the tint
+   strength should be a host constant or part of the contract.
+5. **Hook lifetime.** Hooks run once per requested project per registration.
+   Confirm the cost with many projects, or batch them into one hook taking
+   every requested project id.
+
+## `app.slots.experimental_sidebarThreadDecoration` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-20).** Consumers: the project-emoji plugin
+(benwaffle/bb-plugins), which returns each project's `{ title, hue }` through
+`useDecoration`, and the pr-review plugin, which returns each review
+thread's ticket key, Jira link, PR icon, and pull request through
+`useThreadDecoration`. Core caller: the bundled Inbox list's rows call
+`experimental_useSidebarThreadRowDecoration(thread.id, thread.projectId)`
+and draw `label`, linked when `labelHref` is set, on the row's last line
+before the branch; a row inside a group whose `keyLabel` equals the label
+leaves it out. No bundled list calls
+`experimental_useSidebarThreadDecoration`.
+
+**What it does.** A plugin registers `{ id, title, useDecoration?,
+useThreadDecoration? }` with at least one hook. The request, hidden
+per-plugin mount, and hook lifetime match
+`experimental_sidebarProjectDecoration`.
+
+- `useDecoration(projectId)` returns `{ leading?, title?, hue? }` or `null`.
+  Blank strings are dropped, `hue` outside 0–360 is dropped, and a
+  decoration without `leading` or a valid `hue` is ignored. The first plugin
+  by id with either wins, read with
+  `experimental_useSidebarThreadDecoration(projectId)`.
+- `useThreadDecoration(threadId, projectId)` returns `{ icon?, label?,
+  labelHref?, description?, trailing?, pullRequest? }` or `null`; `icon`,
+  `description`, `trailing`, and `pullRequest` reuse the
+  `experimental_sidebarThreadGroups` thread row shapes. `labelHref` is an
+  HTTP(S) URL opened with `useBbNavigate().openUrl`; the resolved decoration
+  reports `labelHref: string | null`, `null` without a `label` or for other
+  schemes. The first plugin by id with a valid field wins, read with
+  `experimental_useSidebarThreadRowDecoration(threadId, projectId)`, which
+  requests the hook for that row.
+
+**Audit before stabilizing.**
+
+1. **Core caller.** Only the row hook's `label` and `labelHref` have a
+   bundled renderer. Decide whether a bundled list should draw the per-project
+   decoration and the row's `icon`, `description`, `trailing`, and
+   `pullRequest`, or remove what none draws.
+2. **Merging.** Only one plugin's decoration shows. Decide whether several
+   should stack, as project header `leading` nodes do.
+3. **Content.** `leading` is a plain string. Decide whether a node or an icon
+   name is needed, and whether the host should cap its length.
+4. **Overlap.** Decide whether this should merge with
+   `experimental_sidebarProjectDecoration` into one per-project slot.
+5. **Per-row cost.** The host mounts one hook per plugin per requesting row.
+   Measure with long lists, or batch into one hook taking every requested
+   thread id.
+6. **Merging with groups.** A plugin can describe the same thread as a group
+   row and through this hook. Decide whether one hook should serve both.
+7. **Color model.** `hue` leaves lightness and chroma to the host so contrast
+   holds. Decide whether plugins need a full color, and how a full color
+   would keep AA in both themes.
+
 ## `app.slots.experimental_threadInfoRow` / `app.slots.experimental_threadInfoSection` / `experimental_THREAD_INFO_ROW_GROUPS` / `experimental_THREAD_INFO_SECTION_GROUPS` / `experimental_InfoSection` / `experimental_DetailRow` / `experimental_InfoList` / `experimental_InfoListRow` (`@get-bb/plugin-sdk/app`)
 
 A registration is `{ id, group, order?, component }`. The component receives
@@ -3108,7 +3319,8 @@ draw without waiting.
 `experimental_ThreadRowMetadata` on a line under each row's title, the same call a
 plugin-built list makes, only while the `threadRowMetadata` experiment is on
 and the user turns on Organize → Rows → Metadata (`showRowMetadata`); both are
-off by default. The row grows to two lines only
+off by default. While Two-line rows (`twoLineRows`) gives the row a second
+line, the items join the end of that line instead. The row grows to two lines only
 while an item draws something, the line is hidden while the row is renamed or
 customized, and clicks on it go through the row's own click handling. The
 GitHub PR Status plugin registers the first item: the current-branch pull

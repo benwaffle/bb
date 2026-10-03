@@ -81,6 +81,7 @@ function collectRootNodes(
       case "thread":
         return [item.node];
       case "environment":
+      case "plugin-group":
         return item.group.nodes;
       case "section":
         return collectRootNodes(item.group.items);
@@ -88,14 +89,18 @@ function collectRootNodes(
   });
 }
 
-function getPinnedItemThread(item: ProjectThreadItem): SidebarThread {
+function getPinnedItemThread(item: ProjectThreadItem): SidebarThread | null {
   switch (item.kind) {
     case "thread":
       return item.node.thread;
     case "environment":
       return item.group.nodes[0].thread;
-    case "section":
-      return getPinnedItemThread(item.group.items[0]);
+    case "plugin-group":
+      return item.group.nodes[0]?.thread ?? null;
+    case "section": {
+      const [first] = item.group.items;
+      return first === undefined ? null : getPinnedItemThread(first);
+    }
   }
 }
 
@@ -146,9 +151,12 @@ export function buildPinnedSidebarState({
       );
     }
   }
-  rootItems.sort((left, right) =>
-    comparePinnedRoots(getPinnedItemThread(left), getPinnedItemThread(right)),
-  );
+  rootItems.sort((left, right) => {
+    const leftThread = getPinnedItemThread(left);
+    const rightThread = getPinnedItemThread(right);
+    if (leftThread === null || rightThread === null) return 0;
+    return comparePinnedRoots(leftThread, rightThread);
+  });
   const rootNodes = collectRootNodes(rootItems);
   rootNodes.sort((left, right) =>
     comparePinnedRoots(left.thread, right.thread),
