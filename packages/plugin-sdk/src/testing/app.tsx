@@ -33,6 +33,8 @@ import {
   type ExperimentalSidebarNavigationRegistration,
   type ExperimentalSidebarNavigationSplit,
   type ExperimentalSidebarNavigationState,
+  type ExperimentalResolvedSidebarThreadGroup,
+  type ExperimentalSidebarThreadGroupsRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
   type PluginAppSetup,
@@ -299,6 +301,7 @@ interface SlotEnv {
   threadActions: TestThreadActionsResolver;
   threadActionRegistrations: readonly PluginThreadActionRegistrationInfo[];
   sidebarPullRequests: ReadonlyMap<string, PluginSidebarPullRequest>;
+  sidebarThreadGroups: readonly ExperimentalResolvedSidebarThreadGroup[];
   sidebarDraftThreadIds: ReadonlySet<string>;
   sidebarRowStatuses: ReadonlyMap<string, PluginSidebarThreadRowStatus>;
   sidebarShortcuts: ReadonlyMap<string, PluginSidebarThreadShortcut>;
@@ -1496,6 +1499,10 @@ const testPluginSdkApp = {
   useSdk(): PluginBrowserBbSdk {
     return useSlotEnv("useSdk").sdk;
   },
+  experimental_useSidebarThreadGroups(): readonly ExperimentalResolvedSidebarThreadGroup[] {
+    return useSlotEnv("experimental_useSidebarThreadGroups")
+      .sidebarThreadGroups;
+  },
   experimental_useSidebarThreadPullRequest(
     threadId,
   ): PluginSidebarThreadPullRequestState {
@@ -1569,6 +1576,7 @@ export interface CapturedPluginApp {
   experimentalSidebarFooterItems: CollectedExperimentalSidebarFooterItem[];
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: ExperimentalSidebarNavigationRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadActions: PluginThreadActionRegistration<unknown>[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];
@@ -1845,6 +1853,10 @@ export interface RenderSlotOptions<
    * by thread id. Omitted → every thread reports none.
    */
   sidebarPullRequests?: Record<string, PluginSidebarPullRequest>;
+  /**
+   * Groups `experimental_useSidebarThreadGroups()` reports. Omitted → none.
+   */
+  sidebarThreadGroups?: readonly ExperimentalResolvedSidebarThreadGroup[];
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
    * report as holding an unsent draft. Omitted → none.
@@ -2608,6 +2620,7 @@ export function renderSlot<
     threadActionRegistrations:
       options.threadActionRegistrations ?? NO_THREAD_ACTION_REGISTRATIONS,
     sidebarPullRequests,
+    sidebarThreadGroups: options.sidebarThreadGroups ?? [],
     sidebarDraftThreadIds,
     sidebarRowStatuses,
     sidebarShortcuts,

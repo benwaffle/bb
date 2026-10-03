@@ -37,6 +37,7 @@ const {
   useRealtimeConnectionState,
   useRpc,
   useSdk,
+  experimental_useSidebarThreadGroups,
   experimental_copyToClipboard,
   experimental_useSidebarNavigation,
   experimental_useSidebarNavigationSplit,
@@ -529,6 +530,74 @@ const app = await loadPluginApp(
   }),
 );
 
+function SidebarThreadGroupsProbe() {
+  const groups = experimental_useSidebarThreadGroups();
+  return (
+    <ul>
+      {groups.flatMap((group) =>
+        group.rows.map((row) =>
+          "threadId" in row ? (
+            <li key={row.threadId}>
+              {`${group.label} ${row.threadId} depth ${row.depth ?? 0} ${row.description ?? ""} ${row.trailing?.kind ?? ""}`}
+            </li>
+          ) : (
+            <li key={row.id}>
+              {`${group.style} ${group.keyLabel ?? ""} ${group.label} row ${row.title} ${row.icon?.tone ?? ""} ${row.variant ?? "plain"} ${row.action?.label ?? ""}`}
+            </li>
+          ),
+        ),
+      )}
+    </ul>
+  );
+}
+
+describe("sidebar thread groups test runtime", () => {
+  it("reports configured groups with placed threads in the order given", () => {
+    renderSlot(
+      { component: SidebarThreadGroupsProbe },
+      {},
+      {
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            keyLabel: "CORE-21",
+            label: "Importer",
+            threadIds: ["thr_top"],
+            rows: [
+              {
+                id: "pr-552",
+                title: "#552",
+                icon: { name: "GitMerge", tone: "accent" },
+                variant: "ghost",
+                onSelect: () => undefined,
+                action: { label: "+", run: () => undefined },
+              },
+              {
+                threadId: "thr_top",
+                depth: 1,
+                description: "stacked on #552",
+                trailing: { kind: "dot", tone: "success" },
+              },
+            ],
+            keepOrder: true,
+            style: "minimal",
+          },
+        ],
+      },
+    );
+
+    expect(
+      Array.from(document.querySelectorAll("li"), (item) => item.textContent),
+    ).toEqual([
+      "minimal CORE-21 Importer row #552 accent ghost +",
+      "Importer thr_top depth 1 stacked on #552 dot",
+    ]);
+  });
+});
+
 describe("loadPluginApp", () => {
   beforeEach(() => {
     messageActionRuns.length = 0;
@@ -564,6 +633,35 @@ describe("loadPluginApp", () => {
         }),
       ),
     ).rejects.toThrow('slots.experimental_appOverlay: duplicate id "office"');
+  });
+
+  it("captures and validates sidebar thread group registrations", async () => {
+    const useGroups = () => [];
+    const captured = await loadPluginApp(
+      definePluginApp((builder) => {
+        builder.slots.experimental_sidebarThreadGroups({
+          id: "tickets",
+          title: "Tickets",
+          useGroups,
+        });
+      }),
+    );
+    expect(captured.sidebarThreadGroups).toEqual([
+      { id: "tickets", title: "Tickets", useGroups },
+    ]);
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.experimental_sidebarThreadGroups({
+            id: "tickets",
+            title: "Tickets",
+            useGroups: undefined as never,
+          });
+        }),
+      ),
+    ).rejects.toThrow(
+      'slots.experimental_sidebarThreadGroups: "useGroups" must be a function',
+    );
   });
 
   it("captures and validates New thread panel action registrations", async () => {

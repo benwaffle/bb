@@ -89,6 +89,7 @@ vi.mock("@/lib/plugin-slots", () => ({
       },
     ],
     settingsSections: [],
+    sidebarThreadGroups: [],
   }),
 }));
 
