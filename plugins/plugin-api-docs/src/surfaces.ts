@@ -203,6 +203,58 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         experimental: true,
       },
       {
+        id: "sidebar-project-decoration",
+        title: "Sidebar project headers",
+        summary:
+          "Describe a leading icon, name color, and row tint for project headers and thread rows that thread lists can draw. With this, a plugin can:",
+        bullets: [
+          "Return each project's look from a React hook, so plugin RPC and realtime hooks work inside it",
+          "Describe a project's header decoration and its emoji, name, and hue for thread lists to draw",
+          "Give a thread row its own icon, label, ticket link, description, and trailing state",
+          "Color the project name bold or add classes, and tint the header row under hover and drop states",
+        ],
+        apiSymbols: [
+          "ExperimentalSidebarProjectDecorationRegistration",
+          "ExperimentalSidebarProjectDecoration",
+          "ExperimentalResolvedSidebarProjectDecoration",
+          "experimental_useSidebarProjectDecoration",
+          "ExperimentalSidebarThreadDecorationRegistration",
+          "ExperimentalSidebarThreadDecoration",
+          "ExperimentalResolvedSidebarThreadDecoration",
+          "experimental_useSidebarThreadDecoration",
+          "ExperimentalSidebarThreadRowDecoration",
+          "ExperimentalResolvedSidebarThreadRowDecoration",
+          "experimental_useSidebarThreadRowDecoration",
+        ],
+        firstParty: ["Thread list"],
+        experimental: true,
+      },
+      {
+        id: "sidebar-thread-groups",
+        title: "Sidebar thread groups",
+        summary:
+          "Add plugin-defined groups that nest threads in bb's sidebar without replacing the thread list. With this, a plugin can:",
+        bullets: [
+          "Return groups from a React hook, so plugin RPC and realtime hooks work inside it",
+          "Nest threads under a labeled group, framed as a card or minimal with the ticket key as a pill",
+          "Add placeholder rows for work without a thread, drawn as ghost rows with a hover + button",
+          "Mark rows with state icons and agent dots, and indent stacked work on a connector rail",
+        ],
+        apiSymbols: [
+          "ExperimentalSidebarThreadGroupsRegistration",
+          "ExperimentalSidebarThreadGroup",
+          "ExperimentalSidebarThreadGroupRow",
+          "ExperimentalSidebarThreadGroupThreadRow",
+          "ExperimentalSidebarThreadGroupTone",
+          "ExperimentalSidebarThreadGroupRowIcon",
+          "ExperimentalSidebarThreadGroupRowTrailing",
+          "ExperimentalSidebarThreadRowPullRequest",
+          "ExperimentalResolvedSidebarThreadGroup",
+          "experimental_useSidebarThreadGroups",
+        ],
+        experimental: true,
+      },
+      {
         id: "sidebar-footer",
         title: "Sidebar footer items",
         summary:
