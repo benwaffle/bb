@@ -265,6 +265,7 @@ function createProps(
   isConversationCollapsed = false,
 ): ThreadDetailSecondaryContentProps {
   return {
+    dockedPanels: { renderContent: () => null, onUndock: () => {} },
     footer: <div data-testid="footer" />,
     header: <div data-testid="header" />,
     isBoundedPane: false,
