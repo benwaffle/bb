@@ -37,6 +37,7 @@ export const {
   experimental_ThreadActionsContextMenu,
   experimental_THREAD_ACTION_GROUPS,
   experimental_useSidebarThreadPullRequest,
+  experimental_useSidebarThreadGroups,
   experimental_useSidebarThreadSplit,
   useSidebarThreadDraft,
   useSidebarThreadDraftIds,

@@ -263,12 +263,12 @@ export function collectSectionThreadDndLookup(
     registerNestedChildren(node, parentKey);
   };
   const registerEnvironment = (
-    item: Extract<ProjectThreadItem, { kind: "environment" }>,
+    item: Extract<ProjectThreadItem, { kind: "environment" | "plugin-group" }>,
     parentKey: string,
     nestParentId?: string,
   ) => {
     const itemId = getSidebarDndItemId(item);
-    lookup.itemKindById.set(itemId, "environment");
+    lookup.itemKindById.set(itemId, item.kind);
     lookup.parentKeyByItemId.set(itemId, parentKey);
     lookup.groupThreadsByItemId.set(
       itemId,
@@ -278,7 +278,10 @@ export function collectSectionThreadDndLookup(
       itemId,
       item.group.nodes.map((node) => node.thread.id),
     );
-    lookup.threadByItemId.set(itemId, item.group.nodes[0].thread);
+    const [firstNode] = item.group.nodes;
+    if (firstNode !== undefined) {
+      lookup.threadByItemId.set(itemId, firstNode.thread);
+    }
     for (const node of item.group.nodes)
       registerNode(node, parentKey, nestParentId);
   };
@@ -289,7 +292,7 @@ export function collectSectionThreadDndLookup(
     for (const child of node.children) {
       if (child.kind === "thread")
         registerNode(child.node, parentKey, node.thread.id);
-      else if (child.kind === "environment")
+      else if (child.kind === "environment" || child.kind === "plugin-group")
         registerEnvironment(child, parentKey, node.thread.id);
     }
   };
@@ -318,7 +321,7 @@ export function collectSectionThreadDndLookup(
       lookup.parentKeyByItemId.set(itemId, parentKey);
       if (item.kind === "thread") {
         registerNode(item.node, parentKey);
-      } else if (item.kind === "environment") {
+      } else if (item.kind === "environment" || item.kind === "plugin-group") {
         registerEnvironment(item, parentKey);
       } else if (item.kind === "section") {
         const sectionId = options.groups
@@ -360,7 +363,7 @@ export function isThreadWithinSubtree(
     if (item.kind === "thread") {
       if (item.node.thread.id === candidateThreadId) return true;
       stack.push(...item.node.children);
-    } else if (item.kind === "environment") {
+    } else if (item.kind === "environment" || item.kind === "plugin-group") {
       for (const node of item.group.nodes) {
         if (node.thread.id === candidateThreadId) return true;
         stack.push(...node.children);

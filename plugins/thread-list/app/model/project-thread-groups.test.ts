@@ -4,7 +4,9 @@ import {
   buildProjectThreadGroups,
   compareByCreatedAtDescending,
   compareStandardThreads,
+  countProjectThreadItemRows,
   createSidebarProjectIdResolver,
+  type PluginThreadGroupDefinition,
   resolveSidebarProjectId,
   type ProjectThreadItem,
   type ProjectThreadNode,
@@ -21,7 +23,8 @@ type TreeSummary =
   | string
   | { id: string; children: TreeSummary[] }
   | { env: string; threads: TreeSummary[] }
-  | { section: string; name: string; items: TreeSummary[] };
+  | { section: string; name: string; items: TreeSummary[] }
+  | { group: string; threads: TreeSummary[]; rows: string[] };
 
 function getItemAlphaLabel(item: ProjectThreadItem): string {
   switch (item.kind) {
@@ -35,6 +38,8 @@ function getItemAlphaLabel(item: ProjectThreadItem): string {
         item.group.nodes[0]?.thread.titleFallback ??
         ""
       );
+    case "plugin-group":
+      return item.group.label;
   }
 }
 
@@ -79,6 +84,12 @@ function summarizeItems(items: readonly ProjectThreadItem[]): TreeSummary[] {
         return {
           env: item.group.environmentId,
           threads: item.group.nodes.map(summarizeNode),
+        };
+      case "plugin-group":
+        return {
+          group: item.group.id,
+          threads: item.group.nodes.map(summarizeNode),
+          rows: item.group.rows.map((row) => row.id),
         };
       case "section":
         return {
@@ -621,6 +632,200 @@ describe("worktree grouping preference", () => {
     );
 
     expect(summarizeItems(items)).toEqual(["wt-b", "wt-a"]);
+  });
+});
+
+function pluginGroup(
+  id: string,
+  threadIds: readonly string[],
+  rowIds: readonly string[] = [],
+): PluginThreadGroupDefinition {
+  return {
+    id,
+    label: id,
+    threadIds,
+    rows: rowIds.map((rowId) => ({
+      id: rowId,
+      title: rowId,
+      onSelect: () => undefined,
+    })),
+    keepOrder: false,
+  };
+}
+
+describe("plugin thread groups", () => {
+  it("nests root threads under a group and orders the group by its first thread", () => {
+    const rootItems = buildProjectThreadGroups(
+      [
+        createThread({ id: "a", createdAt: 10, latestAttentionAt: 10 }),
+        createThread({ id: "b", createdAt: 20, latestAttentionAt: 20 }),
+        createThread({ id: "c", createdAt: 30, latestAttentionAt: 30 }),
+        createThread({ id: "d", createdAt: 40, latestAttentionAt: 40 }),
+        createThread({
+          id: "d-child",
+          parentThreadId: "d",
+          createdAt: 50,
+          latestAttentionAt: 50,
+        }),
+      ],
+      compareStandardThreads,
+      true,
+      [
+        pluginGroup("ticket-1", ["a", "c", "d-child"]),
+        pluginGroup("ticket-2", ["b"]),
+      ],
+    );
+
+    expect(summarizeItems(rootItems)).toEqual([
+      { id: "d", children: ["d-child"] },
+      { group: "ticket-1", threads: ["c", "a"], rows: [] },
+      "b",
+    ]);
+  });
+
+  it("shows a group with rows even without threads, after the thread items", () => {
+    const rootItems = buildProjectThreadGroups(
+      [
+        createThread({ id: "a", createdAt: 10 }),
+        createThread({ id: "b", createdAt: 20 }),
+      ],
+      compareStandardThreads,
+      true,
+      [
+        pluginGroup("only-rows", [], ["pr-9"]),
+        pluginGroup("one-thread", ["a"], ["pr-7"]),
+        pluginGroup("claims-a-too", ["a", "b"]),
+      ],
+    );
+
+    expect(summarizeItems(rootItems)).toEqual([
+      "b",
+      { group: "one-thread", threads: ["a"], rows: ["pr-7"] },
+      { group: "only-rows", threads: [], rows: ["pr-9"] },
+    ]);
+  });
+
+  it("interleaves placed threads and rows in provider order with keepOrder", () => {
+    const placeholder = (id: string) => ({
+      id,
+      title: id,
+      onSelect: () => undefined,
+    });
+    const [item] = buildProjectThreadGroups(
+      [
+        createThread({ id: "base", createdAt: 10, latestAttentionAt: 10 }),
+        createThread({ id: "top", createdAt: 30, latestAttentionAt: 30 }),
+        createThread({ id: "loose", createdAt: 20, latestAttentionAt: 20 }),
+        createThread({ id: "plain", createdAt: 40, latestAttentionAt: 40 }),
+      ],
+      compareStandardThreads,
+      true,
+      [
+        {
+          id: "ticket",
+          label: "ticket",
+          threadIds: ["base", "top", "loose", "plain"],
+          rows: [
+            { threadId: "base" },
+            placeholder("pr-2"),
+            { threadId: "top", depth: 2, description: "stacked on #2" },
+            { threadId: "missing", depth: 1 },
+          ],
+          keepOrder: true,
+        },
+      ],
+    );
+
+    expect(item?.kind).toBe("plugin-group");
+    if (item?.kind !== "plugin-group") return;
+    expect(
+      item.group.entries.map((entry) =>
+        entry.kind === "thread" ? entry.node.thread.id : entry.row.id,
+      ),
+    ).toEqual(["loose", "plain", "base", "pr-2", "top"]);
+    expect(item.group.nodes.map((node) => node.thread.id)).toEqual([
+      "plain",
+      "top",
+      "loose",
+      "base",
+    ]);
+    expect(item.group.decorations.get("top")).toEqual({
+      depth: 2,
+      description: "stacked on #2",
+    });
+    expect(item.group.decorations.has("loose")).toBe(false);
+  });
+
+  it("sorts placed threads in bb order above rows without keepOrder", () => {
+    const [item] = buildProjectThreadGroups(
+      [
+        createThread({ id: "base", createdAt: 10, latestAttentionAt: 10 }),
+        createThread({ id: "top", createdAt: 30, latestAttentionAt: 30 }),
+      ],
+      compareStandardThreads,
+      true,
+      [
+        {
+          id: "ticket",
+          label: "ticket",
+          threadIds: [],
+          rows: [
+            { threadId: "base", depth: 1 },
+            { id: "pr-1", title: "pr-1", onSelect: () => undefined },
+            { threadId: "top" },
+          ],
+          keepOrder: false,
+        },
+      ],
+    );
+
+    expect(summarizeItems(item === undefined ? [] : [item])).toEqual([
+      { group: "ticket", threads: ["top", "base"], rows: ["pr-1"] },
+    ]);
+    if (item?.kind !== "plugin-group") return;
+    expect(
+      item.group.entries.map((entry) =>
+        entry.kind === "thread" ? entry.node.thread.id : entry.row.id,
+      ),
+    ).toEqual(["top", "base", "pr-1"]);
+    expect(item.group.decorations.get("base")).toEqual({
+      depth: 1,
+      description: null,
+    });
+  });
+
+  it("takes precedence over worktree grouping and counts rows when expanded", () => {
+    const environment = makeSidebarEnvironment({
+      id: "env_shared",
+      providerId: "git-worktree",
+      isWorktree: true,
+    });
+    const rootItems = buildProjectThreadGroups(
+      [
+        createThread({ id: "a", createdAt: 10, environment }),
+        createThread({ id: "b", createdAt: 20, environment }),
+      ],
+      compareStandardThreads,
+      true,
+      [pluginGroup("ticket", ["a", "b"], ["pr-1", "pr-2"])],
+    );
+
+    expect(summarizeItems(rootItems)).toEqual([
+      { group: "ticket", threads: ["b", "a"], rows: ["pr-1", "pr-2"] },
+    ]);
+    const [item] = rootItems;
+    const context = {
+      collapsedThreadIds: new Set<string>(),
+      collapsedEnvironmentIds: new Set<string>(),
+      collapsedSectionKeys: new Set<string>(),
+    };
+    expect(countProjectThreadItemRows(item, context)).toBe(5);
+    expect(
+      countProjectThreadItemRows(item, {
+        ...context,
+        collapsedEnvironmentIds: new Set(["ticket"]),
+      }),
+    ).toBe(1);
   });
 });
 
