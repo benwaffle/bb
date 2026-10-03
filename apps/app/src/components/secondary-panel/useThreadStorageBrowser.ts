@@ -16,6 +16,7 @@ interface UseThreadStorageBrowserArgs {
 export interface ThreadStorageBrowserController {
   expandedFolders: ReadonlySet<string>;
   toggleFolder: (chainPaths: readonly string[]) => void;
+  revealFolder: (folderPath: string) => void;
   foldersShowingAll: ReadonlySet<string>;
   showAllInFolder: (folderPath: string) => void;
   lastSelectedPath: string | null;
@@ -136,6 +137,18 @@ export function useThreadStorageBrowser({
         : { ...current, expandedFolders };
     });
   }, []);
+  const revealFolder = useCallback((folderPath: string) => {
+    if (folderPath.length === 0) return;
+    setFolderState((current) => {
+      const expandedFolders = withPaths(current.expandedFolders, [
+        ...threadStorageAncestorPaths(folderPath),
+        folderPath,
+      ]);
+      return expandedFolders === current.expandedFolders
+        ? current
+        : { ...current, expandedFolders };
+    });
+  }, []);
   const showAllInFolder = useCallback((folderPath: string) => {
     setFolderState((current) => ({
       ...current,
@@ -152,6 +165,7 @@ export function useThreadStorageBrowser({
   return {
     expandedFolders: syncedFolderState.expandedFolders,
     toggleFolder,
+    revealFolder,
     foldersShowingAll: syncedFolderState.foldersShowingAll,
     showAllInFolder,
     lastSelectedPath: syncedFolderState.lastSelectedPath,
