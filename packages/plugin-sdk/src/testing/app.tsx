@@ -18,6 +18,7 @@ import { act, render, type RenderResult } from "@testing-library/react";
 import {
   type BbContext,
   type BbNavigate,
+  type ToThreadOptions,
   type BranchesState,
   type ComposerCustomization,
   type ComposerAttachment,
@@ -173,11 +174,7 @@ type PluginSdkFakeTree<T> = {
  */
 export type PluginSdkTestFakes = PluginSdkFakeTree<PluginBrowserBbSdk>;
 export type NavigateCall =
-  | {
-      method: "toThread";
-      threadId: string;
-      options?: Parameters<BbNavigate["toThread"]>[1];
-    }
+  | { method: "toThread"; threadId: string; options?: ToThreadOptions }
   | { method: "toProject"; projectId: string }
   | {
       method: "toPluginPanel";
