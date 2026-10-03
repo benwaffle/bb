@@ -34,6 +34,10 @@ import {
   type PluginSettingDescriptor,
   type PluginSettingsSectionProps,
   type PluginSidebarFooterActionProps,
+  type ExperimentalSidebarThreadGroup,
+  type ExperimentalSidebarThreadGroupRow,
+  type ExperimentalSidebarThreadGroupThreadRow,
+  type ExperimentalSidebarThreadGroupsRegistration,
   type PluginSourceCodeRendererProps,
   type PluginThreadHeaderActionProps,
   type ExperimentalThreadContextSegmentProps,
@@ -278,6 +282,7 @@ type SlotPropsByName = {
   experimental_newThreadPanelAction: PluginNewThreadPanelProps;
   pendingInteraction: PluginPendingInteractionProps;
   sidebarFooterAction: PluginSidebarFooterActionProps;
+  experimental_sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration;
   experimental_threadList: PluginThreadListProps;
   experimental_sidebarNavigation: ExperimentalSidebarNavigationProps;
   experimental_threadHeaderAction: PluginThreadHeaderActionProps;
@@ -363,6 +368,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   experimental_newThreadPanelAction: ["projectId", "params"],
   pendingInteraction: ["interaction", "submit", "cancel"],
   sidebarFooterAction: [],
+  experimental_sidebarThreadGroups: ["id", "title", "useGroups"],
   experimental_threadList: [
     "activeThreadId",
     "activeProjectId",
@@ -532,6 +538,84 @@ const _assertAllSidebarFooterActionRegistrationFieldsListed: MissingSidebarFoote
   ? true
   : never = true;
 void _assertAllSidebarFooterActionRegistrationFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_FIELDS = [
+  "projectId",
+  "key",
+  "label",
+  "keyLabel",
+  "icon",
+  "style",
+  "tooltip",
+  "threadIds",
+  "rows",
+  "keepOrder",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroup)[];
+
+type MissingSidebarThreadGroupField = Exclude<
+  keyof ExperimentalSidebarThreadGroup,
+  (typeof SIDEBAR_THREAD_GROUP_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupFieldsListed: MissingSidebarThreadGroupField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_STYLES = [
+  "flat",
+  "card",
+  "minimal",
+] as const satisfies readonly NonNullable<
+  ExperimentalSidebarThreadGroup["style"]
+>[];
+
+type MissingSidebarThreadGroupStyle = Exclude<
+  NonNullable<ExperimentalSidebarThreadGroup["style"]>,
+  (typeof SIDEBAR_THREAD_GROUP_STYLES)[number]
+>;
+const _assertAllSidebarThreadGroupStylesListed: MissingSidebarThreadGroupStyle extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupStylesListed;
+
+const SIDEBAR_THREAD_GROUP_ROW_FIELDS = [
+  "id",
+  "title",
+  "depth",
+  "description",
+  "tooltip",
+  "icon",
+  "trailing",
+  "onSelect",
+  "variant",
+  "action",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroupRow)[];
+
+type MissingSidebarThreadGroupRowField = Exclude<
+  keyof ExperimentalSidebarThreadGroupRow,
+  (typeof SIDEBAR_THREAD_GROUP_ROW_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupRowFieldsListed: MissingSidebarThreadGroupRowField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupRowFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS = [
+  "threadId",
+  "depth",
+  "description",
+  "icon",
+  "trailing",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroupThreadRow)[];
+
+type MissingSidebarThreadGroupThreadRowField = Exclude<
+  keyof ExperimentalSidebarThreadGroupThreadRow,
+  (typeof SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupThreadRowFieldsListed: MissingSidebarThreadGroupThreadRowField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupThreadRowFieldsListed;
 
 const MESSAGE_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -781,6 +865,27 @@ describe("bb-plugin-authoring skill", () => {
       ).toContain(field);
     }
     expect(skill).toContain("openSettings");
+  });
+
+  it("documents every sidebar thread group and placed thread field", () => {
+    expect(skill).toContain("ExperimentalSidebarThreadGroupThreadRow");
+    for (const field of [
+      ...SIDEBAR_THREAD_GROUP_FIELDS,
+      ...SIDEBAR_THREAD_GROUP_ROW_FIELDS,
+      ...SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS,
+    ]) {
+      expect(
+        skill,
+        `sidebar thread group field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+    for (const style of SIDEBAR_THREAD_GROUP_STYLES) {
+      expect(
+        skill,
+        `sidebar thread group style "${style}" is not documented in the skill`,
+      ).toContain(`"${style}"`);
+    }
+    expect(skill).toContain('variant: "ghost"');
   });
 
   it("documents every messageAction registration field", () => {
