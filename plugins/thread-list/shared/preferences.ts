@@ -165,7 +165,7 @@ export const preferenceDefinitions = {
   collapsedEnvironments: definePreference(
     stringListSchema,
     [],
-    "Environment ids whose rows are collapsed.",
+    "Environment and plugin thread group ids whose rows are collapsed.",
     "sidebar.collapsedEnvironments",
   ),
   collapsedThreadSections: definePreference(

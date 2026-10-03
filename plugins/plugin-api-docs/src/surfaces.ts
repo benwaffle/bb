@@ -189,6 +189,27 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         experimental: true,
       },
       {
+        id: "sidebar-thread-groups",
+        title: "Sidebar thread groups",
+        summary:
+          "Nests threads in bb's sidebar under groups your plugin defines, such as one row per ticket, without replacing the thread list. With this, a plugin can:",
+        bullets: [
+          "Return groups from a React hook the host runs inside the plugin, so useRpc and useRealtime work",
+          "Name a project, a label, a tooltip, and the thread ids to nest; threads keep their rows, pinning, archiving, renaming, and dragging",
+          "Add muted placeholder rows for work without a thread, each with a click handler and an optional button such as Start",
+          "Rely on bb's Thread list to show a group in Organize → By project when it holds two or more root threads or any placeholder rows, and to keep its collapsed state",
+          "Read every plugin's groups from a replacement thread list with experimental_useSidebarThreadGroups",
+        ],
+        apiSymbols: [
+          "ExperimentalSidebarThreadGroupsRegistration",
+          "ExperimentalSidebarThreadGroup",
+          "ExperimentalSidebarThreadGroupRow",
+          "ExperimentalResolvedSidebarThreadGroup",
+          "experimental_useSidebarThreadGroups",
+        ],
+        experimental: true,
+      },
+      {
         id: "sidebar-footer",
         title: "Sidebar footer items",
         summary:
