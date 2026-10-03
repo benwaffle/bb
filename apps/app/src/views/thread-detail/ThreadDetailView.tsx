@@ -1054,6 +1054,18 @@ function ThreadDetailViewInternal(
     ],
   );
   const workspacePreviewRootPath = environment?.path ?? null;
+  const revealStorageFolder = storageBrowserController.revealFolder;
+  const openThreadStorageFolder = useCallback(
+    (relativePath: string) => {
+      revealStorageFolder(relativePath);
+      openThreadInfo();
+    },
+    [openThreadInfo, revealStorageFolder],
+  );
+  const threadStorageFilePaths = useMemo(
+    () => threadStorageFiles?.files.map((file) => file.path) ?? null,
+    [threadStorageFiles],
+  );
   const {
     openLink: handleOpenTimelineLocalFileLink,
     openTargets: {
@@ -1069,7 +1081,9 @@ function ThreadDetailViewInternal(
   } = useThreadFileLinkOpener({
     environment,
     openFilePreview: openLiveFilePreview,
+    openThreadStorageDirectory: openThreadStorageFolder,
     threadId,
+    threadStorageFilePaths,
   });
   const parentThreadId = thread?.parentThreadId;
   const parentThreadDisplayName =
@@ -1645,19 +1659,21 @@ function ThreadDetailViewInternal(
     }
   };
   const panelTabs: readonly SecondaryPanelRenderableTab[] =
-    syncedOrderedSecondaryFileTabs.map((tab): SecondaryPanelRenderableTab => ({
-      ...presentPanelTab(tab),
-      tab,
-      renderContent: () => renderSecondaryTabContent(tab),
-      onSelect:
-        tab.kind === "terminal"
-          ? () => terminals.select(tab.terminalId)
-          : () => handleActivateFileTab(tab.id),
-      onClose:
-        tab.kind === "terminal"
-          ? () => terminals.close(tab.terminalId)
-          : () => closeTab(tab.id),
-    }));
+    syncedOrderedSecondaryFileTabs.map(
+      (tab): SecondaryPanelRenderableTab => ({
+        ...presentPanelTab(tab),
+        tab,
+        renderContent: () => renderSecondaryTabContent(tab),
+        onSelect:
+          tab.kind === "terminal"
+            ? () => terminals.select(tab.terminalId)
+            : () => handleActivateFileTab(tab.id),
+        onClose:
+          tab.kind === "terminal"
+            ? () => terminals.close(tab.terminalId)
+            : () => closeTab(tab.id),
+      }),
+    );
   const threadDetailContent = (
     <MarkdownLocalFileContextMenuContext.Provider
       value={getLocalFileContextMenuItems}

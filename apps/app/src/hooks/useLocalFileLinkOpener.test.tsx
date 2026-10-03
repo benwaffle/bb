@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock("@/hooks/useLiveFileOpenTargets", () => ({
   useLiveFileOpenTargets: (root: { hostId: string } | null) => ({
+    directoryOpenTargets: [],
     fileOpenTargets: root === null ? [] : [{ id: "cursor" }],
+    openPathInDirectoryTarget: vi.fn(async () => true),
     openPathInFileTarget: mocks.openPathInFileTarget,
   }),
 }));
@@ -32,7 +34,9 @@ function renderOpener(hostId: string | null) {
       canOpenInEditor: true,
       hostId,
       openFilePreview,
+      openThreadStorageDirectory: null,
       threadStorage: null,
+      threadStorageFilePaths: null,
       workspace: { environmentId: "env_1", rootPath: "/repo" },
     }),
   );
