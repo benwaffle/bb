@@ -24,6 +24,9 @@ import type {
   ExperimentalIconRegistration,
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
+  ExperimentalSidebarThreadGroupsRegistration,
+  ExperimentalSidebarProjectDecorationRegistration,
+  ExperimentalSidebarThreadDecorationRegistration,
   PluginSourceCodeRendererRegistration,
   ExperimentalThreadContextSegmentRegistration,
   ExperimentalThreadInfoRowRegistration,
@@ -75,6 +78,9 @@ export interface PluginRegistrationSet {
   experimentalSidebarFooterItems?: readonly CollectedExperimentalSidebarFooterItem[];
   threadLists?: readonly PluginThreadListRegistration[];
   experimentalSidebarNavigations?: readonly CollectedSidebarNavigationRegistration[];
+  sidebarThreadGroups?: readonly ExperimentalSidebarThreadGroupsRegistration[];
+  sidebarProjectDecorations?: readonly ExperimentalSidebarProjectDecorationRegistration[];
+  sidebarThreadDecorations?: readonly ExperimentalSidebarThreadDecorationRegistration[];
   threadHeaderActions?: readonly LegacyThreadHeaderActionRegistration[];
   threadContextSegments?: readonly ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows?: readonly ExperimentalThreadInfoRowRegistration[];
@@ -152,6 +158,12 @@ export interface PluginThreadListSlot
   extends PluginThreadListRegistration, PluginSlotBase {}
 export interface ExperimentalSidebarNavigationSlot
   extends CollectedSidebarNavigationRegistration, PluginSlotBase {}
+export interface ExperimentalSidebarThreadGroupsSlot
+  extends ExperimentalSidebarThreadGroupsRegistration, PluginSlotBase {}
+export interface ExperimentalSidebarProjectDecorationSlot
+  extends ExperimentalSidebarProjectDecorationRegistration, PluginSlotBase {}
+export interface ExperimentalSidebarThreadDecorationSlot
+  extends ExperimentalSidebarThreadDecorationRegistration, PluginSlotBase {}
 interface PluginThreadHeaderActionSlot
   extends LegacyThreadHeaderActionRegistration, PluginSlotBase {}
 export interface PluginThreadContextSegmentSlot
@@ -221,6 +233,9 @@ export interface PluginSlotSnapshot {
   sidebarFooterItems: readonly PluginSidebarFooterItemSlot[];
   threadLists: readonly PluginThreadListSlot[];
   experimentalSidebarNavigations: readonly ExperimentalSidebarNavigationSlot[];
+  sidebarThreadGroups: readonly ExperimentalSidebarThreadGroupsSlot[];
+  sidebarProjectDecorations: readonly ExperimentalSidebarProjectDecorationSlot[];
+  sidebarThreadDecorations: readonly ExperimentalSidebarThreadDecorationSlot[];
   threadHeaderActions: readonly PluginThreadHeaderActionSlot[];
   threadContextSegments: readonly PluginThreadContextSegmentSlot[];
   threadInfoRows: readonly PluginThreadInfoRowSlot[];
@@ -264,6 +279,9 @@ export const EMPTY_PLUGIN_SLOT_SNAPSHOT: PluginSlotSnapshot = {
   sidebarFooterItems: [],
   threadLists: [],
   experimentalSidebarNavigations: [],
+  sidebarThreadGroups: [],
+  sidebarProjectDecorations: [],
+  sidebarThreadDecorations: [],
   threadHeaderActions: [],
   threadContextSegments: [],
   threadInfoRows: [],
@@ -315,6 +333,9 @@ const SLOT_KINDS: readonly SlotKind[] = [
   "sidebarFooterItems",
   "threadLists",
   "experimentalSidebarNavigations",
+  "sidebarThreadGroups",
+  "sidebarProjectDecorations",
+  "sidebarThreadDecorations",
   "threadHeaderActions",
   "threadContextSegments",
   "threadInfoRows",
@@ -413,6 +434,9 @@ function flattenRegistrations(
     sidebarFooterItems: stamp<CollectedSidebarFooterItem>(sidebarFooterItems),
     threadLists: stamp(set.threadLists),
     experimentalSidebarNavigations: stamp(set.experimentalSidebarNavigations),
+    sidebarThreadGroups: stamp(set.sidebarThreadGroups),
+    sidebarProjectDecorations: stamp(set.sidebarProjectDecorations),
+    sidebarThreadDecorations: stamp(set.sidebarThreadDecorations),
     threadHeaderActions: stamp(set.threadHeaderActions),
     threadContextSegments: stamp(set.threadContextSegments),
     threadInfoRows: stamp(set.threadInfoRows),

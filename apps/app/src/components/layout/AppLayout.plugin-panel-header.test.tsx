@@ -92,6 +92,9 @@ function mockPluginSlotSnapshot() {
       },
     ],
     settingsSections: [],
+    sidebarThreadGroups: [],
+    sidebarProjectDecorations: [],
+    sidebarThreadDecorations: [],
   };
 }
 

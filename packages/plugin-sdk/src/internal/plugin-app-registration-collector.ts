@@ -33,6 +33,9 @@ import type {
   ExperimentalIconRegistration,
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
+  ExperimentalSidebarThreadGroupsRegistration,
+  ExperimentalSidebarProjectDecorationRegistration,
+  ExperimentalSidebarThreadDecorationRegistration,
   PluginSourceCodeRendererRegistration,
   ExperimentalThreadContextSegmentRegistration,
   ExperimentalThreadInfoRowRegistration,
@@ -389,6 +392,9 @@ export interface CollectedPluginAppRegistrations {
   experimentalSidebarFooterItems: CollectedExperimentalSidebarFooterItem[];
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: CollectedSidebarNavigationRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
+  sidebarProjectDecorations: ExperimentalSidebarProjectDecorationRegistration[];
+  sidebarThreadDecorations: ExperimentalSidebarThreadDecorationRegistration[];
   threadHeaderActions: LegacyThreadHeaderActionRegistration[];
   threadContextSegments: ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
@@ -537,6 +543,9 @@ export function collectPluginAppRegistrations(
     experimentalSidebarFooterItems: [],
     threadLists: [],
     experimentalSidebarNavigations: [],
+    sidebarThreadGroups: [],
+    sidebarProjectDecorations: [],
+    sidebarThreadDecorations: [],
     threadHeaderActions: [],
     threadContextSegments: [],
     threadInfoRows: [],
@@ -582,6 +591,9 @@ export function collectPluginAppRegistrations(
     threadList: new Set<string>(),
     sidebarNavigation: new Set<string>(),
     sidebarHeader: new Set<string>(),
+    sidebarThreadGroups: new Set<string>(),
+    sidebarProjectDecorations: new Set<string>(),
+    sidebarThreadDecorations: new Set<string>(),
     threadHeaderAction: new Set<string>(),
     threadContextSegment: new Set<string>(),
     threadInfoRow: new Set<string>(),
@@ -1083,6 +1095,57 @@ export function collectPluginAppRegistrations(
           ...collectedRegistration,
           placement: placement ?? "list",
           ...(headerComponent !== undefined ? { headerComponent } : {}),
+        });
+      },
+      experimental_sidebarThreadGroups(registration) {
+        const kind = "slots.experimental_sidebarThreadGroups";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarThreadGroups, id);
+        if (typeof registration.useGroups !== "function") {
+          throw new Error(`${kind}: "useGroups" must be a function`);
+        }
+        collected.sidebarThreadGroups.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useGroups: registration.useGroups,
+        });
+      },
+      experimental_sidebarProjectDecoration(registration) {
+        const kind = "slots.experimental_sidebarProjectDecoration";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarProjectDecorations, id);
+        if (typeof registration.useDecoration !== "function") {
+          throw new Error(`${kind}: "useDecoration" must be a function`);
+        }
+        collected.sidebarProjectDecorations.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useDecoration: registration.useDecoration,
+        });
+      },
+      experimental_sidebarThreadDecoration(registration) {
+        const kind = "slots.experimental_sidebarThreadDecoration";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarThreadDecorations, id);
+        const { useDecoration, useThreadDecoration } = registration;
+        for (const [field, hook] of [
+          ["useDecoration", useDecoration],
+          ["useThreadDecoration", useThreadDecoration],
+        ] as const) {
+          if (hook !== undefined && typeof hook !== "function") {
+            throw new Error(`${kind}: "${field}" must be a function`);
+          }
+        }
+        if (useDecoration === undefined && useThreadDecoration === undefined) {
+          throw new Error(
+            `${kind}: register "useDecoration", "useThreadDecoration", or both`,
+          );
+        }
+        collected.sidebarThreadDecorations.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          ...(useDecoration === undefined ? {} : { useDecoration }),
+          ...(useThreadDecoration === undefined ? {} : { useThreadDecoration }),
         });
       },
       experimental_threadContextSegment(registration) {
