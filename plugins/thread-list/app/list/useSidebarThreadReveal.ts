@@ -9,7 +9,10 @@ import {
 } from "../model/project-thread-groups.js";
 import { sectionKeyForThreadSection } from "../model/section-keys.js";
 import type { CollapsibleSidebarSectionId } from "../model/sidebar-section-id.js";
-import { useBbContext } from "@get-bb/plugin-sdk/app";
+import {
+  experimental_useSidebarThreadGroups,
+  useBbContext,
+} from "@get-bb/plugin-sdk/app";
 import type { OrganizationMode as SidebarOrganizationMode } from "../../shared/preferences.js";
 import { useSidebarData } from "../model/use-sidebar-data.js";
 import {
@@ -96,12 +99,25 @@ export function useSidebarThreadReveal(): void {
     () => projects.flatMap((project) => project.threads),
     [projects],
   );
+  const pluginThreadGroups = experimental_useSidebarThreadGroups();
+  const pluginGroupIdsByThreadId = useMemo(() => {
+    const groupIds = new Map<string, string[]>();
+    for (const group of pluginThreadGroups) {
+      for (const threadId of group.threadIds) {
+        const ids = groupIds.get(threadId);
+        if (ids) ids.push(group.id);
+        else groupIds.set(threadId, [group.id]);
+      }
+    }
+    return groupIds;
+  }, [pluginThreadGroups]);
   useSidebarThreadRevealCore({
     selectedThreadId: routedThreadId ?? undefined,
     threads,
     threadsReady: status === "ready",
     preferencesReady,
     personalProjectId: personalProject?.id ?? null,
+    pluginGroupIdsByThreadId,
   });
 }
 
@@ -174,6 +190,7 @@ interface ThreadRevealExpansionArgs {
   effectivePinnedThreadIds: ReadonlySet<string>;
   organizationMode: SidebarOrganizationMode;
   personalProjectId: string | null;
+  pluginGroupIdsByThreadId: ReadonlyMap<string, readonly string[]>;
 }
 
 export function resolveThreadRevealExpansion({
@@ -182,6 +199,7 @@ export function resolveThreadRevealExpansion({
   effectivePinnedThreadIds,
   organizationMode,
   personalProjectId,
+  pluginGroupIdsByThreadId,
 }: ThreadRevealExpansionArgs) {
   const threadIdsToExpand = new Set<string>();
   const environmentIdsToExpand = new Set<string>();
@@ -191,6 +209,10 @@ export function resolveThreadRevealExpansion({
     const environmentId = currentThread.environment?.id ?? null;
     if (environmentId !== null) {
       environmentIdsToExpand.add(environmentId);
+    }
+    for (const groupId of pluginGroupIdsByThreadId.get(currentThread.id) ??
+      []) {
+      environmentIdsToExpand.add(groupId);
     }
     const parentThreadId = currentThread.parentThreadId;
     if (parentThreadId === null) {
@@ -217,6 +239,7 @@ export function resolveThreadRevealExpansion({
 interface SidebarThreadRevealInputs {
   selectedThreadId: string | undefined;
   threads: readonly SidebarThread[];
+  pluginGroupIdsByThreadId: ReadonlyMap<string, readonly string[]>;
   threadsReady: boolean;
   preferencesReady: boolean;
   personalProjectId: string | null;
@@ -228,6 +251,7 @@ function useSidebarThreadRevealCore({
   threadsReady,
   preferencesReady,
   personalProjectId,
+  pluginGroupIdsByThreadId,
 }: SidebarThreadRevealInputs): void {
   const organizationMode = useAtomValue(sidebarOrganizationModeAtom);
   const expandThreadAncestors = useExpandThreadAncestors();
@@ -270,6 +294,7 @@ function useSidebarThreadRevealCore({
           effectivePinnedThreadIds,
           organizationMode,
           personalProjectId,
+          pluginGroupIdsByThreadId,
         });
 
       expandThreadAncestors(
@@ -309,6 +334,7 @@ function useSidebarThreadRevealCore({
     threadsReady,
     preferencesReady,
     personalProjectId,
+    pluginGroupIdsByThreadId,
     organizationMode,
     threads,
     threadById,

@@ -75,6 +75,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_THREAD_CONTEXT_SEGMENT_GROUPS`
 - `experimental_THREAD_INFO_ROW_GROUPS`
 - `experimental_THREAD_INFO_SECTION_GROUPS`
+- `experimental_useSidebarThreadGroups` — every plugin's sidebar thread
+  groups, for thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `experimental_useSidebarNavigation` — the sidebar navigation items in the
   user's saved order, the active item, Home state, and host actions to
@@ -254,6 +256,14 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalSidebarNavigationProps`
 - `ExperimentalSidebarNavigationRegistration`
 - `ExperimentalSidebarHeaderProps`
+- `ExperimentalSidebarThreadGroupsRegistration`
+- `ExperimentalSidebarThreadGroup`
+- `ExperimentalSidebarThreadGroupRow`
+- `ExperimentalSidebarThreadGroupThreadRow`
+- `ExperimentalSidebarThreadGroupTone`
+- `ExperimentalSidebarThreadGroupRowIcon`
+- `ExperimentalSidebarThreadGroupRowTrailing`
+- `ExperimentalResolvedSidebarThreadGroup`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`

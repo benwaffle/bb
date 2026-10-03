@@ -2409,6 +2409,183 @@ export interface ExperimentalSidebarNavigationRegistration {
 }
 
 /**
+ * Color a sidebar thread group draws an icon or trailing dot in: `success`
+ * green (an open pull request), `muted` grey (a draft), `accent` purple (a
+ * merged pull request, work in progress), `danger` red (a failure).
+ */
+export type ExperimentalSidebarThreadGroupTone =
+  | "success"
+  | "muted"
+  | "accent"
+  | "danger";
+
+/** A 14px icon drawn before a group row's title, such as a pull request state. */
+export interface ExperimentalSidebarThreadGroupRowIcon {
+  /** A {@link BbIconName}; unknown names fall back to a circle. */
+  name: BbIconName;
+  tone: ExperimentalSidebarThreadGroupTone;
+}
+
+/**
+ * State drawn at the end of a group row, such as whether an agent is working:
+ * a filled dot in a tone, or short muted text.
+ */
+export type ExperimentalSidebarThreadGroupRowTrailing =
+  | { kind: "dot"; tone: ExperimentalSidebarThreadGroupTone }
+  | { kind: "text"; text: string };
+
+/**
+ * A row a sidebar thread group shows for work that has no thread yet, such
+ * as an open pull request nobody has started reviewing. It renders muted,
+ * after the group's threads unless the group sets `keepOrder`, and is not
+ * draggable.
+ */
+export interface ExperimentalSidebarThreadGroupRow {
+  /** Unique within its group. */
+  id: string;
+  title: string;
+  /**
+   * Tree level below the group's first level, drawn as an indent with a thin
+   * connector rail at each level. 0 or absent → no indent.
+   */
+  depth?: number;
+  /** Secondary text shown after the title, such as an author or size. */
+  description?: string;
+  /** Tooltip for the row. */
+  tooltip?: string;
+  /** Leading icon. Absent → no icon. */
+  icon?: ExperimentalSidebarThreadGroupRowIcon;
+  /** Trailing state. Absent → nothing. */
+  trailing?: ExperimentalSidebarThreadGroupRowTrailing;
+  /** Runs when the user clicks the row. */
+  onSelect(): void;
+  /**
+   * `"ghost"` draws the row as work not started yet with more muted text.
+   * It adds no border or indent, so the title lines up with thread rows at
+   * the same depth; pass a faded leading icon for a stronger "not started"
+   * cue. Absent → a plain muted row.
+   */
+  variant?: "ghost";
+  /**
+   * A button shown while the row is hovered or focused (always on touch
+   * screens). A word such as "Start" draws an outlined button; a single
+   * character such as "+" draws a compact round ghost button. Absent → no
+   * button.
+   */
+  action?: {
+    label: string;
+    run(): void;
+  };
+}
+
+/**
+ * A thread placed in a group's `rows`, such as the review thread of a
+ * stacked pull request. The host draws its usual thread row (open, pin,
+ * archive, rename, drag) with the decorations added. Hosts that predate
+ * this entry ignore it, so also list the id in `threadIds`.
+ */
+export interface ExperimentalSidebarThreadGroupThreadRow {
+  threadId: string;
+  /**
+   * Tree level below the group's first level, drawn as an indent with a thin
+   * connector rail at each level. 0 or absent → no indent.
+   */
+  depth?: number;
+  /** Muted text shown after the thread title, such as "stacked on #552". */
+  description?: string;
+  /** Leading icon drawn before the title. Absent → no icon. */
+  icon?: ExperimentalSidebarThreadGroupRowIcon;
+  /** Trailing state drawn after the title. Absent → nothing. */
+  trailing?: ExperimentalSidebarThreadGroupRowTrailing;
+}
+
+/**
+ * A group a plugin asks the sidebar thread list to nest threads under, such
+ * as every review thread for one Jira ticket. Threads keep their own rows and
+ * behaviors (open, pin, archive, rename, drag); the group only adds a
+ * collapsible header above them.
+ */
+export interface ExperimentalSidebarThreadGroup {
+  /** Project whose thread list shows the group. */
+  projectId: string;
+  /** Unique within the registration; the host namespaces it per plugin. */
+  key: string;
+  /** Header text, such as a ticket summary. */
+  label: string;
+  /**
+   * Short identifier drawn in a muted monospace style before the label, such
+   * as a ticket key. Absent → the label alone.
+   */
+  keyLabel?: string;
+  /** {@link BbIconName} drawn before the header. Absent → the Layers icon. */
+  icon?: BbIconName;
+  /**
+   * `"card"` wraps the header and its rows in a bordered card; `"minimal"`
+   * draws no card and shows `keyLabel` as a small pill before the label in
+   * place of the icon; `"flat"` draws them like other sidebar groups.
+   * Absent → `"flat"`.
+   */
+  style?: "flat" | "card" | "minimal";
+  /** Tooltip for the header, such as the ticket summary. */
+  tooltip?: string;
+  /**
+   * Threads to nest. Ids of hidden, archived, child, or other-project
+   * threads are ignored, and a thread claimed by an earlier group stays there.
+   * The same rules apply to threads `rows` places.
+   */
+  threadIds: readonly string[];
+  /**
+   * Rows for work without a thread, and threads to decorate or place. A
+   * thread here takes its position and decorations from this entry even when
+   * `threadIds` also lists it.
+   */
+  rows: readonly (
+    | ExperimentalSidebarThreadGroupRow
+    | ExperimentalSidebarThreadGroupThreadRow
+  )[];
+  /**
+   * Show threads and rows in the order given: threads only `threadIds`
+   * lists, in that order, then `rows` with threads and placeholder rows
+   * interleaved. Absent → the host sorts the threads in its own order and
+   * shows placeholder rows after them.
+   */
+  keepOrder?: boolean;
+}
+
+/**
+ * A group as `experimental_useSidebarThreadGroups()` reports it: the
+ * provider's group with a host-assigned `id`, unique across plugins and
+ * stable while the provider keeps the same `key`. `threadIds` also holds
+ * the threads `rows` places, and `keepOrder` and `style` are always set.
+ */
+export interface ExperimentalResolvedSidebarThreadGroup extends ExperimentalSidebarThreadGroup {
+  id: string;
+  pluginId: string;
+  keepOrder: boolean;
+  style: "flat" | "card" | "minimal";
+}
+
+/**
+ * Supply thread groups to the sidebar thread list. `useGroups` is a React
+ * hook the host calls inside the plugin's context (so `useRpc`,
+ * `useRealtime`, and other plugin hooks work), mounted for as long as the
+ * plugin is enabled. Return the same array while nothing changed.
+ *
+ * The thread-list provider decides how to show the groups: bb's built-in
+ * list nests a project's threads under a group header when the group holds
+ * at least two threads, or any placeholder rows, and leaves a lone thread as a plain row.
+ * A group with placeholder rows shows "<threads>/<rows>" at the end of its
+ * header: its threads out of all its rows.
+ */
+export interface ExperimentalSidebarThreadGroupsRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  /** Label shown in capability details. */
+  title: string;
+  useGroups(): readonly ExperimentalSidebarThreadGroup[];
+}
+
+/**
  * Register this plugin as a viewer/editor for file extensions. By default,
  * matching files render the first applicable opener in deterministic slot
  * order. The user can pin BB's preview or a specific opener per extension
@@ -3565,6 +3742,14 @@ export interface PluginAppSlots {
    */
   experimental_sidebarNavigation(
     registration: ExperimentalSidebarNavigationRegistration,
+  ): void;
+  /**
+   * Nest sidebar threads under plugin-defined groups (see
+   * {@link ExperimentalSidebarThreadGroupsRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_sidebarThreadGroups(
+    registration: ExperimentalSidebarThreadGroupsRegistration,
   ): void;
   /**
    * Add context beside an existing thread's composer (see
@@ -5365,6 +5550,12 @@ export interface PluginSdkApp {
     readonly changes: "2_changes";
     readonly storage: "3_storage";
   };
+  /**
+   * Every enabled plugin's `experimental_sidebarThreadGroups` output, in
+   * plugin id order. For thread-list providers. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_useSidebarThreadGroups(): readonly ExperimentalResolvedSidebarThreadGroup[];
   /**
    * Per-row drag-to-split support (see {@link PluginSidebarThreadSplit}).
    * Call it once per rendered row, like the built-in sidebar does.
