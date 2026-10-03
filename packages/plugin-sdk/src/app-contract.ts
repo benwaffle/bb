@@ -1641,6 +1641,115 @@ export interface PluginThreadListRegistration {
 }
 
 /**
+ * A row a sidebar thread group shows for work that has no thread yet, such
+ * as an open pull request nobody has started reviewing. It renders muted,
+ * after the group's threads unless the group sets `keepOrder`, and is not
+ * draggable.
+ */
+export interface ExperimentalSidebarThreadGroupRow {
+  /** Unique within its group. */
+  id: string;
+  title: string;
+  /** Secondary text shown after the title, such as an author or size. */
+  description?: string;
+  /** Tooltip for the row. */
+  tooltip?: string;
+  /** Runs when the user clicks the row. */
+  onSelect(): void;
+  /** A trailing button, such as "Start". Absent → no button. */
+  action?: {
+    label: string;
+    run(): void;
+  };
+}
+
+/**
+ * A thread placed in a group's `rows`, such as the review thread of a
+ * stacked pull request. The host draws its usual thread row (open, pin,
+ * archive, rename, drag) with the decorations added. Hosts that predate
+ * this entry ignore it, so also list the id in `threadIds`.
+ */
+export interface ExperimentalSidebarThreadGroupThreadRow {
+  threadId: string;
+  /**
+   * Tree level below the group's first level, drawn as a `└` glyph indented
+   * one step per level past 1. 0 or absent → no glyph.
+   */
+  depth?: number;
+  /** Muted text shown after the thread title, such as "stacked on #552". */
+  description?: string;
+}
+
+/**
+ * A group a plugin asks the sidebar thread list to nest threads under, such
+ * as every review thread for one Jira ticket. Threads keep their own rows and
+ * behaviors (open, pin, archive, rename, drag); the group only adds a
+ * collapsible header above them.
+ */
+export interface ExperimentalSidebarThreadGroup {
+  /** Project whose thread list shows the group. */
+  projectId: string;
+  /** Unique within the registration; the host namespaces it per plugin. */
+  key: string;
+  /** Header text, such as a ticket key. */
+  label: string;
+  /** Tooltip for the header, such as the ticket summary. */
+  tooltip?: string;
+  /**
+   * Threads to nest. Ids of hidden, archived, child, or other-project
+   * threads are ignored, and a thread claimed by an earlier group stays there.
+   * The same rules apply to threads `rows` places.
+   */
+  threadIds: readonly string[];
+  /**
+   * Rows for work without a thread, and threads to decorate or place. A
+   * thread here takes its position and decorations from this entry even when
+   * `threadIds` also lists it.
+   */
+  rows: readonly (
+    | ExperimentalSidebarThreadGroupRow
+    | ExperimentalSidebarThreadGroupThreadRow
+  )[];
+  /**
+   * Show threads and rows in the order given: threads only `threadIds`
+   * lists, in that order, then `rows` with threads and placeholder rows
+   * interleaved. Absent → the host sorts the threads in its own order and
+   * shows placeholder rows after them.
+   */
+  keepOrder?: boolean;
+}
+
+/**
+ * A group as `experimental_useSidebarThreadGroups()` reports it: the
+ * provider's group with a host-assigned `id`, unique across plugins and
+ * stable while the provider keeps the same `key`. `threadIds` also holds
+ * the threads `rows` places, and `keepOrder` is always set.
+ */
+export interface ExperimentalResolvedSidebarThreadGroup extends ExperimentalSidebarThreadGroup {
+  id: string;
+  pluginId: string;
+  keepOrder: boolean;
+}
+
+/**
+ * Supply thread groups to the sidebar thread list. `useGroups` is a React
+ * hook the host calls inside the plugin's context (so `useRpc`,
+ * `useRealtime`, and other plugin hooks work), mounted for as long as the
+ * plugin is enabled. Return the same array while nothing changed.
+ *
+ * The thread-list provider decides how to show the groups: bb's built-in
+ * list nests a project's threads under a group header when the group holds
+ * at least two threads, or any placeholder rows, and leaves a lone thread as a plain row.
+ */
+export interface ExperimentalSidebarThreadGroupsRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  /** Label shown in capability details. */
+  title: string;
+  useGroups(): readonly ExperimentalSidebarThreadGroup[];
+}
+
+/**
  * Replace the navigation controls above the sidebar thread list. Exclusive:
  * bb ships its own rows as the bundled Navigation plugin
  * (`navigation/navigation`). By default the first registered provider other
@@ -2147,6 +2256,14 @@ export interface PluginAppSlots {
    * docs/api_to_audit.md for what to audit before the prefix drops.
    */
   experimental_threadList(registration: PluginThreadListRegistration): void;
+  /**
+   * Nest sidebar threads under plugin-defined groups (see
+   * {@link ExperimentalSidebarThreadGroupsRegistration}). Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_sidebarThreadGroups(
+    registration: ExperimentalSidebarThreadGroupsRegistration,
+  ): void;
   /**
    * Render a component in the thread header's action row (see
    * {@link PluginThreadHeaderActionRegistration}). Experimental: see
@@ -3577,6 +3694,12 @@ export interface PluginSdkApp {
   experimental_useSidebarThreadPullRequest(
     threadId: string,
   ): PluginSidebarThreadPullRequestState;
+  /**
+   * Every enabled plugin's `experimental_sidebarThreadGroups` output, in
+   * plugin id order. For thread-list providers. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_useSidebarThreadGroups(): readonly ExperimentalResolvedSidebarThreadGroup[];
   /**
    * Per-row drag-to-split support (see {@link PluginSidebarThreadSplit}).
    * Call it once per rendered row, like the built-in sidebar does.

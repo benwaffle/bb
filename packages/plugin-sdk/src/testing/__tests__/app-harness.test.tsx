@@ -38,6 +38,7 @@ const {
   useSdk,
   experimental_useSidebarNavigation,
   experimental_useSidebarNavigationSplit,
+  experimental_useSidebarThreadGroups,
   experimental_SidebarNavigationIcon: SidebarNavigationIcon,
   experimental_copyToClipboard,
 } = await import("../../app.js");
@@ -551,6 +552,59 @@ function NavigationProbe({ id }: { id: string }) {
   );
 }
 
+function SidebarThreadGroupsProbe() {
+  const groups = experimental_useSidebarThreadGroups();
+  return (
+    <ul>
+      {groups.flatMap((group) =>
+        group.rows.map((row) =>
+          "threadId" in row ? (
+            <li key={row.threadId}>
+              {`${group.label} ${row.threadId} depth ${row.depth ?? 0} ${row.description ?? ""}`}
+            </li>
+          ) : (
+            <li key={row.id}>{`${group.label} row ${row.title}`}</li>
+          ),
+        ),
+      )}
+    </ul>
+  );
+}
+
+describe("sidebar thread groups test runtime", () => {
+  it("reports configured groups with placed threads in the order given", () => {
+    renderSlot(
+      { component: SidebarThreadGroupsProbe },
+      {},
+      {
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            label: "CORE-21",
+            threadIds: ["thr_top"],
+            rows: [
+              { id: "pr-552", title: "#552", onSelect: () => undefined },
+              {
+                threadId: "thr_top",
+                depth: 1,
+                description: "stacked on #552",
+              },
+            ],
+            keepOrder: true,
+          },
+        ],
+      },
+    );
+
+    expect(
+      Array.from(document.querySelectorAll("li"), (item) => item.textContent),
+    ).toEqual(["CORE-21 row #552", "CORE-21 thr_top depth 1 stacked on #552"]);
+  });
+});
+
 describe("sidebar navigation test runtime", () => {
   it("reports configured items and records every action", () => {
     const slot = renderSlot(
@@ -636,6 +690,35 @@ describe("loadPluginApp", () => {
         }),
       ),
     ).rejects.toThrow('slots.experimental_appOverlay: duplicate id "office"');
+  });
+
+  it("captures and validates sidebar thread group registrations", async () => {
+    const useGroups = () => [];
+    const captured = await loadPluginApp(
+      definePluginApp((builder) => {
+        builder.slots.experimental_sidebarThreadGroups({
+          id: "tickets",
+          title: "Tickets",
+          useGroups,
+        });
+      }),
+    );
+    expect(captured.sidebarThreadGroups).toEqual([
+      { id: "tickets", title: "Tickets", useGroups },
+    ]);
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.experimental_sidebarThreadGroups({
+            id: "tickets",
+            title: "Tickets",
+            useGroups: undefined as never,
+          });
+        }),
+      ),
+    ).rejects.toThrow(
+      'slots.experimental_sidebarThreadGroups: "useGroups" must be a function',
+    );
   });
 
   it("captures and validates sidebar navigation registrations", async () => {

@@ -579,15 +579,30 @@ const SIDEBAR_SECTION_RENDERERS: Record<string, () => ReactNode> = {
       <span className="block px-2 pb-1 pt-2 text-xs text-subtle-foreground/75">
         Projects
       </span>
-      {["acme-app", "dotfiles"].map((project) => (
-        <span
-          key={project}
-          className="flex h-6.5 items-center gap-1.5 rounded-md px-2"
-        >
-          <span className="min-w-0 truncate">{project}</span>
-          <MiniIcon icon="ChevronRight" className="size-3.5" />
+      <span className="flex h-6.5 items-center gap-1.5 rounded-md px-2">
+        <span className="min-w-0 truncate">acme-app</span>
+        <MiniIcon icon="ChevronDown" className="size-3.5" />
+      </span>
+      <Mark
+        id="sidebar-thread-groups"
+        label="A plugin's thread group, with a row for work without a thread"
+        className="z-[2] block"
+      >
+        <span className="flex h-6.5 items-center gap-2 rounded-md px-2 text-muted-foreground">
+          <span className="min-w-0 truncate">CORE-21</span>
         </span>
-      ))}
+        <span className="flex h-6.5 items-center gap-2 rounded-md pl-6 pr-2">
+          <span className="min-w-0 flex-1 truncate">Review #596</span>
+        </span>
+        <span className="flex h-6.5 items-center gap-2 rounded-md pl-6 pr-2 text-muted-foreground">
+          <span className="min-w-0 flex-1 truncate">#601 Batch imports</span>
+          <span className="text-xs">Start</span>
+        </span>
+      </Mark>
+      <span className="flex h-6.5 items-center gap-1.5 rounded-md px-2">
+        <span className="min-w-0 truncate">dotfiles</span>
+        <MiniIcon icon="ChevronRight" className="size-3.5" />
+      </span>
     </RegionMark>
   ),
   footer: () => (
