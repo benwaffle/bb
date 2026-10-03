@@ -40,10 +40,15 @@ Hooks:
   zero-based option index, and a way to act when the person presses one. The
   registry's `question-form` item uses it. Empty outside a pending interaction
   and in `renderSlot`.
-- `useBbNavigate()` → `{ toThread(id), toProject(id), toPluginPanel(path,
+- `useBbNavigate()` → `{ toThread(id, { experimental_dockedPanels? }?), toProject(id), toPluginPanel(path,
 { subPath?, replace? }?), toCompose({ initialPrompt?, focusPrompt? }?),
 openThreadPanel({ actionId, title?, params? }), openUrl(url),
 experimental_openFilePreview(options), experimental_openFileExternally(options) }`.
+  `toThread`'s `experimental_dockedPanels: [{ pluginId?, actionId, title?,
+params? }]` docks those `threadPanelAction` tabs as resizable columns left
+  of the conversation, remembered per thread; the set replaces the thread's
+  docked tabs (`[]` clears them). `pluginId` defaults to the caller and may
+  name another plugin's action.
   `toCompose` opens the root compose screen; pass `initialPrompt` to seed the
   composer draft and `focusPrompt: true` to focus it. The panel
   opener opens one of the current plugin's registered `threadPanelAction` tabs

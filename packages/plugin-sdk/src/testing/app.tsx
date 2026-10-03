@@ -16,6 +16,7 @@ import { act, render, type RenderResult } from "@testing-library/react";
 import {
   type BbContext,
   type BbNavigate,
+  type ToThreadOptions,
   type BranchesState,
   type ComposerCustomization,
   type ComposerAttachment,
@@ -167,7 +168,7 @@ type PluginSdkFakeTree<T> = {
  */
 export type PluginSdkTestFakes = PluginSdkFakeTree<PluginBrowserBbSdk>;
 export type NavigateCall =
-  | { method: "toThread"; threadId: string }
+  | { method: "toThread"; threadId: string; options?: ToThreadOptions }
   | { method: "toProject"; projectId: string }
   | {
       method: "toPluginPanel";
@@ -1915,8 +1916,12 @@ export function renderSlot<
     },
   };
   const navigate: BbNavigate = {
-    toThread(threadId) {
-      navigateCalls.push({ method: "toThread", threadId });
+    toThread(threadId, threadOptions) {
+      navigateCalls.push({
+        method: "toThread",
+        threadId,
+        ...(threadOptions !== undefined ? { options: threadOptions } : {}),
+      });
     },
     toProject(projectId) {
       navigateCalls.push({ method: "toProject", projectId });
