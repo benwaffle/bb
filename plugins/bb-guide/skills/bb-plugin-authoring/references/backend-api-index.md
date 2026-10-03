@@ -274,6 +274,8 @@ Read the installed declarations for exact current signatures.
 - `PluginStatusApi`
 - `PluginStorage`
 - `PluginTargetedPanelActionOpenOptions`
+- `ToThreadOptions`
+- `ExperimentalDockedThreadPanel`
 - `PluginThreadEventHandler`
 - `PluginThreadEventName`
 - `PluginThreadEventPayloads`

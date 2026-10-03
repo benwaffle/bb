@@ -1619,6 +1619,39 @@ unmounting. A crash hides only the accessory.
    short statuses, and decide whether a dedicated label prop or host-rendered
    status semantics are needed.
 
+## `ToThreadOptions.experimental_dockedPanels` (`useBbNavigate().toThread`)
+
+**What it does.** `toThread(threadId, { experimental_dockedPanels })` docks
+`threadPanelAction` tabs as resizable columns to the left of the thread
+conversation before navigating. Entries render left to right in order.
+`pluginId` defaults to the caller and may name another plugin's action, so a
+review plugin can dock the GitHub plugin's `pull` tab. Docked columns are
+remembered per thread in this client's local storage. A plugin, action, and
+params triple already docked on the thread is updated in place instead of
+duplicated. Column widths are remembered per plugin and action across threads.
+Users dock any non-file-opener plugin tab from the right panel header ("Dock
+left of thread"), move a column back to the right panel, or close it. An entry
+whose `params` is not a JSON value is skipped with a console warning. Unknown
+actions still dock and render the "tab is not available" state until the
+owning plugin loads. Compact viewports and split panes ignore docked columns.
+
+**Audit before stabilizing.**
+
+1. **Cross-plugin targeting.** Any plugin can dock another plugin's tab.
+   Decide whether that needs the target plugin's opt-in (for example a
+   registration flag), or whether trusted installed plugins make it acceptable.
+2. **Persistence scope.** Docking is client-local and per thread, not synced
+   through the server's panel state. Decide whether it should sync across
+   clients like right-panel tabs do.
+3. **Compact and split behavior.** Columns are not shown in the compact drawer
+   layout or inside split panes. Decide whether compact viewports should fold
+   docked tabs into the drawer's tab pager instead.
+4. **Current-thread docking.** Only `toThread` can request docking. Decide
+   whether `openThreadPanel` should accept a docked placement too.
+5. **Width budget.** Widths are percentages of the thread area, with a 10%
+   floor per column and a 25% floor for the conversation. Verify on narrow
+   desktop windows with two docked columns and the right panel open.
+
 ## `PluginContentScriptContext.experimental_setThreadRowStatus`
 
 **Kept experimental (2026-08-22).** kept: consumed by the collapsed-section

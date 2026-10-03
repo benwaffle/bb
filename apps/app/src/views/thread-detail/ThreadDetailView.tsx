@@ -11,7 +11,7 @@ import {
 import { nanoid } from "nanoid";
 import { useSystemProviderInfo } from "@/hooks/queries/system-queries";
 import { useImmediateRouteNavigate } from "@/components/ui/app-route-anchor";
-import { useAtom } from "jotai";
+import { useAtom, useSetAtom } from "jotai";
 import { useDesktopBrowserReveal } from "@/lib/use-desktop-browser-reveal";
 import { atomWithStorage } from "jotai/utils";
 import {
@@ -201,6 +201,11 @@ import {
 import { RightPanelFileTabIcon } from "@/components/secondary-panel/RightPanelFileTabIcon";
 import { COARSE_POINTER_COMPACT_ICON_SIZE_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
 import { PluginItemIcon } from "@/components/plugin/PluginIcon";
+import {
+  dockThreadPanels,
+  getDockedThreadPanelsAtom,
+  type DockedThreadPanel,
+} from "@/components/secondary-panel/dockedThreadPanels";
 import {
   PluginPanelTabContent,
   usePluginPanelActions,
@@ -709,6 +714,7 @@ function ThreadDetailViewInternal(
     storageFiles: threadStorageFiles,
     terminalSessions: terminalsListQuery.data?.sessions,
   });
+  const setDockedPanels = useSetAtom(getDockedThreadPanelsAtom(threadId));
   const pluginPanelActions = usePluginPanelActions({
     openPluginPanel,
     threadId,
@@ -2857,6 +2863,22 @@ function ThreadDetailViewInternal(
           return {
             ...shared,
             label: tab.title,
+            onDock:
+              tab.fileOpenerOwner === undefined
+                ? () => {
+                    setDockedPanels((current) =>
+                      dockThreadPanels(current, [
+                        {
+                          pluginId: tab.pluginId,
+                          actionId: tab.actionId,
+                          title: tab.title,
+                          paramsJson: tab.paramsJson,
+                        },
+                      ]),
+                    );
+                    closeTab(tab.id);
+                  }
+                : undefined,
             leadingVisual: (
               <PluginItemIcon
                 pluginId={tab.pluginId}
@@ -2869,6 +2891,13 @@ function ThreadDetailViewInternal(
           };
       }
     });
+  const dockedPanelsProps = {
+    renderContent: renderSecondaryTabContent,
+    onUndock: (panel: DockedThreadPanel) => {
+      openPluginPanel(panel);
+      openCompactDrawer();
+    },
+  };
   const threadDetailContent = (
     <MarkdownLocalFileContextMenuContext.Provider
       value={getLocalFileContextMenuItems}
@@ -2884,6 +2913,7 @@ function ThreadDetailViewInternal(
       >
         <AppNavigationHostProvider capabilities={appNavigationCapabilities}>
           <ThreadDetailSecondaryContent
+            dockedPanels={dockedPanelsProps}
             footer={composerFooter}
             header={timelineHeader}
             isMetadataLoading={environmentQuery.isLoading}
