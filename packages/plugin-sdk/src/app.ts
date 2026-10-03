@@ -180,6 +180,9 @@ export const experimental_useSidebarThreadActions = runtimeFunction(
 export const experimental_useSidebarThreadPullRequest = runtimeFunction(
   "experimental_useSidebarThreadPullRequest",
 );
+export const experimental_useSidebarThreadGroups = runtimeFunction(
+  "experimental_useSidebarThreadGroups",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );

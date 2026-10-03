@@ -231,6 +231,12 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
+      slots.sidebarThreadGroups,
+      "sidebar-thread-groups",
+      "Nests sidebar threads under its groups.",
+    ),
+    ...namedSlotItems(
+      pluginId,
       slots.experimentalSidebarNavigations,
       "sidebar-navigation",
       "Can replace the sidebar navigation controls; configured in Appearance.",

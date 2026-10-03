@@ -175,7 +175,7 @@ const PinnedGroupedRootItems = memo(function PinnedGroupedRootItems({
         />
       );
     }
-    if (item.kind === "section") return null;
+    if (item.kind === "section" || item.kind === "plugin-group") return null;
     const commonProps = {
       node: item.node,
       selectedThreadId,
