@@ -19,6 +19,7 @@ describe("product-map surfaces", () => {
       "nav-panel",
       "thread-row-status",
       "thread-list",
+      "sidebar-thread-groups",
       "sidebar-footer",
       "thread-header",
       "timeline-renderers",

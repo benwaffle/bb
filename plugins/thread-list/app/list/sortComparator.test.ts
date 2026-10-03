@@ -89,6 +89,7 @@ function itemRepresentativeId(item: ProjectThreadItem): string {
       return item.node.thread.id;
     case "environment":
       return item.group.nodes[0].thread.id;
+    case "plugin-group":
     case "section":
       return item.group.id;
   }
