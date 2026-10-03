@@ -20,6 +20,7 @@ describe("product-map surfaces", () => {
       "thread-row-status",
       "thread-row-metadata",
       "thread-list",
+      "sidebar-thread-groups",
       "sidebar-footer",
       "thread-header",
       "thread-actions",

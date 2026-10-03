@@ -29,7 +29,7 @@ function findThreadNode(
       if (item.node.thread.id === threadId) return item.node;
       const nested = findThreadNode(item.node.children, threadId);
       if (nested) return nested;
-    } else if (item.kind === "environment") {
+    } else if (item.kind === "environment" || item.kind === "plugin-group") {
       for (const node of item.group.nodes) {
         if (node.thread.id === threadId) return node;
         const nested = findThreadNode(node.children, threadId);
@@ -45,7 +45,7 @@ function findThreadNode(
 
 function itemHoldsThread(item: ProjectThreadItem, threadId: string): boolean {
   if (item.kind === "thread") return item.node.thread.id === threadId;
-  if (item.kind === "environment") {
+  if (item.kind === "environment" || item.kind === "plugin-group") {
     return item.group.nodes.some((node) => node.thread.id === threadId);
   }
   return false;

@@ -303,6 +303,9 @@ export const experimental_useThreadContextKind = runtimeFunction(
 export const experimental_usePanelTabs = runtimeFunction(
   "experimental_usePanelTabs",
 );
+export const experimental_useSidebarThreadGroups = runtimeFunction(
+  "experimental_useSidebarThreadGroups",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );
