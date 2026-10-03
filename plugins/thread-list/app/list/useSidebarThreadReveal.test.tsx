@@ -59,6 +59,7 @@ function setup(
         threadsReady: true,
         preferencesReady: true,
         personalProjectId: "proj_personal",
+        pluginGroupIdsByThreadId: new Map(),
         ...initial,
       },
     },
@@ -69,6 +70,7 @@ function setup(
     threadsReady: true,
     preferencesReady: true,
     personalProjectId: "proj_personal",
+    pluginGroupIdsByThreadId: new Map(),
     ...initial,
   };
   const update = (next: Partial<SidebarThreadRevealInputs>) => {
