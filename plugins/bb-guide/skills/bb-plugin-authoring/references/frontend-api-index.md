@@ -194,6 +194,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `PluginMessageDirectiveRegistration`
 - `ThreadChatMessageReference`
 - `PluginTargetedPanelActionOpenOptions`
+- `ToThreadOptions`
+- `ExperimentalDockedThreadPanel`
 - `PluginMessageActionContext`
 - `PluginMessageActionRegistration`
 - `PluginAppCommands`

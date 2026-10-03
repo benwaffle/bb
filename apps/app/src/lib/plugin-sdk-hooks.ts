@@ -54,6 +54,13 @@ import {
   type ComposerSource,
 } from "@/lib/plugin-composer-handle";
 import { sdk } from "@/lib/sdk";
+import { useStore } from "jotai";
+import {
+  dockThreadPanels,
+  getDockedThreadPanelsAtom,
+  resolveDockedThreadPanelRequests,
+} from "@/components/secondary-panel/dockedThreadPanels";
+import { getPluginSlotSnapshot } from "@/lib/plugin-slots";
 import { getPluginBoundSdk } from "@/lib/plugin-bound-sdk";
 import { useSystemProviders } from "@/hooks/queries/system-queries";
 import { useSystemEnvironmentProviders } from "@/hooks/queries/environment-provider-queries";
@@ -336,8 +343,20 @@ export function useBbNavigate(): BbNavigate {
   const openThreadPanelHandler = usePluginThreadPanelOpenHandler();
   const navigate = useNavigate();
   const appNavigation = useAppNavigationHost();
-  const toThread = useCallback(
-    (threadId: string) => {
+  const store = useStore();
+  const toThread = useCallback<BbNavigate["toThread"]>(
+    (threadId, options) => {
+      const dockedPanels = options?.experimental_dockedPanels;
+      if (dockedPanels !== undefined && dockedPanels.length > 0) {
+        const resolved = resolveDockedThreadPanelRequests({
+          requests: dockedPanels,
+          callerPluginId: pluginId,
+          actions: getPluginSlotSnapshot().threadPanelActions,
+        });
+        store.set(getDockedThreadPanelsAtom(threadId), (current) =>
+          dockThreadPanels(current, resolved),
+        );
+      }
       void sdk.threads
         .get({ threadId })
         .then((thread) =>
@@ -347,7 +366,7 @@ export function useBbNavigate(): BbNavigate {
         )
         .catch(() => navigate(`/threads/${threadId}`));
     },
-    [navigate],
+    [navigate, pluginId, store],
   );
   const toProject = useCallback(
     (projectId: string) => {
