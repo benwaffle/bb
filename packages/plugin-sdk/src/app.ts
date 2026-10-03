@@ -197,6 +197,9 @@ export { experimental_THREAD_ACTION_GROUPS } from "./thread-action-groups.js";
 export const experimental_useSidebarThreadPullRequest = runtimeFunction(
   "experimental_useSidebarThreadPullRequest",
 );
+export const experimental_useSidebarThreadGroups = runtimeFunction(
+  "experimental_useSidebarThreadGroups",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );
