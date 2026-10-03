@@ -28,6 +28,7 @@ import type {
   PluginSidebarFooterActionRegistration,
   ExperimentalSidebarNavigationRegistration,
   ExperimentalSidebarHeaderRegistration,
+  ExperimentalSidebarThreadGroupsRegistration,
   PluginSourceCodeRendererRegistration,
   PluginThreadHeaderActionRegistration,
   ExperimentalPluginBrowserToolbarActionRegistration,
@@ -356,6 +357,7 @@ export interface CollectedPluginAppRegistrations {
   experimentalSidebarNavigations: ExperimentalSidebarNavigationRegistration[];
   experimentalSidebarHeaders: ExperimentalSidebarHeaderRegistration[];
   threadLists: PluginThreadListRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];
   fileOpeners: PluginFileOpenerRegistration[];
@@ -482,6 +484,7 @@ export function collectPluginAppRegistrations(
     experimentalSidebarNavigations: [],
     experimentalSidebarHeaders: [],
     threadLists: [],
+    sidebarThreadGroups: [],
     threadHeaderActions: [],
     browserToolbarActions: [],
     fileOpeners: [],
@@ -512,6 +515,7 @@ export function collectPluginAppRegistrations(
     sidebarNavigation: new Set<string>(),
     sidebarHeader: new Set<string>(),
     threadList: new Set<string>(),
+    sidebarThreadGroups: new Set<string>(),
     threadHeaderAction: new Set<string>(),
     browserToolbarAction: new Set<string>(),
     fileOpener: new Set<string>(),
@@ -801,6 +805,19 @@ export function collectPluginAppRegistrations(
             registration,
           ),
         );
+      },
+      experimental_sidebarThreadGroups(registration) {
+        const kind = "slots.experimental_sidebarThreadGroups";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarThreadGroups, id);
+        if (typeof registration.useGroups !== "function") {
+          throw new Error(`${kind}: "useGroups" must be a function`);
+        }
+        collected.sidebarThreadGroups.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useGroups: registration.useGroups,
+        });
       },
       experimental_threadHeaderAction(registration) {
         const kind = "slots.experimental_threadHeaderAction";

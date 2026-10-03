@@ -43,6 +43,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_useSidebarThreads`
 - `experimental_useSidebarThreadActions`
 - `experimental_useSidebarThreadPullRequest`
+- `experimental_useSidebarThreadGroups` — every plugin's sidebar thread
+  groups, for thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `experimental_useSidebarNavigation` — the sidebar navigation items in the
   user's saved order, the active item, and host actions to activate, hide,
@@ -188,6 +190,11 @@ Read the installed SDK declarations for the exact current signatures.
 - `PluginSidebarSplitLayout`
 - `PluginSidebarThreadSplit`
 - `PluginThreadListRegistration`
+- `ExperimentalSidebarThreadGroupsRegistration`
+- `ExperimentalSidebarThreadGroup`
+- `ExperimentalSidebarThreadGroupRow`
+- `ExperimentalSidebarThreadGroupThreadRow`
+- `ExperimentalResolvedSidebarThreadGroup`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`
