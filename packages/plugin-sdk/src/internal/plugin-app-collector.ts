@@ -28,6 +28,7 @@ import type {
   ExperimentalIconRegistration,
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
+  ExperimentalSidebarThreadGroupsRegistration,
   PluginSourceCodeRendererRegistration,
   PluginThreadHeaderActionRegistration,
   PluginThreadActionRegistration,
@@ -380,6 +381,7 @@ export interface CollectedPluginAppRegistrations {
   experimentalSidebarFooterItems: CollectedExperimentalSidebarFooterItem[];
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: CollectedSidebarNavigationRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadActions: PluginThreadActionRegistration<unknown>[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];
@@ -510,6 +512,7 @@ export function collectPluginAppRegistrations(
     experimentalSidebarFooterItems: [],
     threadLists: [],
     experimentalSidebarNavigations: [],
+    sidebarThreadGroups: [],
     threadHeaderActions: [],
     threadActions: [],
     browserToolbarActions: [],
@@ -542,6 +545,7 @@ export function collectPluginAppRegistrations(
     threadList: new Set<string>(),
     sidebarNavigation: new Set<string>(),
     sidebarHeader: new Set<string>(),
+    sidebarThreadGroups: new Set<string>(),
     threadHeaderAction: new Set<string>(),
     threadAction: new Set<string>(),
     browserToolbarAction: new Set<string>(),
@@ -884,6 +888,19 @@ export function collectPluginAppRegistrations(
           ...collectedRegistration,
           placement: placement ?? "list",
           ...(headerComponent !== undefined ? { headerComponent } : {}),
+        });
+      },
+      experimental_sidebarThreadGroups(registration) {
+        const kind = "slots.experimental_sidebarThreadGroups";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarThreadGroups, id);
+        if (typeof registration.useGroups !== "function") {
+          throw new Error(`${kind}: "useGroups" must be a function`);
+        }
+        collected.sidebarThreadGroups.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useGroups: registration.useGroups,
         });
       },
       experimental_threadHeaderAction(registration) {
