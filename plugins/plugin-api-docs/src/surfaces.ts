@@ -342,8 +342,13 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "Render the tab's contents and receive the id of the thread it was opened from",
           "Show the action’s explicit icon in the launcher and opened tab; omitted or unknown names fall back to plugin branding",
           "Open the tab from a [message action](message-actions), from the + button in the side panel, or from its own code",
+          "Open a thread with tabs docked as resizable columns to the left of the conversation, including another plugin's tab, with useBbNavigate().toThread's experimental_dockedPanels. Users dock and undock any plugin tab from the panel header",
         ],
-        apiSymbols: ["PluginThreadPanelActionRegistration"],
+        apiSymbols: [
+          "PluginThreadPanelActionRegistration",
+          "ToThreadOptions",
+          "ExperimentalDockedThreadPanel",
+        ],
         firstParty: ["Docs", "GitHub", "Side chat", "Tasks", "Workflows"],
       },
       {
