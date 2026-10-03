@@ -6,12 +6,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: null,
           openTargetId: null,
           path: "/projects/proj_gyz9przugq/threads/thr_rq7r4uv8zg",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "/Users/me/project",
       }),
@@ -24,12 +26,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: null,
           openTargetId: null,
           path: "/Users/me/project/src/file.ts",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: null,
       }),
@@ -46,12 +50,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: false,
         link: {
           lineRange: { startLineNumber: 12, endLineNumber: 14 },
           openTargetId: null,
           path: "/Users/me/.ssh/id_rsa",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "/Users/me/project",
       }),
@@ -66,12 +72,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: { startLineNumber: 12, endLineNumber: 14 },
           openTargetId: null,
           path: "/Users/me/.ssh/id_rsa",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "/Users/me/project",
       }),
@@ -88,12 +96,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: { startLineNumber: 12, endLineNumber: 14 },
           openTargetId: null,
           path: "/Users/me/project/src/../src/file.ts",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "/Users/me/project/",
       }),
@@ -112,12 +122,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: null,
           openTargetId: null,
           path: "c:/src/Repo/packages/app/file.ts",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "C:\\src\\repo",
       }),
@@ -136,12 +148,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: { startLineNumber: 7, endLineNumber: 7 },
           openTargetId: null,
           path: "apps/app/src/main.tsx",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "/Users/me/project",
       }),
@@ -155,12 +169,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: null,
           openTargetId: null,
           path: "/projects/my-repo/src/file.ts",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: null,
         workspaceRootPath: "/projects/my-repo",
       }),
@@ -179,12 +195,14 @@ describe("resolveThreadLocalFileLink", () => {
     expect(
       resolveThreadLocalFileLink({
         fileOpenTargetIds: [],
+        directoryOpenTargetId: null,
         hostFileLinksAvailable: true,
         link: {
           lineRange: { startLineNumber: 4, endLineNumber: 6 },
           openTargetId: null,
           path: "/Users/me/.bb/thread-storage/thr_one/reports/preview.html",
         },
+        threadStorageFilePaths: null,
         threadStorageRootPath: "/Users/me/.bb/thread-storage/thr_one",
         workspaceRootPath: "/Users/me/project",
       }),
@@ -206,8 +224,10 @@ describe("resolveThreadLocalFileLink", () => {
       path: "/Users/me/project/src/../review.diff",
     };
     const args = {
+      directoryOpenTargetId: null,
       hostFileLinksAvailable: true,
       link,
+      threadStorageFilePaths: null,
       threadStorageRootPath: null,
       workspaceRootPath: "/Users/me/project",
     };
@@ -235,6 +255,80 @@ describe("resolveThreadLocalFileLink", () => {
         relativePath: "review.diff",
         workspaceRootPath: "/Users/me/project",
       },
+    });
+  });
+
+  describe("folder links", () => {
+    const storageRoot = "/Users/me/.bb/thread-storage/thr_one";
+    const baseArgs = {
+      directoryOpenTargetId: null,
+      fileOpenTargetIds: [],
+      hostFileLinksAvailable: true,
+      threadStorageFilePaths: null,
+      threadStorageRootPath: storageRoot,
+      workspaceRootPath: "/Users/me/project",
+    };
+    const linkTo = (path: string) => ({
+      lineRange: null,
+      openTargetId: null,
+      path,
+    });
+
+    it.each([
+      [`${storageRoot}/imsi-rotation-pcaps`, null, "imsi-rotation-pcaps"],
+      [`${storageRoot}/reports/`, ["reports.md"], "reports"],
+      [`${storageRoot}/pcaps.v2`, ["pcaps.v2/a.pcap"], "pcaps.v2"],
+      [storageRoot, null, ""],
+    ])(
+      "opens storage folder %s in the storage browser",
+      (path, threadStorageFilePaths, relativePath) => {
+        expect(
+          resolveThreadLocalFileLink({
+            ...baseArgs,
+            link: linkTo(path),
+            threadStorageFilePaths,
+          }),
+        ).toEqual({
+          kind: "open-thread-storage-directory",
+          request: {
+            path:
+              relativePath === ""
+                ? storageRoot
+                : `${storageRoot}/${relativePath}`,
+            relativePath,
+          },
+        });
+      },
+    );
+
+    it("previews extensionless storage files the file list knows about", () => {
+      expect(
+        resolveThreadLocalFileLink({
+          ...baseArgs,
+          link: linkTo(`${storageRoot}/Makefile`),
+          threadStorageFilePaths: ["Makefile", "notes/plan.md"],
+        }),
+      ).toMatchObject({
+        kind: "open-thread-storage-path",
+        request: { relativePath: "Makefile" },
+      });
+    });
+
+    it("reveals trailing-slash folders outside storage in the file manager", () => {
+      const link = linkTo("/Users/me/project/src/");
+      expect(
+        resolveThreadLocalFileLink({
+          ...baseArgs,
+          directoryOpenTargetId: "finder",
+          link,
+        }),
+      ).toEqual({
+        kind: "open-directory-in-target",
+        request: { path: "/Users/me/project/src", targetId: "finder" },
+      });
+      expect(resolveThreadLocalFileLink({ ...baseArgs, link })).toMatchObject({
+        kind: "error",
+      });
     });
   });
 });
