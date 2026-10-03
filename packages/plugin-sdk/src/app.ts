@@ -306,6 +306,18 @@ export const experimental_useThreadContextKind = runtimeFunction(
 export const experimental_usePanelTabs = runtimeFunction(
   "experimental_usePanelTabs",
 );
+export const experimental_useSidebarThreadGroups = runtimeFunction(
+  "experimental_useSidebarThreadGroups",
+);
+export const experimental_useSidebarProjectDecoration = runtimeFunction(
+  "experimental_useSidebarProjectDecoration",
+);
+export const experimental_useSidebarThreadDecoration = runtimeFunction(
+  "experimental_useSidebarThreadDecoration",
+);
+export const experimental_useSidebarThreadRowDecoration = runtimeFunction(
+  "experimental_useSidebarThreadRowDecoration",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );
