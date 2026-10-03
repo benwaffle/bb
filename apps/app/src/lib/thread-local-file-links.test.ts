@@ -18,9 +18,11 @@ function resolve(
 ) {
   const { lineRange = null, openTargetId = null, ...args } = overrides;
   return resolveThreadLocalFileLink({
+    directoryOpenTargetId: null,
     fileOpenTargetIds: [],
     hostId: "host_one",
     threadStorage: null,
+    threadStorageFilePaths: null,
     workspace: WORKSPACE,
     ...args,
     link: { lineRange, openTargetId, path },
@@ -174,6 +176,55 @@ describe("resolveThreadLocalFileLink", () => {
     ).toMatchObject({
       kind: "preview",
       options: { target: { kind: "workspace", path: "review.diff" } },
+    });
+  });
+
+  describe("folder links", () => {
+    it.each([
+      [`${STORAGE.rootPath}/imsi-rotation-pcaps`, null, "imsi-rotation-pcaps"],
+      [`${STORAGE.rootPath}/reports/`, ["reports.md"], "reports"],
+      [`${STORAGE.rootPath}/pcaps.v2`, ["pcaps.v2/a.pcap"], "pcaps.v2"],
+      [STORAGE.rootPath, null, ""],
+    ])(
+      "opens storage folder %s in the storage browser",
+      (path, threadStorageFilePaths, relativePath) => {
+        expect(
+          resolve(path, { threadStorage: STORAGE, threadStorageFilePaths }),
+        ).toEqual({
+          kind: "open-thread-storage-directory",
+          path:
+            relativePath === ""
+              ? STORAGE.rootPath
+              : `${STORAGE.rootPath}/${relativePath}`,
+          relativePath,
+          threadId: STORAGE.threadId,
+        });
+      },
+    );
+
+    it("previews extensionless storage files the file list knows about", () => {
+      expect(
+        resolve(`${STORAGE.rootPath}/Makefile`, {
+          threadStorage: STORAGE,
+          threadStorageFilePaths: ["Makefile", "notes/plan.md"],
+        }),
+      ).toMatchObject({
+        kind: "preview",
+        options: { target: { kind: "thread-storage", path: "Makefile" } },
+      });
+    });
+
+    it("reveals trailing-slash folders outside storage in the file manager", () => {
+      expect(
+        resolve("/Users/me/project/src/", { directoryOpenTargetId: "finder" }),
+      ).toEqual({
+        kind: "open-directory-in-target",
+        path: "/Users/me/project/src",
+        targetId: "finder",
+      });
+      expect(resolve("/Users/me/project/src/")).toMatchObject({
+        kind: "error",
+      });
     });
   });
 });
