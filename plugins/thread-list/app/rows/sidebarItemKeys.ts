@@ -6,6 +6,8 @@ export function getSidebarItemKey(item: ProjectThreadItem): string {
       return `thread:${item.node.thread.id}`;
     case "environment":
       return `env:${item.group.environmentId}`;
+    case "plugin-group":
+      return `plugin-group:${item.group.id}`;
     case "section":
       return `section:${item.group.key}`;
   }
