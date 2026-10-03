@@ -138,7 +138,9 @@ export function WorkspaceFilePreviewTabContent({
   const { openLink } = useThreadFileLinkOpener({
     environment: environmentQuery.data,
     openFilePreview: navigation.openFilePreview,
+    openThreadStorageDirectory: null,
     threadId: threadId ?? undefined,
+    threadStorageFilePaths: null,
   });
   const markdownLinkRouting = useMemo(() => {
     if (source === null || !environmentId) return undefined;
@@ -252,7 +254,9 @@ export function HostFilePreviewTabContent({
   const { openLink } = useThreadFileLinkOpener({
     environment,
     openFilePreview: navigation.openFilePreview,
+    openThreadStorageDirectory: null,
     threadId,
+    threadStorageFilePaths: null,
   });
   const hostFilePreviewQuery = useThreadHostFilePreview(
     threadId,
@@ -311,6 +315,8 @@ export function HostScopedFilePreviewTabContent({
     canOpenInEditor: true,
     hostId,
     openFilePreview: navigation.openFilePreview,
+    openThreadStorageDirectory: null,
+    threadStorageFilePaths: null,
     threadStorage: null,
     workspace: null,
   });
@@ -358,6 +364,8 @@ export function ThreadStorageFilePreviewTabContent({
     canOpenInEditor: true,
     hostId: storageHostId,
     openFilePreview: navigation.openFilePreview,
+    openThreadStorageDirectory: null,
+    threadStorageFilePaths: null,
     threadStorage:
       storageRootPath === null ? null : { rootPath: storageRootPath, threadId },
     workspace: null,
