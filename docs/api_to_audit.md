@@ -2630,6 +2630,97 @@ Docs: `frontend-registration.md`.
    actions. Audit empty machine sections, machine removal, rename updates, and
    loading behavior for `experimental_hosts`.
 
+## `app.slots.experimental_sidebarThreadGroups` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-03).** Consumer: the pr-review plugin (benwaffle/bb-plugins),
+which nests review threads under their Jira ticket.
+
+**What it does.** A plugin registers `{ id, title, useGroups }`. The host
+mounts one hidden component per registration inside the plugin's context
+(crash boundary included) and calls `useGroups()` there, so the hook can use
+`useRpc`, `useRealtime`, and other plugin hooks. Each returned group names a
+`projectId`, a provider-unique `key`, a `label`, optional `keyLabel`, `icon`,
+`style` (`"flat"`, `"card"`, or `"minimal"`), and `tooltip`, the `threadIds` to nest,
+`rows`, and an optional `keepOrder`. `rows` mixes placeholder rows `{ id,
+title, depth?, description?, tooltip?, icon?, trailing?, onSelect, variant?,
+action? }` for
+work that has no thread with placed threads `{ threadId, depth?,
+description?, icon?, trailing? }` that decorate a real thread row. `icon` is
+`{ name, tone }` and `trailing` is `{ kind: "dot", tone }` or `{ kind:
+"text", text }`, with `tone` one of `success`, `muted`, `accent`, `danger`.
+The host drops malformed groups and rows, ignores a non-positive or
+fractional `depth`, a `variant` other than `"ghost"`, and malformed
+`icon`/`trailing` values, folds placed
+thread ids into `threadIds`, defaults `keepOrder` to `false` and `style` to
+`"flat"`, then publishes
+every provider's groups, in plugin id order and with a host-assigned `id`
+(`<pluginId>/<slotId>:<key>`) and `pluginId`, through
+`experimental_useSidebarThreadGroups()`. Hosts that predate placed threads
+and `keepOrder` drop the entries and ignore the flag, so providers list
+placed threads in `threadIds` too.
+
+The bundled Thread list applies the groups in Organize → By project. Among a
+project's root threads, a group takes the threads it names that no earlier
+group claimed. It renders as a collapsible header when it holds at least two
+threads or any placeholder rows; otherwise its thread stays a plain row.
+Plugin groups apply before worktree grouping. Without `keepOrder` the group's
+threads follow the list's sort, above its placeholder rows; with it, threads
+only `threadIds` lists come first in that order, then `rows` as given. A
+placeholder row's or placed thread's `depth` renders as one indent step per
+level, each with a 1px connector rail in the sidebar border color, and a
+placed thread's `description` as muted text after the title, hidden while
+renaming. Placeholder titles render whitespace as given, so a provider that
+still prefixes them with non-breaking spaces and a `└` glyph keeps its
+alignment. The header draws
+`icon` (default Layers), then `keyLabel` in a muted monospace style, then
+the label, and right-aligns `<threads>/<rows>` when the group has
+placeholder rows, counting the threads shown out of every row. A `card`
+group wraps the header and rows in a 1px bordered, 6px-radius card whose
+header stays sticky within it. A `minimal` group draws no card and, when it
+has a `keyLabel`, shows it in place of the icon as a pill at the start of the
+header (muted sidebar-accent background, monospace `text-2xs`, 4px radius).
+Row icons are 14px and toned (success green,
+muted grey, accent purple, danger red); a trailing dot uses the same tones.
+A `variant: "ghost"` placeholder row draws subtle-foreground text with no
+border or extra padding, so its icon and title start at the same inset as
+thread rows at the same depth.
+A placeholder row's action is shown on hover or focus, and always on coarse
+pointers: an outlined button, or a compact round ghost button when its label
+is a single character such as `+`. Group threads keep their rows, drag, pin, archive,
+and rename behavior; dragging the header moves the group's threads like a
+worktree group, and the group sorts among the project's items by its
+highest-sorting thread either way. Collapsed state shares the `collapsedEnvironments`
+preference, keyed by the group id, and navigating to a grouped thread expands
+its group.
+
+**Audit before stabilizing.**
+
+1. **Modes.** Groups apply only in By project mode. Decide whether
+   chronological and machine modes should apply them, and how a group spans
+   custom sections there.
+2. **Placeholder rows.** Rows carry plugin callbacks into host-rendered UI.
+   Confirm a click handler plus one button is enough, whether the four tones
+   and the dot/text trailing cover providers' states, and whether rows need
+   keyboard navigation with the thread rows. The compact action's accessible
+   name is its one-character label, such as "+"; decide whether actions need
+   an icon name and a separate accessible label instead of inferring the
+   compact style from label length.
+3. **Claiming.** First claimant wins across plugins. Confirm that is
+   acceptable, or whether groups need priorities or nesting.
+4. **Hook lifetime.** Providers stay mounted while the plugin is enabled,
+   whether or not the sidebar is visible. Confirm that cost is acceptable,
+   or mount providers only with the thread list.
+5. **Collapse storage.** Decide whether group collapse state deserves its own
+   preference instead of sharing `collapsedEnvironments`.
+6. **Decorations.** `depth` draws a host rail on placeholder rows and placed
+   threads alike. Decide whether providers still need glyph-prefixed
+   placeholder titles once they adopt `depth`, whether a title override is
+   needed (it conflicts with inline rename), and whether dragging within a
+   `keepOrder` group should be disabled since the provider owns the order.
+7. **Header.** Decide whether the `<threads>/<rows>` count should be
+   provider-supplied, and whether `card` should become the default once
+   other providers adopt it.
+
 ## `app.slots.experimental_threadHeaderAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** There are no consumers, and item 1 (merging

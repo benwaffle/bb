@@ -82,6 +82,7 @@ const MOBILE_SLIDES: GuideSlide[] = DESKTOP_SLIDES.flatMap((group) => {
             "nav-panel",
             "thread-row-status",
             "thread-list",
+            "sidebar-thread-groups",
             "sidebar-footer",
           ].includes(surface.id),
         ),
