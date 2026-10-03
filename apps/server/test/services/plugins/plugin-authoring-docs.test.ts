@@ -35,6 +35,15 @@ import {
   type PluginSettingDescriptor,
   type PluginSettingsSectionProps,
   type PluginSidebarFooterActionProps,
+  type ExperimentalSidebarThreadGroup,
+  type ExperimentalSidebarThreadGroupRow,
+  type ExperimentalSidebarThreadGroupThreadRow,
+  type ExperimentalSidebarThreadGroupsRegistration,
+  type ExperimentalSidebarProjectDecoration,
+  type ExperimentalSidebarProjectDecorationRegistration,
+  type ExperimentalSidebarThreadDecoration,
+  type ExperimentalSidebarThreadDecorationRegistration,
+  type ExperimentalSidebarThreadRowDecoration,
   type PluginSourceCodeRendererProps,
   type ExperimentalThreadContextSegmentProps,
   type ExperimentalThreadInfoProps,
@@ -287,6 +296,9 @@ type SlotPropsByName = {
   experimental_newThreadPanelAction: PluginNewThreadPanelProps;
   pendingInteraction: PluginPendingInteractionProps;
   sidebarFooterAction: PluginSidebarFooterActionProps;
+  experimental_sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration;
+  experimental_sidebarProjectDecoration: ExperimentalSidebarProjectDecorationRegistration;
+  experimental_sidebarThreadDecoration: ExperimentalSidebarThreadDecorationRegistration;
   experimental_threadList: PluginThreadListProps;
   experimental_sidebarNavigation: ExperimentalSidebarNavigationProps;
   experimental_threadContextSegment: ExperimentalThreadContextSegmentProps;
@@ -380,6 +392,14 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   experimental_newThreadPanelAction: ["projectId", "params"],
   pendingInteraction: ["interaction", "submit", "cancel"],
   sidebarFooterAction: [],
+  experimental_sidebarThreadGroups: ["id", "title", "useGroups"],
+  experimental_sidebarProjectDecoration: ["id", "title", "useDecoration"],
+  experimental_sidebarThreadDecoration: [
+    "id",
+    "title",
+    "useDecoration",
+    "useThreadDecoration",
+  ],
   experimental_threadList: [
     "activeThreadId",
     "activeProjectId",
@@ -563,6 +583,135 @@ const _assertAllSidebarFooterActionRegistrationFieldsListed: MissingSidebarFoote
   ? true
   : never = true;
 void _assertAllSidebarFooterActionRegistrationFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_FIELDS = [
+  "projectId",
+  "key",
+  "label",
+  "keyLabel",
+  "labelHref",
+  "icon",
+  "style",
+  "tooltip",
+  "threadIds",
+  "rows",
+  "keepOrder",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroup)[];
+
+type MissingSidebarThreadGroupField = Exclude<
+  keyof ExperimentalSidebarThreadGroup,
+  (typeof SIDEBAR_THREAD_GROUP_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupFieldsListed: MissingSidebarThreadGroupField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_STYLES = [
+  "flat",
+  "card",
+  "minimal",
+] as const satisfies readonly NonNullable<
+  ExperimentalSidebarThreadGroup["style"]
+>[];
+
+type MissingSidebarThreadGroupStyle = Exclude<
+  NonNullable<ExperimentalSidebarThreadGroup["style"]>,
+  (typeof SIDEBAR_THREAD_GROUP_STYLES)[number]
+>;
+const _assertAllSidebarThreadGroupStylesListed: MissingSidebarThreadGroupStyle extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupStylesListed;
+
+const SIDEBAR_THREAD_GROUP_ROW_FIELDS = [
+  "id",
+  "title",
+  "depth",
+  "description",
+  "tooltip",
+  "icon",
+  "trailing",
+  "onSelect",
+  "variant",
+  "action",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroupRow)[];
+
+type MissingSidebarThreadGroupRowField = Exclude<
+  keyof ExperimentalSidebarThreadGroupRow,
+  (typeof SIDEBAR_THREAD_GROUP_ROW_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupRowFieldsListed: MissingSidebarThreadGroupRowField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupRowFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS = [
+  "threadId",
+  "depth",
+  "description",
+  "icon",
+  "trailing",
+  "pullRequest",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroupThreadRow)[];
+
+type MissingSidebarThreadGroupThreadRowField = Exclude<
+  keyof ExperimentalSidebarThreadGroupThreadRow,
+  (typeof SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupThreadRowFieldsListed: MissingSidebarThreadGroupThreadRowField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupThreadRowFieldsListed;
+
+const SIDEBAR_PROJECT_DECORATION_FIELDS = [
+  "leading",
+  "accentColor",
+  "labelClassName",
+  "tint",
+] as const satisfies readonly (keyof ExperimentalSidebarProjectDecoration)[];
+
+type MissingSidebarProjectDecorationField = Exclude<
+  keyof ExperimentalSidebarProjectDecoration,
+  (typeof SIDEBAR_PROJECT_DECORATION_FIELDS)[number]
+>;
+const _assertAllSidebarProjectDecorationFieldsListed: MissingSidebarProjectDecorationField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarProjectDecorationFieldsListed;
+
+const SIDEBAR_THREAD_DECORATION_FIELDS = [
+  "leading",
+  "title",
+  "hue",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadDecoration)[];
+
+type MissingSidebarThreadDecorationField = Exclude<
+  keyof ExperimentalSidebarThreadDecoration,
+  (typeof SIDEBAR_THREAD_DECORATION_FIELDS)[number]
+>;
+const _assertAllSidebarThreadDecorationFieldsListed: MissingSidebarThreadDecorationField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadDecorationFieldsListed;
+
+const SIDEBAR_THREAD_ROW_DECORATION_FIELDS = [
+  "icon",
+  "label",
+  "labelHref",
+  "description",
+  "trailing",
+  "pullRequest",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadRowDecoration)[];
+
+type MissingSidebarThreadRowDecorationField = Exclude<
+  keyof ExperimentalSidebarThreadRowDecoration,
+  (typeof SIDEBAR_THREAD_ROW_DECORATION_FIELDS)[number]
+>;
+const _assertAllSidebarThreadRowDecorationFieldsListed: MissingSidebarThreadRowDecorationField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadRowDecorationFieldsListed;
 
 const MESSAGE_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -807,6 +956,57 @@ describe("bb-plugin-authoring skill", () => {
       ).toContain(field);
     }
     expect(skill).toContain("openSettings");
+  });
+
+  it("documents every sidebar thread group and placed thread field", () => {
+    expect(skill).toContain("ExperimentalSidebarThreadGroupThreadRow");
+    for (const field of [
+      ...SIDEBAR_THREAD_GROUP_FIELDS,
+      ...SIDEBAR_THREAD_GROUP_ROW_FIELDS,
+      ...SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS,
+    ]) {
+      expect(
+        skill,
+        `sidebar thread group field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+    for (const style of SIDEBAR_THREAD_GROUP_STYLES) {
+      expect(
+        skill,
+        `sidebar thread group style "${style}" is not documented in the skill`,
+      ).toContain(`"${style}"`);
+    }
+    expect(skill).toContain('variant: "ghost"');
+  });
+
+  it("documents every sidebar project decoration field", () => {
+    expect(skill).toContain("experimental_useSidebarProjectDecoration");
+    for (const field of SIDEBAR_PROJECT_DECORATION_FIELDS) {
+      expect(
+        skill,
+        `sidebar project decoration field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+  });
+
+  it("documents every sidebar thread decoration field", () => {
+    expect(skill).toContain("experimental_useSidebarThreadDecoration");
+    for (const field of SIDEBAR_THREAD_DECORATION_FIELDS) {
+      expect(
+        skill,
+        `sidebar thread decoration field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+  });
+
+  it("documents every sidebar thread row decoration field", () => {
+    expect(skill).toContain("experimental_useSidebarThreadRowDecoration");
+    for (const field of SIDEBAR_THREAD_ROW_DECORATION_FIELDS) {
+      expect(
+        skill,
+        `sidebar thread row decoration field "${field}" is not documented in the skill`,
+      ).toContain(`\`${field}\``);
+    }
   });
 
   it("documents every messageAction registration field", () => {
