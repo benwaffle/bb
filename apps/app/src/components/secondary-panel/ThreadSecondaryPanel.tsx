@@ -536,6 +536,30 @@ function ThreadSecondaryPanelContent({
       </Button>
     ) : null;
 
+  const renderDockButton = (onDock: (() => void) | undefined) =>
+    onDock === undefined || renderAsDrawer ? null : (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              HEADER_PANE_ACTION_ICON_BUTTON_CLASS,
+              CHROME_SUBTLE_ICON_BUTTON_FOREGROUND_CLASS,
+              "shrink-0",
+              usesDesktopChrome && MACOS_WINDOW_NO_DRAG_CLASS,
+            )}
+            onClick={onDock}
+            aria-label="Dock left of thread"
+          >
+            <Icon name="PanelLeft" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>Dock left of thread</TooltipContent>
+      </Tooltip>
+    );
+
   const renderConversationCollapseButton = ({
     isFullScreen,
     onMoveActiveTabToSide,
@@ -821,6 +845,7 @@ function ThreadSecondaryPanelContent({
                 )}
                 onPointerDown={(event) => event.stopPropagation()}
               >
+                {renderDockButton(activeSurfaceTab?.onDock)}
                 {usesPaneArrangementControl || showOuterControls
                   ? renderConversationCollapseButton({
                       isFullScreen,

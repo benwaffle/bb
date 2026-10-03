@@ -15,6 +15,10 @@ import {
 } from "@/components/secondary-panel/ThreadMetadataContent";
 import { DETAIL_GRID_CLASS } from "@/components/ui/detail-card.js";
 import { useThreads } from "@/hooks/queries/thread-queries";
+import {
+  DockedThreadPanelColumns,
+  type DockedThreadPanelColumnsProps,
+} from "./DockedThreadPanelColumns";
 import { ThreadTimelinePane } from "./ThreadTimelinePane";
 
 type ThreadTimelinePaneProps = Omit<
@@ -39,6 +43,10 @@ type ThreadSecondaryPanelProps = Omit<
 };
 
 interface ThreadDetailSecondaryContentProps {
+  dockedPanels: Pick<
+    DockedThreadPanelColumnsProps,
+    "renderContent" | "onUndock"
+  >;
   footer: ReactNode;
   header: ReactNode;
   isMetadataLoading: boolean;
@@ -64,6 +72,7 @@ export function ThreadDetailSecondaryContent(
 }
 
 function ThreadDetailSecondaryContentBody({
+  dockedPanels,
   footer,
   header,
   isMetadataLoading,
@@ -107,7 +116,9 @@ function ThreadDetailSecondaryContentBody({
   );
 
   return (
-    <div
+    <DockedThreadPanelColumns
+      {...dockedPanels}
+      threadId={timeline.threadId}
       className={cn(
         "flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-clip",
         !isBoundedPane && "-mx-4 -mb-4 -mt-4 md:-mx-5 md:-mb-5 md:-mt-5",
@@ -160,7 +171,7 @@ function ThreadDetailSecondaryContentBody({
           />
         )}
       />
-    </div>
+    </DockedThreadPanelColumns>
   );
 }
 
