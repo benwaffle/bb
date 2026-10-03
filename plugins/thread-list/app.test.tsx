@@ -329,6 +329,79 @@ describe("thread-list plugin", () => {
     expect(within(threadsGroup).getByText("Personal thread")).not.toBeNull();
   });
 
+  it("nests a project's threads and placeholder rows under plugin thread groups", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const onSelect = vi.fn();
+    const run = vi.fn();
+    const reviewThread = makeSidebarThread({
+      id: "thr_review",
+      projectId: "proj_app",
+      title: "Review thread",
+      createdAt: 9,
+      updatedAt: 9,
+      latestAttentionAt: 9,
+    });
+    renderList(
+      { organizationMode: "project" },
+      {
+        sidebarThreads: {
+          projects: PROJECTS,
+          sections: SECTIONS,
+          threads: [...THREADS, reviewThread],
+        },
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            label: "CORE-21",
+            tooltip: "Speed up the importer",
+            threadIds: ["thr_review", "thr_parent"],
+            rows: [
+              {
+                id: "hss#600",
+                title: "#600 Batch the importer",
+                description: "ana",
+                onSelect,
+                action: { label: "Start", run },
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    const header = await screen.findByText("CORE-21");
+    expect(header.parentElement?.getAttribute("title")).toBe(
+      "Speed up the importer",
+    );
+    const appGroup = screen
+      .getByTitle("App")
+      .closest("[data-sidebar-sticky-group]") as HTMLElement;
+    const ticketGroup = header.closest(
+      "[data-sidebar-sticky-group]",
+    ) as HTMLElement;
+    expect(appGroup.contains(ticketGroup)).toBe(true);
+    expect(
+      Array.from(
+        ticketGroup.querySelectorAll("[data-sidebar-thread-id]"),
+        (element) => element.getAttribute("data-sidebar-thread-id"),
+      ),
+    ).toEqual(["thr_review", "thr_parent", "thr_child"]);
+
+    fireEvent.click(screen.getByText("#600 Batch the importer"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(ticketGroup).getByRole("button", { name: "Start" }));
+    expect(run).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse CORE-21" }));
+    await waitFor(() =>
+      expect(screen.queryByText("#600 Batch the importer")).toBeNull(),
+    );
+    expect(screen.queryByText("Review thread")).toBeNull();
+  });
+
   it("keys its slot and preferences mirror by its own plugin id", async () => {
     window.localStorage.clear();
     expect(registration.id).toBe("thread-list");

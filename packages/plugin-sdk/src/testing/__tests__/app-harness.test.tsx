@@ -633,6 +633,35 @@ describe("loadPluginApp", () => {
     ).rejects.toThrow('slots.experimental_appOverlay: duplicate id "office"');
   });
 
+  it("captures and validates sidebar thread group registrations", async () => {
+    const useGroups = () => [];
+    const captured = await loadPluginApp(
+      definePluginApp((builder) => {
+        builder.slots.experimental_sidebarThreadGroups({
+          id: "tickets",
+          title: "Tickets",
+          useGroups,
+        });
+      }),
+    );
+    expect(captured.sidebarThreadGroups).toEqual([
+      { id: "tickets", title: "Tickets", useGroups },
+    ]);
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.experimental_sidebarThreadGroups({
+            id: "tickets",
+            title: "Tickets",
+            useGroups: undefined as never,
+          });
+        }),
+      ),
+    ).rejects.toThrow(
+      'slots.experimental_sidebarThreadGroups: "useGroups" must be a function',
+    );
+  });
+
   it("captures and validates sidebar navigation registrations", async () => {
     const captured = await loadPluginApp(
       definePluginApp((builder) => {
