@@ -74,7 +74,8 @@ const MOBILE_SLIDES: GuideSlide[] = DESKTOP_SLIDES.flatMap((group) => {
         blurb: "Plugins can add navigation, thread status, and footer controls.",
         appShellScene: "navigation" as const,
         surfaces: group.surfaces.filter((surface) => [
-          "sidebar-navigation", "nav-panel", "thread-row-status", "thread-list", "sidebar-footer",
+          "sidebar-navigation", "nav-panel", "thread-row-status", "thread-list",
+          "sidebar-thread-groups", "sidebar-footer",
         ].includes(surface.id)),
       },
       {
