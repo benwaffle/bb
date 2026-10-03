@@ -73,7 +73,8 @@ the same change.
   runtime value and type export.
 - Read references/frontend-core-slots.md for trusted content scripts, homepage,
   settings, navigation, thread panels, environment and machine provider
-  inputs, interactions, sidebar actions, and file openers.
+  inputs, interactions, sidebar actions, file openers, and sidebar thread
+  groups.
 - Read references/frontend-renderer-slots.md for source, diff, message,
   timeline, palette, and provider-icon renderers or actions.
 - Read references/frontend-components.md for ThreadChat, provider controls,
