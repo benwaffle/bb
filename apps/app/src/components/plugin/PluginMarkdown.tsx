@@ -72,6 +72,8 @@ function PluginDocumentMarkdown({
     canOpenInEditor: true,
     hostId,
     openFilePreview: navigation.openFilePreview,
+    openThreadStorageDirectory: null,
+    threadStorageFilePaths: null,
     threadStorage:
       target.kind === "thread-storage" ? { rootPath, threadId } : null,
     workspace:
