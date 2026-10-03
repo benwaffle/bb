@@ -325,6 +325,51 @@ and `sidebar.navigationProvider` to `<plugin-id>/<slot-id>` from
 `bb.onInstall` (see backend-ui-lifecycle.md); later choices in
 Settings → Appearance stick. Users do the same with `bb settings ui set`.
 
+### Grouping sidebar threads
+
+`app.slots.experimental_sidebarThreadGroups` nests threads in bb's sidebar
+under groups your plugin defines, without replacing the list. Threads keep
+their rows and behaviors (open, pin, archive, rename, drag). `useGroups` is a
+React hook the host calls inside your plugin's context, so `useRpc` and
+`useRealtime` work. Return the same array while nothing changed.
+
+```tsx
+app.slots.experimental_sidebarThreadGroups({
+  id: "tickets",
+  title: "Tickets",
+  useGroups: () => {
+    const tickets = useTickets();
+    return useMemo(
+      () =>
+        tickets.map((ticket) => ({
+          projectId: ticket.projectId,
+          key: ticket.key,
+          label: ticket.key,
+          tooltip: ticket.summary,
+          threadIds: ticket.threadIds,
+          rows: ticket.unstarted.map((work) => ({
+            id: work.id,
+            title: work.title,
+            description: work.author,
+            onSelect: () => openWork(work),
+            action: { label: "Start", run: () => startWork(work) },
+          })),
+        })),
+      [tickets],
+    );
+  },
+});
+```
+
+bb's Thread list shows groups in Organize → By project. A group gets a
+collapsible header in its project when it holds at least two of the project's
+root threads, or any `rows`; a lone thread stays a plain row. A thread
+claimed by two groups stays in the first. `rows` are muted placeholders for
+work that has no thread yet, listed after the group's threads. A replacement
+thread list reads every plugin's groups with
+`experimental_useSidebarThreadGroups()`, which adds a host-assigned `id` and
+the `pluginId`.
+
 ### Replacing the sidebar thread list
 
 `app.slots.experimental_threadList` is the one **exclusive** slot: only one
