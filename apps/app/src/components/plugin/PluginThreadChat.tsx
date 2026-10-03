@@ -206,7 +206,9 @@ function PluginThreadChatBody({
   const onOpenLocalFileLink = useThreadFileLinkOpener({
     environment,
     openFilePreview: navigation.openFilePreview,
+    openThreadStorageDirectory: null,
     threadId: thread?.id,
+    threadStorageFilePaths: null,
   }).openLink;
   const handleTimelineTitleAction = useThreadTimelineTitleActions({
     threadId,
