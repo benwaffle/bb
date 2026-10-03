@@ -3296,8 +3296,43 @@ export interface BbContext {
   threadId: string | null;
 }
 
+/**
+ * A `threadPanelAction` tab docked as a resizable column to the left of the
+ * thread, outside the right panel's tab strip. Experimental: see
+ * docs/api_to_audit.md.
+ */
+export interface ExperimentalDockedThreadPanel {
+  /**
+   * Plugin that registered the action; omitted = the calling plugin. Unlike
+   * `openThreadPanel`, this may name another plugin's action (for example the
+   * GitHub plugin's `pull` tab).
+   */
+  pluginId?: string;
+  /** The `threadPanelAction` id. */
+  actionId: string;
+  /** Column label; default: the action's `title`. */
+  title?: string;
+  /** Handed to the component as its `params` prop; must be a JSON value. */
+  params?: JsonValue;
+}
+
+/** Options for {@link BbNavigate.toThread}. */
+export interface ToThreadOptions {
+  /**
+   * Dock these panel tabs before the thread opens, in order, left to right.
+   * The set replaces every panel docked on the thread, so an empty array
+   * clears them and omitting the option leaves them unchanged. Entries with
+   * the same plugin, action, and params dock once. An entry whose `params` is
+   * not a JSON value is skipped. Docking is remembered per thread on this
+   * client; compact viewports and split panes show the thread without the
+   * columns.
+   * Experimental: see docs/api_to_audit.md.
+   */
+  experimental_dockedPanels?: readonly ExperimentalDockedThreadPanel[];
+}
+
 export interface BbNavigate {
-  toThread(threadId: string): void;
+  toThread(threadId: string, options?: ToThreadOptions): void;
   toProject(projectId: string): void;
   /**
    * Navigate to one of this plugin's own nav panels by its `path`.
