@@ -164,6 +164,7 @@ import {
 } from "@/components/secondary-panel/git-diff/git-diff-fixed-tab-navigation";
 import { THREAD_INFO_FIXED_TAB_REFERENCE } from "@/components/secondary-panel/thread-info-fixed-tab-navigation";
 import { ThreadDetailHeader } from "./ThreadDetailHeader";
+import { openTimelineFileTitle } from "./timelineFileTitleOpen";
 import {
   ThreadDetailPromptArea,
   type ThreadDetailSentMessageEdit,
@@ -1917,6 +1918,14 @@ function ThreadDetailViewInternal(
     },
     [thread, updateThread],
   );
+  const revealStorageFolder = storageBrowserController.revealFolder;
+  const fileManagerOpenTargetId =
+    directoryOpenTargets.find((target) => target.kind === "file-manager")?.id ??
+    null;
+  const threadStorageFilePaths = useMemo(
+    () => threadStorageFiles?.files.map((file) => file.path) ?? null,
+    [threadStorageFiles],
+  );
   const handleTimelineLocalFileLinkResolution = useCallback(
     (
       resolution: ThreadLocalFileLinkResolution,
@@ -1941,6 +1950,22 @@ function ThreadDetailViewInternal(
           rememberTarget: false,
           targetId: resolution.request.targetId,
         });
+        return true;
+      }
+
+      if (resolution.kind === "open-directory-in-target") {
+        void openPathInDirectoryTarget({
+          lineNumber: null,
+          path: resolution.request.path,
+          rememberTarget: false,
+          targetId: resolution.request.targetId,
+        });
+        return true;
+      }
+
+      if (resolution.kind === "open-thread-storage-directory") {
+        revealStorageFolder(resolution.request.relativePath);
+        openThreadInfo();
         return true;
       }
 
@@ -1977,7 +2002,15 @@ function ThreadDetailViewInternal(
       );
       return true;
     },
-    [openHostFile, openPathInFileTarget, openStorageFile, openWorkspaceFile],
+    [
+      openHostFile,
+      openPathInDirectoryTarget,
+      openPathInFileTarget,
+      openStorageFile,
+      openThreadInfo,
+      openWorkspaceFile,
+      revealStorageFolder,
+    ],
   );
   const handleOpenTimelineLocalFileLink = useCallback(
     (
@@ -1986,11 +2019,13 @@ function ThreadDetailViewInternal(
     ) => {
       return handleTimelineLocalFileLinkResolution(
         resolveThreadLocalFileLink({
+          directoryOpenTargetId: fileManagerOpenTargetId,
           fileOpenTargetIds: fileOpenTargets.map((target) => target.id),
           hostFileLinksAvailable:
             thread?.environmentId !== null &&
             thread?.environmentId !== undefined,
           link,
+          threadStorageFilePaths,
           threadStorageRootPath,
           workspaceRootPath: workspacePreviewRootPath,
         }),
@@ -1998,9 +2033,11 @@ function ThreadDetailViewInternal(
       );
     },
     [
+      fileManagerOpenTargetId,
       fileOpenTargets,
       handleTimelineLocalFileLinkResolution,
       thread?.environmentId,
+      threadStorageFilePaths,
       threadStorageRootPath,
       workspacePreviewRootPath,
     ],
@@ -2014,7 +2051,11 @@ function ThreadDetailViewInternal(
       switch (action.kind) {
         case "open-file-diff":
           return () => {
-            openSecondaryPanelDiffFile(action.path);
+            openTimelineFileTitle({
+              openDiffFile: openSecondaryPanelDiffFile,
+              openLocalFile: handleOpenTimelineLocalFileLink,
+              path: action.path,
+            });
           };
         case "open-plugin-side-chat":
           return () => {
@@ -2028,7 +2069,12 @@ function ThreadDetailViewInternal(
           return assertNever(action);
       }
     },
-    [openSecondaryPanelDiffFile, handleOpenTimelinePluginPanel, threadId],
+    [
+      openSecondaryPanelDiffFile,
+      handleOpenTimelineLocalFileLink,
+      handleOpenTimelinePluginPanel,
+      threadId,
+    ],
   );
   const metadataStorage = useMemo(
     () =>

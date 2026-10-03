@@ -63,6 +63,10 @@ interface LocalFilePathValidationArgs {
   path: string;
 }
 
+interface LocalDirectoryPathArgs {
+  path: string;
+}
+
 interface ParseLineRangeArgs {
   endValue: string | undefined;
   startValue: string;
@@ -210,6 +214,9 @@ function parseLineSuffix(value: string): LocalFileHrefParts | null {
 }
 
 const WINDOWS_DRIVE_PATH_PATTERN = /^[A-Za-z]:[\\/]/u;
+const WINDOWS_DRIVE_ROOT_PATTERN = /^[A-Za-z]:[\\/]+$/u;
+const HOST_ROOT_POSIX_PATH_PATTERN =
+  /^\/(?:Users|home|tmp|private|Volumes|var|opt|mnt|root)\//u;
 const FILE_URL_WINDOWS_DRIVE_PATHNAME_PATTERN = /^\/[A-Za-z]:\//u;
 
 export function isWindowsDriveLocalFilePath(path: string): boolean {
@@ -220,6 +227,23 @@ function isAbsoluteLocalFilePathStart(path: string): boolean {
   return (
     (path.startsWith("/") && !path.startsWith("//")) ||
     isWindowsDriveLocalFilePath(path)
+  );
+}
+
+function isHostRootLocalFilePath(path: string): boolean {
+  return (
+    HOST_ROOT_POSIX_PATH_PATTERN.test(path) ||
+    (isWindowsDriveLocalFilePath(path) &&
+      !WINDOWS_DRIVE_ROOT_PATTERN.test(path))
+  );
+}
+
+export function isLocalDirectoryPath({
+  path,
+}: LocalDirectoryPathArgs): boolean {
+  return (
+    path.endsWith("/") ||
+    (isWindowsDriveLocalFilePath(path) && path.endsWith("\\"))
   );
 }
 
@@ -246,17 +270,19 @@ function isValidAbsoluteLocalFilePath({
   path,
   requireLikelyFileBasename,
 }: LocalFilePathValidationArgs): boolean {
+  const isHostRootPath = isHostRootLocalFilePath(path);
   return (
     isAbsoluteLocalFilePathStart(path) &&
     path !== "/" &&
-    !path.endsWith("/") &&
-    !(isWindowsDriveLocalFilePath(path) && path.endsWith("\\")) &&
+    (isHostRootPath || !isLocalDirectoryPath({ path })) &&
     !path.includes("\n") &&
     !path.includes("\r") &&
     !path.includes("?") &&
     !path.includes("#") &&
     !hasControlCharacter(path) &&
-    (!requireLikelyFileBasename || hasLikelyFileBasename(path))
+    (!requireLikelyFileBasename ||
+      isHostRootPath ||
+      hasLikelyFileBasename(path))
   );
 }
 
@@ -414,7 +440,12 @@ export function parseLocalFileHref({
   const isUrl =
     URI_SCHEME_PATTERN.test(href) && !isWindowsDriveLocalFilePath(href);
   const urlParts = isUrl ? parseLocalFileUrl(href) : null;
-  if (isUrl && urlParts === null) {
+  if (
+    (isUrl && urlParts === null) ||
+    (urlParts !== null &&
+      urlParts.openTargetId !== null &&
+      isLocalDirectoryPath({ path: urlParts.path }))
+  ) {
     return null;
   }
   const parts = parseAbsoluteLocalFileHref(
