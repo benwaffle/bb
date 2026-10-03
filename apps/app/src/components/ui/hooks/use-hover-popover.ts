@@ -10,10 +10,18 @@ interface HoverPopoverHandlers {
   onCloseAutoFocus?: (event: Event) => void;
 }
 
+export interface HoverPopoverGroup {
+  isWarm: () => boolean;
+  activate: (member: object, close: () => void) => void;
+  deactivate: (member: object) => void;
+}
+
 interface UseHoverPopoverOptions {
   openDelayMs?: number;
   closeDelayMs?: number;
   hoverableContent?: boolean;
+  openOnFocus?: boolean;
+  group?: HoverPopoverGroup | null;
 }
 
 interface UseHoverPopoverResult {
@@ -25,6 +33,7 @@ interface UseHoverPopoverResult {
 
 const DEFAULT_OPEN_DELAY_MS = 0;
 const DEFAULT_CLOSE_DELAY_MS = 160;
+const DEFAULT_GROUP_WARM_MS = 300;
 const noop = () => undefined;
 const preventAutoFocus = (event: Event) => {
   event.preventDefault();
@@ -46,10 +55,39 @@ const NON_HOVERABLE_CONTENT_PROPS: HoverPopoverHandlers = {
   onCloseAutoFocus: preventAutoFocus,
 };
 
+interface ActiveGroupMember {
+  member: object;
+  close: () => void;
+}
+
+export function createHoverPopoverGroup(
+  warmMs: number = DEFAULT_GROUP_WARM_MS,
+): HoverPopoverGroup {
+  let active: ActiveGroupMember | null = null;
+  let lastClosedAt = Number.NEGATIVE_INFINITY;
+  return {
+    isWarm: () => active !== null || Date.now() - lastClosedAt <= warmMs,
+    activate: (member, close) => {
+      const previous = active;
+      active = { member, close };
+      if (previous !== null && previous.member !== member) {
+        previous.close();
+      }
+    },
+    deactivate: (member) => {
+      if (active?.member !== member) return;
+      active = null;
+      lastClosedAt = Date.now();
+    },
+  };
+}
+
 export function useHoverPopover({
   openDelayMs = DEFAULT_OPEN_DELAY_MS,
   closeDelayMs = DEFAULT_CLOSE_DELAY_MS,
   hoverableContent = true,
+  openOnFocus = true,
+  group = null,
 }: UseHoverPopoverOptions = {}): UseHoverPopoverResult {
   const { supportsHover } = useResponsiveOverlayBehavior();
   const [open, setOpen] = useState(false);
@@ -58,6 +96,7 @@ export function useHoverPopover({
   const [isPointerOverTrigger, setIsPointerOverTrigger] = useState(false);
   const [isPointerOverContent, setIsPointerOverContent] = useState(false);
   const toggleTimeoutRef = useRef<number | null>(null);
+  const groupMemberRef = useRef<object>({});
 
   const clearToggleTimeout = useCallback(() => {
     if (toggleTimeoutRef.current === null) {
@@ -79,7 +118,7 @@ export function useHoverPopover({
     if (isPointerOverTrigger || isPointerOverContent) {
       if (open) return;
 
-      if (openDelayMs <= 0) {
+      if (openDelayMs <= 0 || group?.isWarm()) {
         setOpen(true);
         return;
       }
@@ -105,6 +144,7 @@ export function useHoverPopover({
     closeDelayMs,
     isFocusOverContent,
     isFocusOverTrigger,
+    group,
     supportsHover,
     isPointerOverContent,
     isPointerOverTrigger,
@@ -132,6 +172,18 @@ export function useHoverPopover({
     [clearToggleTimeout],
   );
 
+  useEffect(() => {
+    if (!open || group === null) return;
+    const member = groupMemberRef.current;
+    group.activate(member, () => handleOpenChange(false));
+    return () => group.deactivate(member);
+  }, [group, handleOpenChange, open]);
+
+  const focusProps = (setFocused: (focused: boolean) => void) =>
+    openOnFocus
+      ? { onFocus: () => setFocused(true), onBlur: () => setFocused(false) }
+      : { onFocus: noop, onBlur: noop };
+
   const triggerHoverProps = {
     ...(!supportsHover
       ? EMPTY_HOVER_PROPS
@@ -143,8 +195,7 @@ export function useHoverPopover({
             setIsPointerOverTrigger(false);
           },
         }),
-    onFocus: () => setIsFocusOverTrigger(true),
-    onBlur: () => setIsFocusOverTrigger(false),
+    ...focusProps(setIsFocusOverTrigger),
   };
 
   const contentHoverProps = {
@@ -162,8 +213,7 @@ export function useHoverPopover({
             onCloseAutoFocus: preventAutoFocus,
           }
         : NON_HOVERABLE_CONTENT_PROPS),
-    onFocus: () => setIsFocusOverContent(true),
-    onBlur: () => setIsFocusOverContent(false),
+    ...focusProps(setIsFocusOverContent),
   };
 
   return {
