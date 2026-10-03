@@ -158,6 +158,7 @@ import {
   THREAD_INFO_FIXED_TAB_REFERENCE,
 } from "@/components/secondary-panel/thread-info-fixed-tab-navigation";
 import { ThreadDetailHeader } from "./ThreadDetailHeader";
+import { openTimelineFileTitle } from "./timelineFileTitleOpen";
 import {
   ThreadDetailPromptArea,
   type ThreadDetailSentMessageEdit,
@@ -1957,7 +1958,11 @@ function ThreadDetailViewInternal(
       switch (action.kind) {
         case "open-file-diff":
           return () => {
-            openSecondaryPanelDiffFile(action.path);
+            openTimelineFileTitle({
+              openDiffFile: openSecondaryPanelDiffFile,
+              openLocalFile: handleOpenTimelineLocalFileLink,
+              path: action.path,
+            });
           };
         case "open-plugin-side-chat":
           return () => {
@@ -1971,7 +1976,12 @@ function ThreadDetailViewInternal(
           return assertNever(action);
       }
     },
-    [openSecondaryPanelDiffFile, handleOpenTimelinePluginPanel, threadId],
+    [
+      openSecondaryPanelDiffFile,
+      handleOpenTimelineLocalFileLink,
+      handleOpenTimelinePluginPanel,
+      threadId,
+    ],
   );
   const metadataStorage = useMemo(
     () =>
