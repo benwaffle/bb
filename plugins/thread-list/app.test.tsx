@@ -329,6 +329,272 @@ describe("thread-list plugin", () => {
     expect(within(threadsGroup).getByText("Personal thread")).not.toBeNull();
   });
 
+  it("nests a project's threads and placeholder rows under plugin thread groups", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const onSelect = vi.fn();
+    const run = vi.fn();
+    const reviewThread = makeSidebarThread({
+      id: "thr_review",
+      projectId: "proj_app",
+      title: "Review thread",
+      createdAt: 9,
+      updatedAt: 9,
+      latestAttentionAt: 9,
+    });
+    renderList(
+      { organizationMode: "project" },
+      {
+        sidebarThreads: {
+          projects: PROJECTS,
+          sections: SECTIONS,
+          threads: [...THREADS, reviewThread],
+        },
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            label: "CORE-21",
+            tooltip: "Speed up the importer",
+            threadIds: ["thr_review", "thr_parent"],
+            keepOrder: false,
+            style: "flat",
+            rows: [
+              {
+                id: "hss#600",
+                title: "#600 Batch the importer",
+                description: "ana",
+                icon: { name: "GitPullRequest", tone: "success" },
+                trailing: { kind: "text", text: "idle" },
+                onSelect,
+                action: { label: "Start", run },
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    const header = await screen.findByText("CORE-21");
+    expect(header.parentElement?.getAttribute("title")).toBe(
+      "Speed up the importer",
+    );
+    const appGroup = screen
+      .getByTitle("App")
+      .closest("[data-sidebar-sticky-group]") as HTMLElement;
+    const ticketGroup = header.closest(
+      "[data-sidebar-sticky-group]",
+    ) as HTMLElement;
+    expect(appGroup.contains(ticketGroup)).toBe(true);
+    expect(
+      Array.from(
+        ticketGroup.querySelectorAll("[data-sidebar-thread-id]"),
+        (element) => element.getAttribute("data-sidebar-thread-id"),
+      ),
+    ).toEqual(["thr_review", "thr_parent", "thr_child"]);
+    const groupedThreadRow = ticketGroup
+      .querySelector('[data-sidebar-thread-id="thr_review"]')
+      ?.closest("[data-sidebar-rename-row]") as HTMLElement;
+    const placeholderRow = ticketGroup.querySelector(
+      '[data-sidebar-plugin-thread-group-row="hss#600"]',
+    ) as HTMLElement;
+    expect(placeholderRow.style.paddingLeft).toBe(
+      groupedThreadRow.style.paddingLeft,
+    );
+    expect(
+      Array.from(
+        within(placeholderRow).getByRole("button", {
+          name: /#600 Batch the importer/,
+        }).children,
+        (child) => child.textContent,
+      ),
+    ).toEqual(["", "#600 Batch the importer", "ana", "idle"]);
+
+    expect(
+      placeholderRow
+        .querySelector("[data-sidebar-plugin-row-icon]")
+        ?.getAttribute("data-sidebar-plugin-row-icon"),
+    ).toBe("success");
+    expect(
+      placeholderRow.querySelector('[data-sidebar-plugin-row-trailing="text"]')
+        ?.textContent,
+    ).toBe("idle");
+    expect(
+      ticketGroup.querySelector("[data-sidebar-plugin-thread-group-progress]")
+        ?.textContent,
+    ).toBe("2/3");
+    expect(
+      ticketGroup?.getAttribute("data-sidebar-plugin-thread-group-style"),
+    ).toBe("flat");
+    expect(
+      ticketGroup.querySelector("[data-sidebar-plugin-thread-group-key]"),
+    ).toBeNull();
+    const startButton = within(ticketGroup).getByRole("button", {
+      name: "Start",
+    });
+    expect(startButton.parentElement?.classList).toContain(
+      "bb-sidebar-hover-actions",
+    );
+
+    fireEvent.click(screen.getByText("#600 Batch the importer"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    fireEvent.click(startButton);
+    expect(run).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse CORE-21" }));
+    await waitFor(() =>
+      expect(screen.queryByText("#600 Batch the importer")).toBeNull(),
+    );
+    expect(screen.queryByText("Review thread")).toBeNull();
+  });
+
+  it("interleaves decorated thread rows with placeholder rows when a group keeps its order", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const reviewThread = makeSidebarThread({
+      id: "thr_review",
+      projectId: "proj_app",
+      title: "Review thread",
+      createdAt: 9,
+      updatedAt: 9,
+      latestAttentionAt: 9,
+    });
+    const placeholder = (id: string) => ({
+      id,
+      title: id,
+      onSelect: () => undefined,
+    });
+    const archived: string[] = [];
+    const { inspection } = renderList(
+      { organizationMode: "project" },
+      {
+        sdk: { threads: { update: vi.fn().mockResolvedValue({}) } },
+        threadActions: (thread) => [
+          {
+            key: "bb--core/archive",
+            pluginId: "bb--core",
+            group: "4_lifecycle",
+            action: {
+              label: "Archive",
+              icon: "Archive",
+              run: async () => {
+                archived.push(thread.id);
+              },
+            },
+          },
+        ],
+        sidebarThreads: {
+          projects: PROJECTS,
+          sections: SECTIONS,
+          threads: [...THREADS, reviewThread],
+        },
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            keyLabel: "CORE-21",
+            label: "Speed up the importer",
+            icon: "GitPullRequestArrow",
+            threadIds: ["thr_parent", "thr_review"],
+            rows: [
+              placeholder("#552 Base"),
+              {
+                threadId: "thr_review",
+                depth: 1,
+                description: "stacked on #552",
+                icon: { name: "GitMerge", tone: "accent" },
+                trailing: { kind: "dot", tone: "accent" },
+              },
+              placeholder("\u00a0\u00a0└ #560 Top"),
+            ],
+            keepOrder: true,
+            style: "card",
+          },
+        ],
+      },
+    );
+
+    const ticketGroup = (await screen.findByText("CORE-21")).closest(
+      "[data-sidebar-sticky-group]",
+    ) as HTMLElement;
+    expect(
+      ticketGroup?.getAttribute("data-sidebar-plugin-thread-group-style"),
+    ).toBe("card");
+    expect(ticketGroup.classList).toContain("border-sidebar-border");
+    const ticketHeader = ticketGroup.querySelector(
+      "[data-sidebar-plugin-thread-group]",
+    ) as HTMLElement;
+    expect(ticketHeader.parentElement).toBe(ticketGroup);
+    expect(
+      ticketHeader.querySelector("[data-sidebar-plugin-thread-group-key]")
+        ?.textContent,
+    ).toBe("CORE-21");
+    within(ticketHeader).getByText("Speed up the importer");
+    expect(
+      ticketHeader.querySelector("[data-sidebar-plugin-thread-group-progress]")
+        ?.textContent,
+    ).toBe("2/4");
+    expect(
+      Array.from(
+        ticketGroup.querySelectorAll(
+          "[data-sidebar-thread-id], [data-sidebar-plugin-thread-group-row]",
+        ),
+        (element) =>
+          element.getAttribute("data-sidebar-thread-id") ??
+          element.getAttribute("data-sidebar-plugin-thread-group-row"),
+      ),
+    ).toEqual([
+      "thr_parent",
+      "thr_child",
+      "#552 Base",
+      "thr_review",
+      "\u00a0\u00a0└ #560 Top",
+    ]);
+    const reviewRow = ticketGroup
+      .querySelector('[data-sidebar-thread-id="thr_review"]')
+      ?.closest("[data-sidebar-rename-row]") as HTMLElement;
+    const depthRail = reviewRow.querySelector("[data-sidebar-thread-depth]");
+    expect(depthRail?.textContent).toBe("");
+    expect(depthRail?.children).toHaveLength(1);
+    expect(
+      reviewRow
+        .querySelector("[data-sidebar-plugin-row-icon]")
+        ?.getAttribute("data-sidebar-plugin-row-icon"),
+    ).toBe("accent");
+    expect(
+      reviewRow
+        .querySelector("[data-sidebar-plugin-row-trailing]")
+        ?.getAttribute("data-sidebar-plugin-row-trailing"),
+    ).toBe("dot:accent");
+    expect(
+      reviewRow.querySelector("[data-sidebar-thread-description]")?.textContent,
+    ).toBe("stacked on #552");
+    const parentRow = ticketGroup
+      .querySelector('[data-sidebar-thread-id="thr_parent"]')
+      ?.closest("[data-sidebar-rename-row]") as HTMLElement;
+    expect(parentRow.querySelector("[data-sidebar-thread-depth]")).toBeNull();
+
+    fireEvent.click(within(reviewRow).getByRole("button", { name: "Archive" }));
+    fireEvent.doubleClick(within(reviewRow).getByText("Review thread"));
+    const input = await screen.findByRole("textbox", { name: "Thread name" });
+    expect(
+      reviewRow.querySelector("[data-sidebar-thread-description]"),
+    ).toBeNull();
+    fireEvent.change(input, { target: { value: "Renamed review" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(inspection.sdkCalls).toEqual([
+        {
+          method: "threads.update",
+          args: [{ threadId: "thr_review", title: "Renamed review" }],
+        },
+      ]),
+    );
+    expect(archived).toEqual(["thr_review"]);
+  });
+
   it("keys its slot and preferences mirror by its own plugin id", async () => {
     window.localStorage.clear();
     expect(registration.id).toBe("thread-list");

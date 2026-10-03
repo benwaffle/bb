@@ -186,6 +186,7 @@ describe("useSidebarThreadReveal", () => {
           .effectivePinnedThreadIds,
         organizationMode: "chronological",
         personalProjectId: "proj_personal",
+        pluginGroupIdsByThreadId: new Map(),
       });
 
     expect([...threadIdsToExpand]).toEqual(["parent"]);
@@ -194,5 +195,28 @@ describe("useSidebarThreadReveal", () => {
       "env_parent",
     ]);
     expect(expansion).toEqual({ sidebarSectionId: "pinned" });
+  });
+
+  it("expands the plugin groups that hold a revealed thread or its ancestors", () => {
+    const parent = thread("parent");
+    const child = thread("child", { parentThreadId: "parent" });
+    const threads = [parent, child];
+
+    const { environmentIdsToExpand } = resolveThreadRevealExpansion({
+      thread: child,
+      threadById: new Map(threads.map((item) => [item.id, item])),
+      effectivePinnedThreadIds: new Set(),
+      organizationMode: "chronological",
+      personalProjectId: "proj_personal",
+      pluginGroupIdsByThreadId: new Map([
+        ["child", ["group_child"]],
+        ["parent", ["group_parent"]],
+      ]),
+    });
+
+    expect([...environmentIdsToExpand].sort()).toEqual([
+      "group_child",
+      "group_parent",
+    ]);
   });
 });

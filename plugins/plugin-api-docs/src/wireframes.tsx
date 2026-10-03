@@ -575,15 +575,35 @@ const SIDEBAR_SECTION_RENDERERS: Record<string, () => ReactNode> = {
       <span className="block px-2 pb-1 pt-2 text-xs text-subtle-foreground/75">
         Projects
       </span>
-      {["acme-app", "dotfiles"].map((project) => (
-        <span
-          key={project}
-          className="flex h-6.5 items-center gap-1.5 rounded-md px-2"
-        >
-          <span className="min-w-0 truncate">{project}</span>
-          <MiniIcon icon="ChevronRight" className="size-3.5" />
+      <span className="flex h-6.5 items-center gap-1.5 rounded-md px-2">
+        <span className="min-w-0 truncate">acme-app</span>
+        <MiniIcon icon="ChevronDown" className="size-3.5" />
+      </span>
+      <Mark
+        id="sidebar-thread-groups"
+        label="A plugin's card-style thread group, with a row for work without a thread"
+        className="z-[2] my-0.5 block rounded-md border border-sidebar-border"
+      >
+        <span className="flex h-6.5 items-center gap-2 rounded-md px-2 text-muted-foreground">
+          <span className="font-mono text-subtle-foreground">CORE-21</span>
+          <span className="min-w-0 flex-1 truncate">Batch imports</span>
+          <span className="text-xs tabular-nums">1/2</span>
         </span>
-      ))}
+        <span className="flex h-6.5 items-center gap-2 rounded-md pl-6 pr-2">
+          <span aria-hidden className="size-2 rounded-full bg-success" />
+          <span className="min-w-0 flex-1 truncate">Review #596</span>
+          <span aria-hidden className="size-1.5 rounded-full bg-pr-merged" />
+        </span>
+        <span className="flex h-6.5 items-center gap-2 rounded-md pl-6 pr-2 text-muted-foreground">
+          <span aria-hidden className="size-2 rounded-full bg-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">#601 Batch imports</span>
+          <span className="rounded border border-border px-1 text-xs">Start</span>
+        </span>
+      </Mark>
+      <span className="flex h-6.5 items-center gap-1.5 rounded-md px-2">
+        <span className="min-w-0 truncate">dotfiles</span>
+        <MiniIcon icon="ChevronRight" className="size-3.5" />
+      </span>
     </RegionMark>
   ),
   footer: () => (
