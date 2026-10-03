@@ -14,6 +14,7 @@ interface UseHoverPopoverOptions {
   openDelayMs?: number;
   closeDelayMs?: number;
   hoverableContent?: boolean;
+  openOnFocus?: boolean;
 }
 
 interface UseHoverPopoverResult {
@@ -50,6 +51,7 @@ export function useHoverPopover({
   openDelayMs = DEFAULT_OPEN_DELAY_MS,
   closeDelayMs = DEFAULT_CLOSE_DELAY_MS,
   hoverableContent = true,
+  openOnFocus = true,
 }: UseHoverPopoverOptions = {}): UseHoverPopoverResult {
   const { supportsHover } = useResponsiveOverlayBehavior();
   const [open, setOpen] = useState(false);
@@ -132,6 +134,11 @@ export function useHoverPopover({
     [clearToggleTimeout],
   );
 
+  const focusProps = (setFocused: (focused: boolean) => void) =>
+    openOnFocus
+      ? { onFocus: () => setFocused(true), onBlur: () => setFocused(false) }
+      : { onFocus: noop, onBlur: noop };
+
   const triggerHoverProps = {
     ...(!supportsHover
       ? EMPTY_HOVER_PROPS
@@ -143,8 +150,7 @@ export function useHoverPopover({
             setIsPointerOverTrigger(false);
           },
         }),
-    onFocus: () => setIsFocusOverTrigger(true),
-    onBlur: () => setIsFocusOverTrigger(false),
+    ...focusProps(setIsFocusOverTrigger),
   };
 
   const contentHoverProps = {
@@ -162,8 +168,7 @@ export function useHoverPopover({
             onCloseAutoFocus: preventAutoFocus,
           }
         : NON_HOVERABLE_CONTENT_PROPS),
-    onFocus: () => setIsFocusOverContent(true),
-    onBlur: () => setIsFocusOverContent(false),
+    ...focusProps(setIsFocusOverContent),
   };
 
   return {

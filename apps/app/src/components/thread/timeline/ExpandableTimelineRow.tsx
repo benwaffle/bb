@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import type { TimelineTitle } from "@bb/thread-view";
+import { Popover, PopoverAnchor, PopoverContent } from "@bb/shared-ui/popover";
 import {
   COLLAPSIBLE_HEADER_STATIC_TONE_CLASS,
   ExpandablePanel,
@@ -17,6 +18,7 @@ import {
 } from "../../ui/disclosure.js";
 import type { IconName } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
+import { useHoverPopover } from "../../ui/hooks/use-hover-popover.js";
 import { useTimelineReasoningExpansion } from "./TimelineReasoningExpansion.js";
 import {
   TIMELINE_ROW_HEADER_CONTENT_CLASS_NAME,
@@ -36,6 +38,7 @@ interface ExpandableTimelineRowProps {
   forceExpanded?: boolean;
   terminalAutoExpanded?: boolean;
   renderBody: () => ReactNode;
+  renderHoverPreview?: () => ReactNode;
   title: TimelineTitle;
   titleContent?: ReactNode;
   collapsedPreview?: ReactNode;
@@ -48,6 +51,57 @@ interface ExpandableTimelineRowProps {
   headerClassName?: string;
   summaryClassName?: string;
   onTitleAction?: TimelineTitleActionResolver;
+}
+
+interface TimelineRowHoverPreviewProps {
+  children: ReactNode;
+  disabled: boolean;
+  renderPreview: () => ReactNode;
+}
+
+const HOVER_PREVIEW_OPEN_DELAY_MS = 400;
+
+function TimelineRowHoverPreview({
+  children,
+  disabled,
+  renderPreview,
+}: TimelineRowHoverPreviewProps) {
+  const { open, triggerHoverProps, contentHoverProps, handleOpenChange } =
+    useHoverPopover({
+      openDelayMs: HOVER_PREVIEW_OPEN_DELAY_MS,
+      openOnFocus: false,
+    });
+  const closePreview = useCallback((): void => {
+    handleOpenChange(false);
+  }, [handleOpenChange]);
+  const previewOpen = open && !disabled;
+
+  return (
+    <Popover open={previewOpen} onOpenChange={handleOpenChange}>
+      <PopoverAnchor asChild>
+        <div
+          onPointerEnter={triggerHoverProps.onPointerEnter}
+          onPointerLeave={triggerHoverProps.onPointerLeave}
+          onClickCapture={closePreview}
+        >
+          {children}
+        </div>
+      </PopoverAnchor>
+      {previewOpen ? (
+        <PopoverContent
+          side="bottom"
+          align="start"
+          sideOffset={4}
+          collisionPadding={8}
+          {...contentHoverProps}
+          data-timeline-hover-preview=""
+          className="max-h-[min(28rem,var(--radix-popover-content-available-height))] w-max min-w-64 max-w-[min(720px,calc(100vw-2rem))] overflow-auto p-2 text-sm text-muted-foreground"
+        >
+          {renderPreview()}
+        </PopoverContent>
+      ) : null}
+    </Popover>
+  );
 }
 
 type CollapsedPreviewClickEvent = MouseEvent<HTMLDivElement>;
@@ -89,6 +143,7 @@ function ExpandableTimelineRowComponent({
   leadingIconStyle,
   onTitleAction,
   renderBody,
+  renderHoverPreview,
   reasoningExpansionKey,
   summaryClassName,
   terminalAutoExpanded = false,
@@ -160,7 +215,7 @@ function ExpandableTimelineRowComponent({
     [],
   );
 
-  return (
+  const panel = (
     <ExpandablePanel
       isExpanded={isExpanded}
       onToggle={expandable ? handleToggle : undefined}
@@ -227,6 +282,17 @@ function ExpandableTimelineRowComponent({
       contentClassName={cn(horizontalPaddingClass, "pb-1 pt-0.5")}
       renderBody={renderBody}
     />
+  );
+  if (!expandable || !renderHoverPreview) {
+    return panel;
+  }
+  return (
+    <TimelineRowHoverPreview
+      disabled={isExpanded}
+      renderPreview={renderHoverPreview}
+    >
+      {panel}
+    </TimelineRowHoverPreview>
   );
 }
 
