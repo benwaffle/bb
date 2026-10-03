@@ -231,6 +231,12 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
+      slots.sidebarThreadGroups,
+      "sidebar-thread-groups",
+      "Nests sidebar threads under its groups.",
+    ),
+    ...namedSlotItems(
+      pluginId,
       slots.sourceCodeRenderers,
       "source-code-renderer",
       "Replaces how source code is displayed everywhere in the app.",
