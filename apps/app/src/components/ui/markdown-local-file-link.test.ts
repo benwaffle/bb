@@ -277,6 +277,57 @@ describe("parseLocalFileHref", () => {
   });
 });
 
+describe("host-root absolute paths", () => {
+  const parseTrusted = (href: string) =>
+    parseLocalFileHref({ absoluteLinks: TRUSTED_HOST_ABSOLUTE_LINKS, href })
+      ?.path ?? null;
+
+  it.each([
+    ["/Users/me/.bb/thread-storage/thr_x/imsi-rotation-pcaps"],
+    ["/home/me/project/Makefile"],
+    ["/tmp/run-output/"],
+    ["/private/var/folders/xy/out"],
+    ["/Volumes/Data/captures/"],
+    ["C:\\Users\\me\\captures"],
+  ])("accepts extensionless or folder path %s", (href) => {
+    expect(parseTrusted(href)).toBe(href);
+  });
+
+  it("decodes spaces in host paths and file URLs", () => {
+    expect(parseTrusted("/Users/me/My%20Captures")).toBe(
+      "/Users/me/My Captures",
+    );
+    expect(parseTrusted("/Users/me/My Captures/")).toBe(
+      "/Users/me/My Captures/",
+    );
+    expect(parseTrusted("file:///Users/me/My%20Captures/")).toBe(
+      "/Users/me/My Captures/",
+    );
+  });
+
+  it("leaves site-relative, relative, and web hrefs alone", () => {
+    for (const href of [
+      "/workspace/no-extension",
+      "/docs/guide/",
+      "imsi-rotation-pcaps",
+      "notes/plan",
+      "https://bb.test/Users/me/captures",
+      "C:\\",
+    ]) {
+      expect(parseTrusted(href)).toBeNull();
+    }
+  });
+
+  it("keeps contained routing inside its root", () => {
+    expect(
+      parseLocalFileHref({
+        absoluteLinks: CONTAINED_WORKSPACE_ABSOLUTE_LINKS,
+        href: "/Users/me/captures",
+      }),
+    ).toBeNull();
+  });
+});
+
 describe("buildLocalFileAnchorHref", () => {
   it("rewrites absolute file-like paths while leaving non-file hrefs alone", () => {
     expect(
@@ -481,8 +532,8 @@ describe("Windows drive paths", () => {
     });
   });
 
-  it("rejects drive roots, directories, and drive-relative text", () => {
-    for (const href of ["C:\\", "C:/src/repo/", "C:notes.md", "C:"]) {
+  it("rejects drive roots and drive-relative text", () => {
+    for (const href of ["C:\\", "C:/", "C:notes.md", "C:"]) {
       expect(parseLocalFileHref({ absoluteLinks: trusted, href })).toBeNull();
     }
   });
