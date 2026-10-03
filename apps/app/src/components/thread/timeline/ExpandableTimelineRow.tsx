@@ -2,14 +2,18 @@ import {
   memo,
   useCallback,
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
   type CSSProperties,
   type FocusEvent,
   type KeyboardEvent,
   type MouseEvent,
+  type PointerEvent,
   type ReactNode,
 } from "react";
 import type { TimelineTitle } from "@bb/thread-view";
+import { Popover, PopoverAnchor, PopoverContent } from "@bb/shared-ui/popover";
 import {
   COLLAPSIBLE_HEADER_STATIC_TONE_CLASS,
   ExpandablePanel,
@@ -17,7 +21,16 @@ import {
 } from "../../ui/disclosure.js";
 import type { IconName } from "@bb/shared-ui/icon";
 import { cn } from "@bb/shared-ui/lib/utils";
+import { useHoverPopover } from "../../ui/hooks/use-hover-popover.js";
+import { useTimelineHoverPreviewGroup } from "./TimelineHoverPreviewGroup.js";
 import { useTimelineReasoningExpansion } from "./TimelineReasoningExpansion.js";
+import {
+  TIMELINE_HOVER_PREVIEW_COLLISION_PADDING_PX,
+  TIMELINE_HOVER_PREVIEW_MIN_WIDTH_PX,
+  TIMELINE_HOVER_PREVIEW_SIDE_OFFSET_PX,
+  timelineHoverPreviewPlacement,
+  type TimelineHoverPreviewPlacement,
+} from "./timeline-hover-preview-placement.js";
 import {
   TIMELINE_ROW_HEADER_CONTENT_CLASS_NAME,
   TimelineLeadingIcon,
@@ -36,6 +49,7 @@ interface ExpandableTimelineRowProps {
   forceExpanded?: boolean;
   terminalAutoExpanded?: boolean;
   renderBody: () => ReactNode;
+  renderHoverPreview?: () => ReactNode;
   title: TimelineTitle;
   titleContent?: ReactNode;
   collapsedPreview?: ReactNode;
@@ -48,6 +62,118 @@ interface ExpandableTimelineRowProps {
   headerClassName?: string;
   summaryClassName?: string;
   onTitleAction?: TimelineTitleActionResolver;
+}
+
+interface TimelineRowHoverPreviewProps {
+  children: ReactNode;
+  disabled: boolean;
+  renderPreview: () => ReactNode;
+}
+
+const HOVER_PREVIEW_OPEN_DELAY_MS = 400;
+const ROW_TITLE_SELECTOR = "[data-timeline-row-title]";
+
+function measureHoverPreviewPlacement(
+  row: HTMLElement,
+  pointerX: number,
+): TimelineHoverPreviewPlacement {
+  const rowRect = row.getBoundingClientRect();
+  const title = row.querySelector(ROW_TITLE_SELECTOR);
+  return timelineHoverPreviewPlacement({
+    pointerX,
+    rowLeft: rowRect.left,
+    titleRight: title?.getBoundingClientRect().right ?? pointerX,
+    viewportWidth: window.innerWidth,
+  });
+}
+
+function TimelineRowHoverPreview({
+  children,
+  disabled,
+  renderPreview,
+}: TimelineRowHoverPreviewProps) {
+  const group = useTimelineHoverPreviewGroup();
+  const { open, triggerHoverProps, contentHoverProps, handleOpenChange } =
+    useHoverPopover({
+      openDelayMs: HOVER_PREVIEW_OPEN_DELAY_MS,
+      openOnFocus: false,
+      group,
+    });
+  const rowRef = useRef<HTMLDivElement>(null);
+  const pointerXRef = useRef(0);
+  const [placement, setPlacement] =
+    useState<TimelineHoverPreviewPlacement | null>(null);
+  const anchorOffsetXRef = useRef(0);
+  const virtualAnchorRef = useRef({
+    getBoundingClientRect: (): DOMRect => {
+      const rowRect = rowRef.current?.getBoundingClientRect();
+      const x = (rowRect?.left ?? 0) + anchorOffsetXRef.current;
+      return new DOMRect(x, rowRect?.top ?? 0, 0, rowRect?.height ?? 0);
+    },
+    get contextElement(): HTMLElement | undefined {
+      return rowRef.current ?? undefined;
+    },
+  });
+  const closePreview = useCallback((): void => {
+    handleOpenChange(false);
+  }, [handleOpenChange]);
+  const trackPointer = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    pointerXRef.current = event.clientX;
+  }, []);
+  const handlePointerEnter = useCallback(
+    (event: PointerEvent<HTMLDivElement>): void => {
+      pointerXRef.current = event.clientX;
+      triggerHoverProps.onPointerEnter();
+    },
+    [triggerHoverProps],
+  );
+  const previewOpen = open && !disabled;
+
+  useLayoutEffect(() => {
+    const row = rowRef.current;
+    if (!previewOpen || row === null) {
+      setPlacement(null);
+      return;
+    }
+    const next = measureHoverPreviewPlacement(row, pointerXRef.current);
+    anchorOffsetXRef.current = next.anchorOffsetX;
+    setPlacement(next);
+  }, [previewOpen]);
+
+  return (
+    <Popover open={previewOpen} onOpenChange={handleOpenChange}>
+      <PopoverAnchor virtualRef={virtualAnchorRef} />
+      <div
+        ref={rowRef}
+        onPointerEnter={disabled ? undefined : handlePointerEnter}
+        onPointerMove={disabled || open ? undefined : trackPointer}
+        onPointerLeave={triggerHoverProps.onPointerLeave}
+        onClickCapture={closePreview}
+      >
+        {children}
+      </div>
+      {previewOpen && placement !== null ? (
+        <PopoverContent
+          side={placement.side}
+          align="start"
+          sideOffset={TIMELINE_HOVER_PREVIEW_SIDE_OFFSET_PX}
+          collisionPadding={TIMELINE_HOVER_PREVIEW_COLLISION_PADDING_PX}
+          {...contentHoverProps}
+          data-timeline-hover-preview=""
+          style={{
+            maxWidth: placement.maxWidth,
+            minWidth: Math.min(
+              TIMELINE_HOVER_PREVIEW_MIN_WIDTH_PX,
+              placement.maxWidth,
+            ),
+          }}
+          className="max-h-[min(28rem,var(--radix-popover-content-available-height))] w-max overflow-auto p-2 text-sm text-muted-foreground"
+        >
+          {renderPreview()}
+        </PopoverContent>
+      ) : null}
+    </Popover>
+  );
 }
 
 type CollapsedPreviewClickEvent = MouseEvent<HTMLDivElement>;
@@ -89,6 +215,7 @@ function ExpandableTimelineRowComponent({
   leadingIconStyle,
   onTitleAction,
   renderBody,
+  renderHoverPreview,
   reasoningExpansionKey,
   summaryClassName,
   terminalAutoExpanded = false,
@@ -160,7 +287,7 @@ function ExpandableTimelineRowComponent({
     [],
   );
 
-  return (
+  const panel = (
     <ExpandablePanel
       isExpanded={isExpanded}
       onToggle={expandable ? handleToggle : undefined}
@@ -199,6 +326,7 @@ function ExpandableTimelineRowComponent({
       }
       summaryContent={
         <span
+          data-timeline-row-title=""
           className={cn(
             "inline-flex min-w-0 max-w-full items-center gap-1.5",
             summaryClassName,
@@ -227,6 +355,17 @@ function ExpandableTimelineRowComponent({
       contentClassName={cn(horizontalPaddingClass, "pb-1 pt-0.5")}
       renderBody={renderBody}
     />
+  );
+  if (!expandable || !renderHoverPreview) {
+    return panel;
+  }
+  return (
+    <TimelineRowHoverPreview
+      disabled={isExpanded}
+      renderPreview={renderHoverPreview}
+    >
+      {panel}
+    </TimelineRowHoverPreview>
   );
 }
 
