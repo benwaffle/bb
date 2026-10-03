@@ -5,6 +5,7 @@ The sidebar thread list, as a plugin.
 - **Pinned** and **Threads** sections, plus the custom sections you create.
 - Organize by project, by machine, or chronologically, with sort by updated, created, or title.
 - Nested child threads, worktree grouping, drag to reorder, pin, nest, and move between sections.
+- Groups from other plugins (`experimental_sidebarThreadGroups`) in By project mode, such as threads nested under a ticket, with placeholder rows for work that has no thread yet.
 - Inline rename, keyboard jump shortcuts, and the same status glyphs bb draws elsewhere.
 - Agent provider icons before thread titles, controlled by Organize → Rows → Provider icons.
 

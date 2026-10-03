@@ -21,6 +21,7 @@ import {
   SIDEBAR_CONTROL_BUTTON_CLASS,
   SIDEBAR_CONTROL_PAIR_SIZE_CLASS,
   SIDEBAR_GROUP_TEXT_CLASS,
+  SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
 } from "../rows/sidebarRowClasses.js";
 import {
   Fragment,
@@ -47,6 +48,7 @@ import {
   useBbNavigate,
   useEnvironmentProviders,
   useSdk,
+  type ExperimentalSidebarThreadGroupRow,
 } from "@get-bb/plugin-sdk/app";
 import {
   findEnvironmentDisplayProvider,
@@ -125,6 +127,7 @@ import {
   isSidebarProjectThread,
   projectThreadItemContainsThread,
   type EnvironmentThreadGroup,
+  type PluginThreadGroup,
   type ProjectThreadItem,
   type ProjectThreadItemRowCountContext,
   type ProjectThreadNode,
@@ -343,6 +346,8 @@ function getItemProjectId(item: ProjectThreadItem): string | null {
       return item.node.thread.projectId;
     case "environment":
       return item.group.nodes[0].thread.projectId;
+    case "plugin-group":
+      return item.group.nodes[0]?.thread.projectId ?? null;
     case "section": {
       const [firstItem] = item.group.items;
       return firstItem === undefined ? null : getItemProjectId(firstItem);
@@ -1175,6 +1180,288 @@ export const PinnedEnvironmentThreadGroupRow = memo(
   },
 );
 
+interface PluginThreadGroupRowProps {
+  projectId: string | null;
+  group: PluginThreadGroup;
+  sectionDnd?: SectionThreadDndState;
+  dragBindings?: SidebarSortableDragBindings;
+  sortableRef?: (element: HTMLDivElement | null) => void;
+  sortableStyle?: CSSProperties;
+  depthOffset: number;
+  selectedThreadId?: string;
+  isCollapsed: boolean;
+  collapsedThreadIds: Set<string>;
+  collapsedEnvironmentIds: Set<string>;
+  onProjectSelect?: () => void;
+  onToggleThreadCollapsed: (threadId: string) => void;
+  onToggleEnvironmentCollapsed: (groupId: string) => void;
+}
+
+function PluginThreadGroupHeader({
+  dragBindings,
+  group,
+  rowDepth,
+  stickyLevel,
+  isCollapsed,
+  onToggleCollapsed,
+}: {
+  dragBindings?: SidebarSortableDragBindings;
+  group: PluginThreadGroup;
+  rowDepth: number;
+  stickyLevel?: number;
+  isCollapsed: boolean;
+  onToggleCollapsed: (groupId: string) => void;
+}) {
+  const childActivity = group.stats.childActivity;
+  const hiddenThreadsHaveDraft = useThreadsHaveDraft(
+    isCollapsed ? childActivity.threadIds : NO_THREAD_IDS,
+  );
+  const showRollupGlyph =
+    isCollapsed &&
+    (childActivity.pending ||
+      childActivity.working ||
+      hiddenThreadsHaveDraft ||
+      childActivity.unread ||
+      childActivity.unreadError);
+  const className = cn(
+    SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
+    stickyLevel === undefined && "relative",
+    SIDEBAR_ROW_BASE_CLASS,
+    COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
+  );
+  const style = { paddingLeft: getSidebarThreadRowPaddingLeft(rowDepth) };
+  const content = (
+    <>
+      <span
+        className={cn(
+          "pointer-events-none relative z-10 inline-flex shrink-0 items-center justify-center",
+          SIDEBAR_GROUP_TEXT_CLASS,
+          COARSE_POINTER_GLYPH_BOX_CLASS,
+        )}
+        aria-hidden="true"
+      >
+        <Icon
+          name="Layers"
+          className={COARSE_POINTER_ICON_SIZE_CLASS}
+          aria-hidden="true"
+        />
+      </span>
+      <span
+        className={cn(
+          "relative z-10 flex min-w-0 flex-1 items-center gap-1.5 text-left",
+          SIDEBAR_GROUP_TEXT_CLASS,
+        )}
+        title={group.tooltip ?? undefined}
+      >
+        <span className="min-w-0 truncate">{group.label}</span>
+        <SidebarChildToggleChevron
+          isCollapsed={isCollapsed}
+          expandLabel={`Expand ${group.label}`}
+          collapseLabel={`Collapse ${group.label}`}
+          onToggle={() => onToggleCollapsed(group.id)}
+          revealOnHover={!isCollapsed}
+        />
+      </span>
+      {showRollupGlyph ? (
+        <span
+          className={cn(
+            COARSE_POINTER_ROW_ACTION_SIZE_CLASS,
+            "pointer-events-none relative z-10 flex shrink-0 items-center justify-center text-subtle-foreground",
+          )}
+        >
+          <CollapsedThreadStatusGlyph activity={childActivity} />
+        </span>
+      ) : null}
+    </>
+  );
+
+  if (stickyLevel !== undefined) {
+    return (
+      <SidebarStickyTier
+        {...dragBindings?.attributes}
+        {...dragBindings?.listeners}
+        ref={dragBindings?.setActivatorNodeRef}
+        tier="parent"
+        level={stickyLevel}
+        className={className}
+        style={style}
+        data-sidebar-plugin-thread-group={group.id}
+      >
+        {content}
+      </SidebarStickyTier>
+    );
+  }
+
+  return (
+    <div
+      {...dragBindings?.attributes}
+      {...dragBindings?.listeners}
+      ref={dragBindings?.setActivatorNodeRef}
+      className={className}
+      style={style}
+      data-sidebar-plugin-thread-group={group.id}
+    >
+      {content}
+    </div>
+  );
+}
+
+function PluginThreadGroupPlaceholderRow({
+  row,
+  rowDepth,
+  onProjectSelect,
+}: {
+  row: ExperimentalSidebarThreadGroupRow;
+  rowDepth: number;
+  onProjectSelect?: () => void;
+}) {
+  const action = row.action;
+  return (
+    <div
+      data-sidebar-plugin-thread-group-row={row.id}
+      className={cn(
+        SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
+        SIDEBAR_ROW_BASE_CLASS,
+        COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
+        SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
+        "relative",
+      )}
+      style={{ paddingLeft: getSidebarThreadRowPaddingLeft(rowDepth) }}
+      title={row.tooltip}
+    >
+      <button
+        type="button"
+        className={cn(
+          "flex min-w-0 flex-1 items-center gap-2 self-stretch text-left outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring rounded-md",
+          SIDEBAR_GROUP_TEXT_CLASS,
+        )}
+        onClick={() => {
+          onProjectSelect?.();
+          row.onSelect();
+        }}
+      >
+        <span
+          className={cn("inline-flex shrink-0", COARSE_POINTER_GLYPH_BOX_CLASS)}
+          aria-hidden="true"
+        />
+        <span className="min-w-0 truncate">{row.title}</span>
+        {row.description === undefined ? null : (
+          <span className="shrink-0 truncate text-subtle-foreground">
+            {row.description}
+          </span>
+        )}
+      </button>
+      {action === undefined ? null : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-6 shrink-0 px-2"
+          onClick={() => {
+            onProjectSelect?.();
+            action.run();
+          }}
+        >
+          {action.label}
+        </Button>
+      )}
+    </div>
+  );
+}
+
+const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
+  projectId,
+  group,
+  sectionDnd,
+  dragBindings,
+  sortableRef,
+  sortableStyle,
+  depthOffset,
+  selectedThreadId,
+  isCollapsed,
+  collapsedThreadIds,
+  collapsedEnvironmentIds,
+  onProjectSelect,
+  onToggleThreadCollapsed,
+  onToggleEnvironmentCollapsed,
+}: PluginThreadGroupRowProps) {
+  const rowDepth = getThreadRowDepth({ depthOffset, nodeDepth: 0 });
+  const nodeItems = useMemo<ProjectThreadItem[]>(
+    () => group.nodes.map((node) => ({ kind: "thread", node })),
+    [group.nodes],
+  );
+  const { itemKeys, estimateRows, getNavigationEntries, alwaysMountedKeys } =
+    useWindowedThreadItems({
+      items: nodeItems,
+      collapsedThreadIds,
+      collapsedEnvironmentIds,
+      selectedThreadId,
+    });
+
+  return (
+    <SidebarStickyGroup
+      ref={sortableRef}
+      style={sortableStyle}
+      className="space-y-0.5"
+    >
+      <PluginThreadGroupHeader
+        dragBindings={dragBindings}
+        group={group}
+        rowDepth={rowDepth}
+        stickyLevel={
+          depthOffset < SIDEBAR_STICKY_PARENT_DEPTH_CAP
+            ? depthOffset
+            : undefined
+        }
+        isCollapsed={isCollapsed}
+        onToggleCollapsed={onToggleEnvironmentCollapsed}
+      />
+      {!isCollapsed ? (
+        <div className="relative space-y-px">
+          <ThreadTreeGroupLine parentRowDepth={rowDepth} />
+          <SidebarWindowedItems
+            itemKeys={itemKeys}
+            estimateRows={estimateRows}
+            getNavigationEntries={getNavigationEntries}
+            alwaysMountedKeys={alwaysMountedKeys}
+            renderItem={(index) => {
+              const node = group.nodes[index];
+              const item = nodeItems[index];
+              if (!node || !item) {
+                return null;
+              }
+              return (
+                <SectionDndItemRow
+                  key={node.thread.id}
+                  projectId={projectId ?? node.thread.projectId}
+                  item={item}
+                  sectionDnd={sectionDnd}
+                  depthOffset={depthOffset + 1}
+                  isEnvGrouped
+                  selectedThreadId={selectedThreadId}
+                  collapsedThreadIds={collapsedThreadIds}
+                  collapsedEnvironmentIds={collapsedEnvironmentIds}
+                  onProjectSelect={onProjectSelect}
+                  onToggleThreadCollapsed={onToggleThreadCollapsed}
+                  onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+                />
+              );
+            }}
+          />
+          {group.rows.map((row) => (
+            <PluginThreadGroupPlaceholderRow
+              key={row.id}
+              row={row}
+              rowDepth={rowDepth + 1}
+              onProjectSelect={onProjectSelect}
+            />
+          ))}
+        </div>
+      ) : null}
+    </SidebarStickyGroup>
+  );
+});
+
 const ThreadTreeItemRow = memo(function ThreadTreeItemRow({
   isEnvGrouped = false,
   projectId,
@@ -1236,6 +1523,27 @@ const ThreadTreeItemRow = memo(function ThreadTreeItemRow({
         sectionDnd={sectionDnd}
         sortableRef={sortableRef}
         sortableStyle={sortableStyle}
+      />
+    );
+  }
+
+  if (item.kind === "plugin-group") {
+    return (
+      <PluginThreadGroupRow
+        projectId={projectId}
+        group={item.group}
+        sectionDnd={sectionDnd}
+        dragBindings={item.group.nodes.length > 0 ? dragBindings : undefined}
+        sortableRef={sortableRef}
+        sortableStyle={sortableStyle}
+        depthOffset={depthOffset}
+        selectedThreadId={selectedThreadId}
+        isCollapsed={collapsedEnvironmentIds.has(item.group.id)}
+        collapsedThreadIds={collapsedThreadIds}
+        collapsedEnvironmentIds={collapsedEnvironmentIds}
+        onProjectSelect={onProjectSelect}
+        onToggleThreadCollapsed={onToggleThreadCollapsed}
+        onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
       />
     );
   }
@@ -1775,6 +2083,10 @@ function itemContainsRename(
         item.group.nodes.some((node) =>
           itemContainsRename({ kind: "thread", node }, rename),
         )
+      );
+    case "plugin-group":
+      return item.group.nodes.some((node) =>
+        itemContainsRename({ kind: "thread", node }, rename),
       );
     case "section":
       return (
