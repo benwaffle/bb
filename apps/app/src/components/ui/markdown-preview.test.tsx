@@ -18,6 +18,7 @@ import {
   MarkdownLocalFileOpenTargetsContext,
   type MarkdownLinkRouting,
 } from "./markdown-link-routing";
+import type { MarkdownPreviewLocalFileLink } from "./markdown-local-file-link";
 
 const workspaceLinkRouting = {
   localFile: {
@@ -681,6 +682,54 @@ describe("MarkdownPreview", () => {
       ],
     ]);
     expect(onOpenLink).not.toHaveBeenCalled();
+  });
+
+  it("opens absolute host paths as local files instead of same-origin URLs", () => {
+    const onOpenLink = vi.fn(() => true);
+    const onOpenLocalFileLink = vi.fn(
+      (_link: MarkdownPreviewLocalFileLink) => true,
+    );
+
+    render(
+      <MarkdownPreview
+        content={[
+          "[pcaps](/Users/me/.bb/thread-storage/thr_x/imsi-rotation-pcaps)",
+          "[spaced](</home/me/My Notes/plan>)",
+          "[encoded](/tmp/My%20Folder/)",
+          "[url](file:///Volumes/data/run)",
+          "[relative](notes/plan)",
+          "[web](https://bb.test/Users/me)",
+        ].join(" ")}
+        linkRouting={{
+          localFile: {
+            absoluteLinks: { kind: "trusted-host" },
+            onOpenLink: onOpenLocalFileLink,
+          },
+          onOpenLink,
+        }}
+      />,
+    );
+
+    const pcaps = screen.getByRole("link", { name: "pcaps" });
+    expect(pcaps.getAttribute("href")).toBe(
+      "file:///Users/me/.bb/thread-storage/thr_x/imsi-rotation-pcaps",
+    );
+    expect(
+      screen.getByRole("link", { name: "relative" }).getAttribute("href"),
+    ).toBe("notes/plan");
+    for (const name of ["pcaps", "spaced", "encoded", "url", "web"]) {
+      fireEvent.click(screen.getByRole("link", { name }));
+    }
+
+    expect(onOpenLocalFileLink.mock.calls.map(([link]) => link.path)).toEqual([
+      "/Users/me/.bb/thread-storage/thr_x/imsi-rotation-pcaps",
+      "/home/me/My Notes/plan",
+      "/tmp/My Folder/",
+      "/Volumes/data/run",
+    ]);
+    expect(onOpenLink.mock.calls).toEqual([
+      [{ href: "https://bb.test/Users/me" }],
+    ]);
   });
 
   it("shows the editor logo only on links whose editor can open them", () => {
