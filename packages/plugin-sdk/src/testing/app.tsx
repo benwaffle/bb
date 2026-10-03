@@ -44,6 +44,8 @@ import {
   type ExperimentalSidebarNavigationRegistration,
   type ExperimentalSidebarNavigationSplit,
   type ExperimentalSidebarNavigationState,
+  type ExperimentalResolvedSidebarThreadGroup,
+  type ExperimentalSidebarThreadGroupsRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
   type PluginAppSetup,
@@ -337,6 +339,7 @@ interface SlotEnv {
   environmentArchiveCalls: string[];
   threadActions: TestThreadActionsResolver;
   threadActionRegistrations: readonly PluginThreadActionRegistrationInfo[];
+  sidebarThreadGroups: readonly ExperimentalResolvedSidebarThreadGroup[];
   sidebarDraftThreadIds: ReadonlySet<string>;
   sidebarRowStatuses: ReadonlyMap<string, PluginSidebarThreadRowStatus>;
   sidebarShortcuts: ReadonlyMap<string, PluginSidebarThreadShortcut>;
@@ -1812,6 +1815,10 @@ const testPluginSdkApp = {
   experimental_useComposerCommandSearch(): ExperimentalComposerCommandSearch {
     return IDLE_COMPOSER_COMMAND_SEARCH;
   },
+  experimental_useSidebarThreadGroups(): readonly ExperimentalResolvedSidebarThreadGroup[] {
+    return useSlotEnv("experimental_useSidebarThreadGroups")
+      .sidebarThreadGroups;
+  },
   useComposerView(): ComposerView {
     const composer = useSlotEnv("useComposerView").composer;
     const version = useSyncExternalStore(
@@ -1874,6 +1881,7 @@ export interface CapturedPluginApp {
   experimentalSidebarFooterItems: CollectedExperimentalSidebarFooterItem[];
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: ExperimentalSidebarNavigationRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
   threadInfoSections: ExperimentalThreadInfoSectionRegistration[];
@@ -2149,6 +2157,10 @@ export interface RenderSlotOptions<
   branchesState?: Partial<BranchesState>;
   /** Checkout facts `experimental_useCheckoutState()` reports. */
   checkoutState?: Partial<CheckoutState>;
+  /**
+   * Groups `experimental_useSidebarThreadGroups()` reports. Omitted → none.
+   */
+  sidebarThreadGroups?: readonly ExperimentalResolvedSidebarThreadGroup[];
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
    * report as holding an unsent draft. Omitted → none.
@@ -3043,6 +3055,7 @@ export function renderSlot<
     threadActions: options.threadActions ?? NO_THREAD_ACTIONS,
     threadActionRegistrations:
       options.threadActionRegistrations ?? NO_THREAD_ACTION_REGISTRATIONS,
+    sidebarThreadGroups: options.sidebarThreadGroups ?? [],
     sidebarDraftThreadIds,
     sidebarRowStatuses,
     sidebarShortcuts,

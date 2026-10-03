@@ -78,6 +78,12 @@ import {
 import type { ConsumeDragClickSuppression } from "@/components/ui/use-drag-click-suppression";
 import { SidebarChildToggleChevron } from "./SidebarChildToggleChevron.js";
 import { useSidebarRename } from "./SidebarInlineRename.js";
+import {
+  PluginRowIcon,
+  PluginRowTrailing,
+  PluginThreadDepthRail,
+  usePluginThreadDecoration,
+} from "./pluginThreadDecoration.js";
 import { SidebarRowControls } from "./SidebarRowControls.js";
 import {
   SIDEBAR_CONTROL_BUTTON_CLASS,
@@ -390,6 +396,8 @@ function ThreadRowComponent({
     hasComposerDraft,
   );
   const labelTitle = thread.displayTitle;
+  const decoration = usePluginThreadDecoration(thread.id);
+  const description = decoration?.description ?? null;
   const crossProjectName = useSidebarProjectName(crossProjectId);
   const crossProjectLabel =
     crossProjectId === null
@@ -682,6 +690,12 @@ function ThreadRowComponent({
               <TooltipContent side="top">{provider.displayName}</TooltipContent>
             </Tooltip>
           ) : null}
+          <PluginThreadDepthRail depth={decoration?.depth ?? 0} />
+          {decoration?.icon == null ? null : (
+            <span className="mr-1.5 flex shrink-0">
+              <PluginRowIcon icon={decoration.icon} />
+            </span>
+          )}
           {isEditing ? (
             <span className="pointer-events-auto relative z-10 min-w-0 flex-1 overflow-visible">
               {editor}
@@ -690,13 +704,27 @@ function ThreadRowComponent({
             <span
               className={cn(
                 "bb-thread-title",
-                crossProjectLabel !== null && "min-w-0 truncate",
+                (crossProjectLabel !== null ||
+                  description !== null ||
+                  decoration?.trailing != null) &&
+                  "min-w-0 truncate",
               )}
               title={labelTitle}
               onDoubleClick={startTitleEditing}
             >
               <ThreadTitle threadId={thread.id} />
             </span>
+          )}
+          {description === null || isEditing ? null : (
+            <span
+              data-sidebar-thread-description=""
+              className="ml-2 shrink-0 truncate text-subtle-foreground"
+            >
+              {description}
+            </span>
+          )}
+          {decoration?.trailing == null || isEditing ? null : (
+            <PluginRowTrailing trailing={decoration.trailing} />
           )}
         </span>
         {crossProjectLabel !== null ? (
