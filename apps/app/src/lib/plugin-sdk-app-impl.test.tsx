@@ -4,16 +4,23 @@ import { LazyMarkdownHtml } from "@/components/ui/lazy-markdown-html";
 
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createStore, Provider } from "jotai";
 import { MemoryRouter } from "react-router-dom";
 import { beforeAll, afterEach, describe, expect, it, vi } from "vitest";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
 import { ThreadTimelineNavigationProvider } from "@/components/thread/timeline/ThreadTimelineNavigationContext";
 import { pluginSdkAppImplementation } from "./plugin-sdk-app-impl";
 import { AppNavigationHostProvider } from "./app-navigation-host";
+import { sdk } from "./sdk";
+import { getDockedThreadPanelsAtom } from "@/components/secondary-panel/dockedThreadPanels";
 
 beforeAll(() => LazyMarkdownHtml.preload());
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  window.localStorage.clear();
+});
 
 describe("plugin SDK Markdown", () => {
   it("uses the surrounding thread detail navigation for file and web links", () => {
@@ -219,6 +226,78 @@ describe("plugin SDK navigation components", () => {
     fireEvent.click(screen.getByRole("button", { name: "Open" }));
     expect(results).toEqual([true]);
     expect(openUrl).toHaveBeenCalledWith({ url: "https://example.com/a" });
+  });
+
+  it("replaces the thread's docked panels with the requested set", () => {
+    vi.spyOn(sdk.threads, "get").mockRejectedValue(new Error("offline"));
+    const store = createStore();
+    store.set(getDockedThreadPanelsAtom("thr_review"), [
+      {
+        pluginId: "pr-review",
+        actionId: "stale",
+        title: "Stale",
+        paramsJson: null,
+      },
+    ]);
+    function Probe() {
+      const navigate = pluginSdkAppImplementation.useBbNavigate();
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() =>
+              navigate.toThread("thr_review", {
+                experimental_dockedPanels: [
+                  { actionId: "queue", title: "Review queue" },
+                  { pluginId: "github", actionId: "pull" },
+                ],
+              })
+            }
+          >
+            Review
+          </button>
+          <button type="button" onClick={() => navigate.toThread("thr_review")}>
+            Open
+          </button>
+          <button
+            type="button"
+            onClick={() =>
+              navigate.toThread("thr_review", { experimental_dockedPanels: [] })
+            }
+          >
+            Clear
+          </button>
+        </>
+      );
+    }
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Provider store={store}>
+          <MemoryRouter>
+            <PluginSlotMount pluginId="pr-review" slotKind="test" slotId="probe">
+              <Probe />
+            </PluginSlotMount>
+          </MemoryRouter>
+        </Provider>
+      </QueryClientProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Review" }));
+    expect(store.get(getDockedThreadPanelsAtom("thr_review"))).toEqual([
+      {
+        pluginId: "pr-review",
+        actionId: "queue",
+        title: "Review queue",
+        paramsJson: null,
+      },
+      { pluginId: "github", actionId: "pull", title: "pull", paramsJson: null },
+    ]);
+    expect(sdk.threads.get).toHaveBeenCalledWith({ threadId: "thr_review" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Open" }));
+    expect(store.get(getDockedThreadPanelsAtom("thr_review"))).toHaveLength(2);
+
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(store.get(getDockedThreadPanelsAtom("thr_review"))).toEqual([]);
   });
 
   it("exposes the file link through the real runtime", () => {
