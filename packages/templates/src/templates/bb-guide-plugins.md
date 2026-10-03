@@ -748,7 +748,9 @@ useRpc, useRealtime, useRealtimeConnectionState (the shared realtime socket's
 connecting/connected/reconnecting lifecycle; reconcile on later connected
 transitions, not the initial connection), useSettings (secrets excluded),
 useBbContext,
-useBbNavigate (including openUrl(url), which applies the current
+useBbNavigate (including toThread(id, { experimental_dockedPanels }), which
+docks threadPanelAction tabs, including other plugins', as columns left of the
+conversation, openUrl(url), which applies the current
 client's in-app/external-browser preference, plus
 experimental_openFilePreview({ target, location }) and
 experimental_openFileExternally({ target, location }) for explicit live
