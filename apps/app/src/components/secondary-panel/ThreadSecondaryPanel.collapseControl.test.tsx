@@ -20,6 +20,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import {
   createGitDiffFixedPanelTab,
   createPluginPageFixedPanelTab,
+  createPluginPanelFixedPanelTab,
   createThreadInfoFixedPanelTab,
   createWorkspaceFilePreviewFixedPanelTab,
   type SecondaryFileFixedPanelTab,
@@ -744,6 +745,59 @@ describe("ThreadSecondaryPanel resize boundary", () => {
     );
     expect(boundary.tabIndex).toBe(-1);
     expect(seam?.className).toContain("bg-border-seam");
+  });
+});
+
+describe("ThreadSecondaryPanel dock control", () => {
+  function renderWithActiveTab(onDock: (() => void) | undefined) {
+    const { wrapper: Wrapper } = createQueryClientTestHarness();
+    const activeTab = createPluginPanelFixedPanelTab({
+      actionId: "pull",
+      paramsJson: null,
+      pluginId: "github",
+      title: "GitHub PR",
+    });
+    return render(
+      <Wrapper>
+        <TooltipProvider>
+          <PanelGroup direction="horizontal">
+            <ThreadSecondaryPanel
+              activeTab={activeTab}
+              canUseGitUi={false}
+              fixedTabs={infoFixedTabs}
+              tabs={[{ ...createTestRenderableTab(activeTab), onDock }]}
+              isConversationCollapsed={false}
+              isOpen
+              metadataContent={null}
+              onClose={noop}
+              onCollapse={noop}
+              onTabReorder={noop}
+              onOpenNewTab={noop}
+              onPanelFocus={noop}
+              onToggleConversationCollapse={noop}
+              renderAsDrawer={false}
+            />
+          </PanelGroup>
+        </TooltipProvider>
+      </Wrapper>,
+    );
+  }
+
+  it("docks the active tab when it offers docking", () => {
+    const onDock = vi.fn();
+    const view = renderWithActiveTab(onDock);
+
+    fireEvent.click(view.getByRole("button", { name: "Dock left of thread" }));
+
+    expect(onDock).toHaveBeenCalledTimes(1);
+  });
+
+  it("is absent for tabs that cannot dock", () => {
+    const view = renderWithActiveTab(undefined);
+
+    expect(
+      view.queryByRole("button", { name: "Dock left of thread" }),
+    ).toBeNull();
   });
 });
 
