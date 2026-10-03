@@ -22,8 +22,10 @@ import { toast } from "sonner";
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import {
   experimental_useProviders,
+  experimental_useSidebarThreadGroups,
   useBbNavigate,
   useSdk,
+  type ExperimentalResolvedSidebarThreadGroup,
 } from "@get-bb/plugin-sdk/app";
 import {
   SidebarRenameProvider,
@@ -255,6 +257,8 @@ function getProjectThreadItemAlphaLabel(
       return getThreadSortTitle(item.node.thread, rename);
     case "environment":
       return getThreadSortTitle(item.group.nodes[0].thread, rename);
+    case "plugin-group":
+      return item.group.label;
     case "section":
       return rename?.kind === "section" && rename.id === item.group.id
         ? rename.name
@@ -425,11 +429,13 @@ function buildGroupSectionItem(
   threads: readonly SidebarThread[],
   compareThreads: ThreadComparator,
   groupThreadsByEnvironment: boolean,
+  pluginGroups: readonly ExperimentalResolvedSidebarThreadGroup[],
 ): Extract<ProjectThreadItem, { kind: "section" }> {
   const items = buildProjectThreadGroups(
     threads,
     compareThreads,
     groupThreadsByEnvironment,
+    pluginGroups,
   );
   const hiddenThreads = getProjectThreadItemDescendants(items);
   return {
@@ -517,6 +523,24 @@ interface ProjectModeSectionsProps
   threadsSection: Omit<BuiltInSidebarSectionOptions, "content">;
 }
 
+const NO_PLUGIN_THREAD_GROUPS: readonly ExperimentalResolvedSidebarThreadGroup[] =
+  [];
+
+function groupPluginThreadGroupsByProject(
+  groups: readonly ExperimentalResolvedSidebarThreadGroup[],
+): ReadonlyMap<string, ExperimentalResolvedSidebarThreadGroup[]> {
+  const byProjectId = new Map<
+    string,
+    ExperimentalResolvedSidebarThreadGroup[]
+  >();
+  for (const group of groups) {
+    const bucket = byProjectId.get(group.projectId);
+    if (bucket) bucket.push(group);
+    else byProjectId.set(group.projectId, [group]);
+  }
+  return byProjectId;
+}
+
 function ProjectModeSections({
   collapsedEnvironmentIds,
   collapsedSectionIds,
@@ -544,6 +568,11 @@ function ProjectModeSections({
 }: ProjectModeSectionsProps) {
   const groupThreadsByEnvironment = useAtomValue(
     sidebarGroupThreadsByEnvironmentAtom,
+  );
+  const pluginThreadGroups = experimental_useSidebarThreadGroups();
+  const pluginThreadGroupsByProjectId = useMemo(
+    () => groupPluginThreadGroupsByProject(pluginThreadGroups),
+    [pluginThreadGroups],
   );
   const [collapsedProjectIdList, setCollapsedProjectIdList] = useAtom(
     collapsedProjectIdsAtom,
@@ -619,6 +648,11 @@ function ProjectModeSections({
       EMPTY_THREAD_LIST
     );
   }, [personalProjectId, threadsByProject]);
+  const personalPluginGroups =
+    (personalProjectId === null
+      ? undefined
+      : pluginThreadGroupsByProjectId.get(personalProjectId)) ??
+    NO_PLUGIN_THREAD_GROUPS;
   const { onOrderChange, order, persistedOrder } = useSidebarModeSectionOrder({
     mode: "project",
     entitySectionIds: projectSectionIds,
@@ -632,8 +666,14 @@ function ProjectModeSections({
         personalThreads,
         compareThreads,
         groupThreadsByEnvironment,
+        personalPluginGroups,
       ),
-    [compareThreads, groupThreadsByEnvironment, personalThreads],
+    [
+      compareThreads,
+      groupThreadsByEnvironment,
+      personalPluginGroups,
+      personalThreads,
+    ],
   );
   const projectGroups = useMemo(
     () =>
@@ -647,9 +687,16 @@ function ProjectModeSections({
             : EMPTY_THREAD_LIST,
           compareThreads,
           groupThreadsByEnvironment,
+          pluginThreadGroupsByProjectId.get(row.project.id) ??
+            NO_PLUGIN_THREAD_GROUPS,
         ),
       ),
-    [compareThreads, groupThreadsByEnvironment, projectRows],
+    [
+      compareThreads,
+      groupThreadsByEnvironment,
+      pluginThreadGroupsByProjectId,
+      projectRows,
+    ],
   );
   const projectItemsByProjectId = useMemo(
     () =>
@@ -1120,6 +1167,7 @@ export function MachineModeSections({
           section.threadListState.threads,
           compareThreads,
           groupThreadsByEnvironment,
+          NO_PLUGIN_THREAD_GROUPS,
         ),
       ),
     [compareThreads, groupThreadsByEnvironment, machineSections],
