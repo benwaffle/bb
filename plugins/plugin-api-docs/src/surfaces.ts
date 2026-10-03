@@ -199,6 +199,30 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         experimental: true,
       },
       {
+        id: "sidebar-thread-groups",
+        title: "Sidebar thread groups",
+        summary:
+          "Add plugin-defined groups that nest threads in bb's sidebar without replacing the thread list. With this, a plugin can:",
+        bullets: [
+          "Return groups from a React hook, so plugin RPC and realtime hooks work inside it",
+          "Nest threads under a labeled group, framed as a card or minimal with the ticket key as a pill",
+          "Add placeholder rows for work without a thread, drawn as ghost rows with a hover + button",
+          "Mark rows with state icons and agent dots, and indent stacked work on a connector rail",
+        ],
+        apiSymbols: [
+          "ExperimentalSidebarThreadGroupsRegistration",
+          "ExperimentalSidebarThreadGroup",
+          "ExperimentalSidebarThreadGroupRow",
+          "ExperimentalSidebarThreadGroupThreadRow",
+          "ExperimentalSidebarThreadGroupTone",
+          "ExperimentalSidebarThreadGroupRowIcon",
+          "ExperimentalSidebarThreadGroupRowTrailing",
+          "ExperimentalResolvedSidebarThreadGroup",
+          "experimental_useSidebarThreadGroups",
+        ],
+        experimental: true,
+      },
+      {
         id: "sidebar-footer",
         title: "Sidebar footer items",
         summary:
