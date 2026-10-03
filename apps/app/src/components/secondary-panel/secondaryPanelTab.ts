@@ -27,6 +27,7 @@ export interface SecondaryPanelRenderableTab {
   isPinned?: boolean;
   leadingVisual: ReactNode;
   onClose: () => void;
+  onDock?: () => void;
   onSelect: () => void;
   renderContent: (pane: SecondaryPanelPaneRenderContext) => ReactNode;
   statusLabel: string | null;

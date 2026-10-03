@@ -54,6 +54,12 @@ import {
   type ComposerSource,
 } from "@/lib/plugin-composer-handle";
 import { BbHttpError, sdk } from "@/lib/sdk";
+import {
+  dockThreadPanels,
+  getDockedThreadPanelsAtom,
+  resolveDockedThreadPanelRequests,
+} from "@/components/secondary-panel/dockedThreadPanels";
+import { getPluginSlotSnapshot } from "@/lib/plugin-slots";
 import { getPluginBoundSdk } from "@/lib/plugin-bound-sdk";
 import { useSystemProviders } from "@/hooks/queries/system-queries";
 import { useSystemEnvironmentProviders } from "@/hooks/queries/environment-provider-queries";
@@ -348,6 +354,18 @@ export function useBbNavigate(): BbNavigate {
   const setRootComposeProjectId = useSetRootComposeProjectId();
   const toThread = useCallback<BbNavigate["toThread"]>(
     (threadId, options) => {
+      const dockedPanels = options?.experimental_dockedPanels;
+      if (dockedPanels !== undefined) {
+        const resolved = resolveDockedThreadPanelRequests({
+          requests: dockedPanels,
+          callerPluginId: pluginId,
+          actions: getPluginSlotSnapshot().threadPanelActions,
+        });
+        store.set(
+          getDockedThreadPanelsAtom(threadId),
+          dockThreadPanels([], resolved),
+        );
+      }
       const open = (projectId: string) => {
         store.set(getThreadConversationCollapsedAtom(threadId), false);
         if (options?.split) {
@@ -372,7 +390,7 @@ export function useBbNavigate(): BbNavigate {
         .then((thread) => open(thread.projectId))
         .catch(() => navigate(`/threads/${threadId}`));
     },
-    [isCompact, navigate, queryClient, store],
+    [isCompact, navigate, pluginId, queryClient, store],
   );
   const toProject = useCallback(
     (projectId: string) => {
