@@ -16,6 +16,7 @@ import type {
   ExperimentalIconRegistration,
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
+  ExperimentalSidebarThreadGroupsRegistration,
   PluginSourceCodeRendererRegistration,
   PluginThreadHeaderActionRegistration,
   ExperimentalPluginBrowserToolbarActionRegistration,
@@ -45,6 +46,7 @@ export interface PluginRegistrationSet {
   sidebarFooterActions: readonly PluginSidebarFooterActionRegistration[];
   experimentalSidebarFooterItems?: readonly CollectedExperimentalSidebarFooterItem[];
   threadLists?: readonly PluginThreadListRegistration[];
+  sidebarThreadGroups?: readonly ExperimentalSidebarThreadGroupsRegistration[];
   threadHeaderActions?: readonly PluginThreadHeaderActionRegistration[];
   browserToolbarActions?: readonly ExperimentalPluginBrowserToolbarActionRegistration[];
   fileOpeners: readonly PluginFileOpenerRegistration[];
@@ -85,6 +87,8 @@ export type PluginSidebarFooterItemSlot = CollectedSidebarFooterItem &
   PluginSlotBase;
 export interface PluginThreadListSlot
   extends PluginThreadListRegistration, PluginSlotBase {}
+export interface ExperimentalSidebarThreadGroupsSlot
+  extends ExperimentalSidebarThreadGroupsRegistration, PluginSlotBase {}
 interface PluginThreadHeaderActionSlot
   extends PluginThreadHeaderActionRegistration, PluginSlotBase {}
 export interface PluginBrowserToolbarActionSlot
@@ -122,6 +126,7 @@ export interface PluginSlotSnapshot {
   pendingInteractions: readonly PluginPendingInteractionSlot[];
   sidebarFooterItems: readonly PluginSidebarFooterItemSlot[];
   threadLists: readonly PluginThreadListSlot[];
+  sidebarThreadGroups: readonly ExperimentalSidebarThreadGroupsSlot[];
   threadHeaderActions: readonly PluginThreadHeaderActionSlot[];
   browserToolbarActions: readonly PluginBrowserToolbarActionSlot[];
   fileOpeners: readonly PluginFileOpenerSlot[];
@@ -148,6 +153,7 @@ export const EMPTY_PLUGIN_SLOT_SNAPSHOT: PluginSlotSnapshot = {
   pendingInteractions: [],
   sidebarFooterItems: [],
   threadLists: [],
+  sidebarThreadGroups: [],
   threadHeaderActions: [],
   browserToolbarActions: [],
   fileOpeners: [],
@@ -181,6 +187,7 @@ const SLOT_KINDS: readonly SlotKind[] = [
   "pendingInteractions",
   "sidebarFooterItems",
   "threadLists",
+  "sidebarThreadGroups",
   "threadHeaderActions",
   "browserToolbarActions",
   "fileOpeners",
@@ -238,6 +245,7 @@ function flattenRegistrations(
     pendingInteractions: stamp(set.pendingInteractions),
     sidebarFooterItems: stamp<CollectedSidebarFooterItem>(sidebarFooterItems),
     threadLists: stamp(set.threadLists),
+    sidebarThreadGroups: stamp(set.sidebarThreadGroups),
     threadHeaderActions: stamp(set.threadHeaderActions),
     browserToolbarActions: stamp(set.browserToolbarActions),
     fileOpeners: stamp(set.fileOpeners),

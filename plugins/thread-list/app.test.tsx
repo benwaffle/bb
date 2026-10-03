@@ -329,6 +329,177 @@ describe("thread-list plugin", () => {
     expect(within(threadsGroup).getByText("Personal thread")).not.toBeNull();
   });
 
+  it("nests a project's threads and placeholder rows under plugin thread groups", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const onSelect = vi.fn();
+    const run = vi.fn();
+    const reviewThread = makeSidebarThread({
+      id: "thr_review",
+      projectId: "proj_app",
+      title: "Review thread",
+      createdAt: 9,
+      updatedAt: 9,
+      latestAttentionAt: 9,
+    });
+    renderList(
+      { organizationMode: "project" },
+      {
+        sidebarThreads: {
+          projects: PROJECTS,
+          sections: SECTIONS,
+          threads: [...THREADS, reviewThread],
+        },
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            label: "CORE-21",
+            tooltip: "Speed up the importer",
+            threadIds: ["thr_review", "thr_parent"],
+            keepOrder: false,
+            rows: [
+              {
+                id: "hss#600",
+                title: "#600 Batch the importer",
+                description: "ana",
+                onSelect,
+                action: { label: "Start", run },
+              },
+            ],
+          },
+        ],
+      },
+    );
+
+    const header = await screen.findByText("CORE-21");
+    expect(header.parentElement?.getAttribute("title")).toBe(
+      "Speed up the importer",
+    );
+    const appGroup = screen
+      .getByTitle("App")
+      .closest("[data-sidebar-sticky-group]") as HTMLElement;
+    const ticketGroup = header.closest(
+      "[data-sidebar-sticky-group]",
+    ) as HTMLElement;
+    expect(appGroup.contains(ticketGroup)).toBe(true);
+    expect(
+      Array.from(
+        ticketGroup.querySelectorAll("[data-sidebar-thread-id]"),
+        (element) => element.getAttribute("data-sidebar-thread-id"),
+      ),
+    ).toEqual(["thr_review", "thr_parent", "thr_child"]);
+
+    fireEvent.click(screen.getByText("#600 Batch the importer"));
+    expect(onSelect).toHaveBeenCalledTimes(1);
+    fireEvent.click(within(ticketGroup).getByRole("button", { name: "Start" }));
+    expect(run).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "Collapse CORE-21" }));
+    await waitFor(() =>
+      expect(screen.queryByText("#600 Batch the importer")).toBeNull(),
+    );
+    expect(screen.queryByText("Review thread")).toBeNull();
+  });
+
+  it("interleaves decorated thread rows with placeholder rows when a group keeps its order", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const reviewThread = makeSidebarThread({
+      id: "thr_review",
+      projectId: "proj_app",
+      title: "Review thread",
+      createdAt: 9,
+      updatedAt: 9,
+      latestAttentionAt: 9,
+    });
+    const placeholder = (id: string) => ({
+      id,
+      title: id,
+      onSelect: () => undefined,
+    });
+    const { inspection } = renderList(
+      { organizationMode: "project" },
+      {
+        sidebarThreads: {
+          projects: PROJECTS,
+          sections: SECTIONS,
+          threads: [...THREADS, reviewThread],
+        },
+        sidebarThreadGroups: [
+          {
+            id: "pr-review/tickets:CORE-21",
+            pluginId: "pr-review",
+            projectId: "proj_app",
+            key: "CORE-21",
+            label: "CORE-21",
+            threadIds: ["thr_parent", "thr_review"],
+            rows: [
+              placeholder("#552 Base"),
+              {
+                threadId: "thr_review",
+                depth: 1,
+                description: "stacked on #552",
+              },
+              placeholder("#560 Top"),
+            ],
+            keepOrder: true,
+          },
+        ],
+      },
+    );
+
+    const ticketGroup = (await screen.findByText("CORE-21")).closest(
+      "[data-sidebar-sticky-group]",
+    ) as HTMLElement;
+    expect(
+      Array.from(
+        ticketGroup.querySelectorAll(
+          "[data-sidebar-thread-id], [data-sidebar-plugin-thread-group-row]",
+        ),
+        (element) =>
+          element.getAttribute("data-sidebar-thread-id") ??
+          element.getAttribute("data-sidebar-plugin-thread-group-row"),
+      ),
+    ).toEqual([
+      "thr_parent",
+      "thr_child",
+      "#552 Base",
+      "thr_review",
+      "#560 Top",
+    ]);
+    const reviewRow = ticketGroup
+      .querySelector('[data-sidebar-thread-id="thr_review"]')
+      ?.closest("[data-sidebar-rename-row]") as HTMLElement;
+    expect(
+      reviewRow.querySelector("[data-sidebar-thread-depth]")?.textContent,
+    ).toBe("└\u00a0");
+    expect(
+      reviewRow.querySelector("[data-sidebar-thread-description]")?.textContent,
+    ).toBe("stacked on #552");
+    const parentRow = ticketGroup
+      .querySelector('[data-sidebar-thread-id="thr_parent"]')
+      ?.closest("[data-sidebar-rename-row]") as HTMLElement;
+    expect(parentRow.querySelector("[data-sidebar-thread-depth]")).toBeNull();
+
+    fireEvent.click(
+      within(reviewRow).getByRole("button", { name: "Archive thread" }),
+    );
+    fireEvent.doubleClick(within(reviewRow).getByText("Review thread"));
+    const input = await screen.findByRole("textbox", { name: "Thread name" });
+    expect(
+      reviewRow.querySelector("[data-sidebar-thread-description]"),
+    ).toBeNull();
+    fireEvent.change(input, { target: { value: "Renamed review" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(inspection.sidebarActionCalls).toEqual([
+        { method: "archive", threadId: "thr_review" },
+        { method: "rename", threadId: "thr_review", title: "Renamed review" },
+      ]),
+    );
+  });
+
   it("keys its slot and preferences mirror by its own plugin id", async () => {
     window.localStorage.clear();
     expect(registration.id).toBe("thread-list");

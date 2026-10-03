@@ -3010,6 +3010,66 @@ reimplementing it, and `indicatorLabel` carries the matching accessible string.
     exposing the full `panes` array does not leak more layout state than a row
     needs.
 
+## `app.slots.experimental_sidebarThreadGroups` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-03).** Consumer: the pr-review plugin (benwaffle/bb-plugins),
+which nests review threads under their Jira ticket.
+
+**What it does.** A plugin registers `{ id, title, useGroups }`. The host
+mounts one hidden component per registration inside the plugin's context
+(crash boundary included) and calls `useGroups()` there, so the hook can use
+`useRpc`, `useRealtime`, and other plugin hooks. Each returned group names a
+`projectId`, a provider-unique `key`, a `label`, an optional `tooltip`, the
+`threadIds` to nest, `rows`, and an optional `keepOrder`. `rows` mixes
+placeholder rows `{ id, title, description?, tooltip?, onSelect, action? }`
+for work that has no thread with placed threads `{ threadId, depth?,
+description? }` that decorate a real thread row. The host drops malformed
+groups and rows, ignores a non-positive or fractional `depth`, folds placed
+thread ids into `threadIds`, defaults `keepOrder` to `false`, then publishes
+every provider's groups, in plugin id order and with a host-assigned `id`
+(`<pluginId>/<slotId>:<key>`) and `pluginId`, through
+`experimental_useSidebarThreadGroups()`. Hosts that predate placed threads
+and `keepOrder` drop the entries and ignore the flag, so providers list
+placed threads in `threadIds` too.
+
+The bundled Thread list applies the groups in Organize → By project. Among a
+project's root threads, a group takes the threads it names that no earlier
+group claimed. It renders as a collapsible header when it holds at least two
+threads or any placeholder rows; otherwise its thread stays a plain row.
+Plugin groups apply before worktree grouping. Without `keepOrder` the group's
+threads follow the list's sort, above its placeholder rows; with it, threads
+only `threadIds` lists come first in that order, then `rows` as given. A
+placed thread's `depth` renders as a `└` glyph indented with two
+non-breaking spaces per level past 1, matching the prefix pr-review puts in
+placeholder titles, and its `description` as muted text after the title,
+hidden while renaming. Group threads keep their rows, drag, pin, archive,
+and rename behavior; dragging the header moves the group's threads like a
+worktree group, and the group sorts among the project's items by its
+highest-sorting thread either way. Collapsed state shares the `collapsedEnvironments`
+preference, keyed by the group id, and navigating to a grouped thread expands
+its group.
+
+**Audit before stabilizing.**
+
+1. **Modes.** Groups apply only in By project mode. Decide whether
+   chronological and machine modes should apply them, and how a group spans
+   custom sections there.
+2. **Placeholder rows.** Rows carry plugin callbacks into host-rendered UI.
+   Confirm a click handler plus one button is enough, and whether rows need
+   an icon, a status glyph, or keyboard navigation with the thread rows.
+3. **Claiming.** First claimant wins across plugins. Confirm that is
+   acceptable, or whether groups need priorities or nesting.
+4. **Hook lifetime.** Providers stay mounted while the plugin is enabled,
+   whether or not the sidebar is visible. Confirm that cost is acceptable,
+   or mount providers only with the thread list.
+5. **Collapse storage.** Decide whether group collapse state deserves its own
+   preference instead of sharing `collapsedEnvironments`.
+6. **Decorations.** `depth` hard-codes a text tree glyph while placeholder
+   titles carry their own. Decide whether placeholder rows should take
+   `depth` too so the host owns the glyph, whether a title override is
+   needed (it conflicts with inline rename), and whether dragging within a
+   `keepOrder` group should be disabled since the provider owns the order.
+
 ## `app.slots.experimental_threadHeaderAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** zero consumers; item 1 (merging behind one registration with `bb.ui.registerThreadAction`) is cheapest to decide before the first one.

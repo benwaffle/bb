@@ -32,6 +32,7 @@ export function makePluginRegistrationSet(
     pendingInteractions: [],
     sidebarFooterActions: [],
     threadLists: [],
+    sidebarThreadGroups: [],
     threadHeaderActions: [],
     browserToolbarActions: [],
     fileOpeners: [],
