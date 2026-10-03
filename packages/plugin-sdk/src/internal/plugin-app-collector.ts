@@ -26,6 +26,7 @@ import type {
   ExperimentalIconRegistration,
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
+  ExperimentalSidebarThreadGroupsRegistration,
   PluginSourceCodeRendererRegistration,
   PluginThreadHeaderActionRegistration,
   PluginThreadActionRegistration,
@@ -353,6 +354,7 @@ export interface CollectedPluginAppRegistrations {
   sidebarFooterActions: PluginSidebarFooterActionRegistration[];
   experimentalSidebarFooterItems: CollectedExperimentalSidebarFooterItem[];
   threadLists: PluginThreadListRegistration[];
+  sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadActions: PluginThreadActionRegistration<unknown>[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];
@@ -478,6 +480,7 @@ export function collectPluginAppRegistrations(
     sidebarFooterActions: [],
     experimentalSidebarFooterItems: [],
     threadLists: [],
+    sidebarThreadGroups: [],
     threadHeaderActions: [],
     threadActions: [],
     browserToolbarActions: [],
@@ -507,6 +510,7 @@ export function collectPluginAppRegistrations(
     pendingInteraction: new Set<string>(),
     sidebarFooterItem: new Set<string>(),
     threadList: new Set<string>(),
+    sidebarThreadGroups: new Set<string>(),
     threadHeaderAction: new Set<string>(),
     threadAction: new Set<string>(),
     browserToolbarAction: new Set<string>(),
@@ -783,6 +787,19 @@ export function collectPluginAppRegistrations(
             registration,
           ),
         );
+      },
+      experimental_sidebarThreadGroups(registration) {
+        const kind = "slots.experimental_sidebarThreadGroups";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarThreadGroups, id);
+        if (typeof registration.useGroups !== "function") {
+          throw new Error(`${kind}: "useGroups" must be a function`);
+        }
+        collected.sidebarThreadGroups.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useGroups: registration.useGroups,
+        });
       },
       experimental_threadHeaderAction(registration) {
         const kind = "slots.experimental_threadHeaderAction";

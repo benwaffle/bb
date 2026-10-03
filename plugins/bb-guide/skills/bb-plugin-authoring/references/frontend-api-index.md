@@ -57,6 +57,8 @@ Read the installed SDK declarations for the exact current signatures.
   or long-press
 - `experimental_THREAD_ACTION_GROUPS` — bb's thread menu group names
 - `experimental_useSidebarThreadPullRequest`
+- `experimental_useSidebarThreadGroups` — every plugin's sidebar thread
+  groups, for thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `useSidebarThreadDraft` — whether the composer holds an unsent draft for
   one thread, for the pencil glyph bb's row paints
@@ -203,6 +205,11 @@ Read the installed SDK declarations for the exact current signatures.
 - `PluginSidebarSplitLayout`
 - `PluginSidebarThreadSplit`
 - `PluginThreadListRegistration`
+- `ExperimentalSidebarThreadGroupsRegistration`
+- `ExperimentalSidebarThreadGroup`
+- `ExperimentalSidebarThreadGroupRow`
+- `ExperimentalSidebarThreadGroupThreadRow`
+- `ExperimentalResolvedSidebarThreadGroup`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`

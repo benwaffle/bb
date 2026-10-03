@@ -1,3 +1,8 @@
+import type {
+  ExperimentalResolvedSidebarThreadGroup,
+  ExperimentalSidebarThreadGroupRow,
+  ExperimentalSidebarThreadGroupThreadRow,
+} from "@get-bb/plugin-sdk/app";
 import { compareCodepoint } from "./compare-codepoint.js";
 import { buildSectionKey } from "./section-keys.js";
 import type { SidebarThread } from "./sidebar-thread.js";
@@ -31,6 +36,31 @@ export interface EnvironmentThreadGroup {
   stats: ProjectThreadNodeStats;
 }
 
+export interface PluginThreadDecoration {
+  depth: number;
+  description: string | null;
+}
+
+export type PluginThreadGroupEntry =
+  | { kind: "thread"; node: ProjectThreadNode }
+  | { kind: "row"; row: ExperimentalSidebarThreadGroupRow };
+
+export interface PluginThreadGroup {
+  id: string;
+  label: string;
+  tooltip: string | null;
+  nodes: ProjectThreadNode[];
+  rows: readonly ExperimentalSidebarThreadGroupRow[];
+  entries: readonly PluginThreadGroupEntry[];
+  decorations: ReadonlyMap<string, PluginThreadDecoration>;
+  stats: ProjectThreadNodeStats;
+}
+
+export type PluginThreadGroupDefinition = Pick<
+  ExperimentalResolvedSidebarThreadGroup,
+  "id" | "label" | "tooltip" | "threadIds" | "rows" | "keepOrder"
+>;
+
 export interface SidebarSectionDefinition {
   id: string;
   name: string;
@@ -48,6 +78,7 @@ export interface SidebarSectionGroup {
 export type ProjectThreadItem =
   | { kind: "thread"; node: ProjectThreadNode }
   | { kind: "environment"; group: EnvironmentThreadGroup }
+  | { kind: "plugin-group"; group: PluginThreadGroup }
   | { kind: "section"; group: SidebarSectionGroup };
 
 export const CHRONOLOGICAL_CONTAINER_ID = "chronological";
@@ -124,12 +155,18 @@ export function compareStandardThreads(
   return compareByLatestAttentionAtDescending(left, right);
 }
 
-function representativeThread(item: ProjectThreadItem): SidebarThread {
-  switch (item.kind) {
+function representativeThread(
+  item: ProjectThreadItem | undefined,
+): SidebarThread | null {
+  switch (item?.kind) {
+    case undefined:
+      return null;
     case "thread":
       return item.node.thread;
     case "environment":
       return item.group.nodes[0].thread;
+    case "plugin-group":
+      return item.group.nodes[0]?.thread ?? null;
     case "section":
       return representativeThread(item.group.items[0]);
   }
@@ -140,10 +177,12 @@ function compareProjectThreadItems(
   right: ProjectThreadItem,
   compareThreads: ThreadComparator,
 ): number {
-  return compareThreads(
-    representativeThread(left),
-    representativeThread(right),
-  );
+  const leftThread = representativeThread(left);
+  const rightThread = representativeThread(right);
+  if (leftThread === null || rightThread === null) {
+    return Number(leftThread === null) - Number(rightThread === null);
+  }
+  return compareThreads(leftThread, rightThread);
 }
 
 function getNodeAndDescendantThreads(node: ProjectThreadNode): SidebarThread[] {
@@ -158,6 +197,7 @@ export function getProjectThreadItemDescendants(
       case "thread":
         return getNodeAndDescendantThreads(item.node);
       case "environment":
+      case "plugin-group":
         return item.group.nodes.flatMap(getNodeAndDescendantThreads);
       case "section":
         return getProjectThreadItemDescendants(item.group.items);
@@ -198,12 +238,136 @@ function buildEnvironmentItem(
   return { kind: "environment", group };
 }
 
+function isPlacedThreadRow(
+  row: PluginThreadGroupDefinition["rows"][number],
+): row is ExperimentalSidebarThreadGroupThreadRow {
+  return "threadId" in row;
+}
+
+function buildPluginThreadGroup(
+  definition: PluginThreadGroupDefinition,
+  nodeByThreadId: ReadonlyMap<string, ProjectThreadNode>,
+  claimedThreadIds: ReadonlySet<string>,
+  compareThreads: ThreadComparator,
+): PluginThreadGroup | null {
+  const availableNode = (threadId: string) =>
+    claimedThreadIds.has(threadId) ? undefined : nodeByThreadId.get(threadId);
+  const decorations = new Map<string, PluginThreadDecoration>();
+  const placedEntries: PluginThreadGroupEntry[] = [];
+  const rows: ExperimentalSidebarThreadGroupRow[] = [];
+  for (const row of definition.rows) {
+    if (!isPlacedThreadRow(row)) {
+      rows.push(row);
+      placedEntries.push({ kind: "row", row });
+      continue;
+    }
+    const node = availableNode(row.threadId);
+    if (node === undefined || decorations.has(row.threadId)) continue;
+    decorations.set(row.threadId, {
+      depth: row.depth ?? 0,
+      description: row.description ?? null,
+    });
+    placedEntries.push({ kind: "thread", node });
+  }
+  const listedNodes: ProjectThreadNode[] = [];
+  for (const threadId of new Set(definition.threadIds)) {
+    const node = availableNode(threadId);
+    if (node !== undefined && !decorations.has(threadId))
+      listedNodes.push(node);
+  }
+  const nodes = [
+    ...listedNodes,
+    ...placedEntries.flatMap((entry) =>
+      entry.kind === "thread" ? [entry.node] : [],
+    ),
+  ];
+  if (nodes.length < 2 && rows.length === 0) return null;
+  const threadEntry = (node: ProjectThreadNode): PluginThreadGroupEntry => ({
+    kind: "thread",
+    node,
+  });
+  const entries = definition.keepOrder
+    ? [...listedNodes.map(threadEntry), ...placedEntries]
+    : [];
+  nodes.sort((left, right) => compareThreads(left.thread, right.thread));
+  if (!definition.keepOrder) {
+    entries.push(
+      ...nodes.map(threadEntry),
+      ...rows.map((row): PluginThreadGroupEntry => ({ kind: "row", row })),
+    );
+  }
+  return {
+    id: definition.id,
+    label: definition.label,
+    tooltip: definition.tooltip ?? null,
+    nodes,
+    rows,
+    entries,
+    decorations,
+    stats: buildStatsForHiddenThreads(
+      nodes.flatMap(getNodeAndDescendantThreads),
+    ),
+  };
+}
+
+function bucketPluginThreadGroups(
+  nodes: ProjectThreadNode[],
+  compareThreads: ThreadComparator,
+  definitions: readonly PluginThreadGroupDefinition[],
+): { groups: PluginThreadGroup[]; looseNodes: ProjectThreadNode[] } {
+  const nodeByThreadId = new Map(nodes.map((node) => [node.thread.id, node]));
+  const claimedThreadIds = new Set<string>();
+  const groups: PluginThreadGroup[] = [];
+  for (const definition of definitions) {
+    const group = buildPluginThreadGroup(
+      definition,
+      nodeByThreadId,
+      claimedThreadIds,
+      compareThreads,
+    );
+    if (group === null) continue;
+    for (const node of group.nodes) claimedThreadIds.add(node.thread.id);
+    groups.push(group);
+  }
+  return {
+    groups,
+    looseNodes: nodes.filter((node) => !claimedThreadIds.has(node.thread.id)),
+  };
+}
+
 function buildSortedItems(
   nodes: ProjectThreadNode[],
   compareThreads: ThreadComparator,
   groupEnvironmentThreads: boolean,
   respectSections = false,
+  pluginGroups: readonly PluginThreadGroupDefinition[] = [],
 ): ProjectThreadItem[] {
+  if (pluginGroups.length > 0) {
+    const { groups, looseNodes } = bucketPluginThreadGroups(
+      nodes,
+      compareThreads,
+      pluginGroups,
+    );
+    const items = [
+      ...buildSortedItems(
+        looseNodes,
+        compareThreads,
+        groupEnvironmentThreads,
+        respectSections,
+      ),
+      ...groups.map(
+        (group): ProjectThreadItem => ({
+          kind: "plugin-group",
+          group,
+        }),
+      ),
+    ];
+    items.sort((left, right) =>
+      compareProjectThreadItems(left, right, compareThreads),
+    );
+    return items;
+  }
+
   if (groupEnvironmentThreads && respectSections) {
     const nodesBySectionId = new Map<string | null, ProjectThreadNode[]>();
     for (const node of nodes) {
@@ -341,11 +505,14 @@ export function buildProjectThreadGroups(
   allProjectThreads: readonly SidebarThread[],
   compareThreads: ThreadComparator = compareStandardThreads,
   groupEnvironmentThreads = true,
+  pluginGroups: readonly PluginThreadGroupDefinition[] = [],
 ): ProjectThreadItem[] {
   return buildThreadTreeItems(
     allProjectThreads,
     compareThreads,
     groupEnvironmentThreads,
+    false,
+    pluginGroups,
   );
 }
 
@@ -354,6 +521,7 @@ function buildThreadTreeItems(
   compareThreads: ThreadComparator,
   groupEnvironmentThreads: boolean,
   respectSections = false,
+  pluginGroups: readonly PluginThreadGroupDefinition[] = [],
 ): ProjectThreadItem[] {
   const projectThreads = allThreads.filter(isSidebarProjectThread);
   const projectThreadIds = new Set(projectThreads.map((thread) => thread.id));
@@ -412,6 +580,7 @@ function buildThreadTreeItems(
     compareThreads,
     groupEnvironmentThreads,
     respectSections,
+    pluginGroups,
   );
 }
 
@@ -496,6 +665,8 @@ function getItemOrderingThread(
       return item.node.thread;
     case "environment":
       return item.group.nodes[0].thread;
+    case "plugin-group":
+      return item.group.nodes[0]?.thread ?? null;
     case "section": {
       const descendants = getProjectThreadItemDescendants(item.group.items);
       if (descendants.length === 0) {
@@ -514,6 +685,8 @@ export function getSidebarDndItemId(item: ProjectThreadItem): string {
       return item.node.thread.id;
     case "environment":
       return `environment:${item.group.nodes[0].thread.id}`;
+    case "plugin-group":
+      return `plugin-group:${item.group.id}`;
     case "section":
       return item.group.key;
   }
@@ -542,6 +715,8 @@ function getItemFallbackSortLabel(item: ProjectThreadItem): string {
       return item.node.thread.id;
     case "environment":
       return item.group.environmentId;
+    case "plugin-group":
+      return item.group.label;
     case "section":
       return item.group.name;
   }
@@ -683,6 +858,14 @@ export function countProjectThreadItemRows(
         (total, node) => total + countThreadNodeRows(node, context),
         1,
       );
+    case "plugin-group":
+      if (context.collapsedEnvironmentIds.has(item.group.id)) {
+        return 1;
+      }
+      return item.group.nodes.reduce(
+        (total, node) => total + countThreadNodeRows(node, context),
+        1 + item.group.rows.length,
+      );
     case "section":
       if (context.collapsedSectionKeys.has(item.group.key)) {
         return 1;
@@ -707,6 +890,7 @@ export function projectThreadItemContainsThread(
         )
       );
     case "environment":
+    case "plugin-group":
       return item.group.nodes.some(
         (node) =>
           node.thread.id === threadId ||
@@ -761,6 +945,16 @@ function collectProjectThreadItemNavigationEntriesInto(
       }
       for (const node of item.group.nodes) {
         collectThreadNodeNavigationEntries(node, context, entries);
+      }
+      return;
+    case "plugin-group":
+      if (context.collapsedEnvironmentIds.has(item.group.id)) {
+        return;
+      }
+      for (const entry of item.group.entries) {
+        if (entry.kind === "thread") {
+          collectThreadNodeNavigationEntries(entry.node, context, entries);
+        }
       }
       return;
     case "section":

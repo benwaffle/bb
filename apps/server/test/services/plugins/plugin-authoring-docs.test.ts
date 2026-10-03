@@ -32,6 +32,9 @@ import {
   type PluginSettingDescriptor,
   type PluginSettingsSectionProps,
   type PluginSidebarFooterActionProps,
+  type ExperimentalSidebarThreadGroup,
+  type ExperimentalSidebarThreadGroupThreadRow,
+  type ExperimentalSidebarThreadGroupsRegistration,
   type PluginSourceCodeRendererProps,
   type PluginThreadHeaderActionProps,
   type PluginThreadActionItemInput,
@@ -246,9 +249,7 @@ const THREAD_EVENT_PAYLOAD_FIELDS = {
     "attemptNumber",
   ],
 } as const satisfies {
-  [
-    E in keyof PluginThreadEventPayloads
-  ]: readonly (keyof PluginThreadEventPayloads[E])[];
+  [E in keyof PluginThreadEventPayloads]: readonly (keyof PluginThreadEventPayloads[E])[];
 };
 
 type MissingThreadEventField = {
@@ -271,6 +272,7 @@ type SlotPropsByName = {
   experimental_newThreadPanelAction: PluginNewThreadPanelProps;
   pendingInteraction: PluginPendingInteractionProps;
   sidebarFooterAction: PluginSidebarFooterActionProps;
+  experimental_sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration;
   experimental_threadList: PluginThreadListProps;
   experimental_threadHeaderAction: PluginThreadHeaderActionProps;
   experimental_threadAction: PluginThreadActionItemInput<unknown>;
@@ -348,6 +350,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   experimental_newThreadPanelAction: ["projectId", "params"],
   pendingInteraction: ["interaction", "submit", "cancel"],
   sidebarFooterAction: [],
+  experimental_sidebarThreadGroups: ["id", "title", "useGroups"],
   experimental_threadList: [
     "activeThreadId",
     "activeProjectId",
@@ -459,6 +462,40 @@ const _assertAllSidebarFooterActionRegistrationFieldsListed: MissingSidebarFoote
   ? true
   : never = true;
 void _assertAllSidebarFooterActionRegistrationFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_FIELDS = [
+  "projectId",
+  "key",
+  "label",
+  "tooltip",
+  "threadIds",
+  "rows",
+  "keepOrder",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroup)[];
+
+type MissingSidebarThreadGroupField = Exclude<
+  keyof ExperimentalSidebarThreadGroup,
+  (typeof SIDEBAR_THREAD_GROUP_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupFieldsListed: MissingSidebarThreadGroupField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupFieldsListed;
+
+const SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS = [
+  "threadId",
+  "depth",
+  "description",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadGroupThreadRow)[];
+
+type MissingSidebarThreadGroupThreadRowField = Exclude<
+  keyof ExperimentalSidebarThreadGroupThreadRow,
+  (typeof SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS)[number]
+>;
+const _assertAllSidebarThreadGroupThreadRowFieldsListed: MissingSidebarThreadGroupThreadRowField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadGroupThreadRowFieldsListed;
 
 const MESSAGE_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -757,6 +794,19 @@ describe("bb-plugin-authoring skill", () => {
       ).toContain(field);
     }
     expect(skill).toContain("openSettings");
+  });
+
+  it("documents every sidebar thread group and placed thread field", () => {
+    expect(skill).toContain("ExperimentalSidebarThreadGroupThreadRow");
+    for (const field of [
+      ...SIDEBAR_THREAD_GROUP_FIELDS,
+      ...SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS,
+    ]) {
+      expect(
+        skill,
+        `sidebar thread group field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
   });
 
   it("documents every messageAction registration field", () => {
