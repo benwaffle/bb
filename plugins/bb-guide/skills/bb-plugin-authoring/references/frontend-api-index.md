@@ -51,6 +51,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_useSidebarThreadPullRequest`
 - `experimental_useSidebarThreadGroups` — every plugin's sidebar thread
   groups, for thread-list providers
+- `experimental_useSidebarProjectDecoration` — every plugin's merged
+  decoration for one sidebar project header, for thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `experimental_useSidebarNavigation` — the sidebar navigation items in the
   user's saved order, the active item, Home state, and host actions to
@@ -227,6 +229,9 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalSidebarThreadGroupRowIcon`
 - `ExperimentalSidebarThreadGroupRowTrailing`
 - `ExperimentalResolvedSidebarThreadGroup`
+- `ExperimentalSidebarProjectDecorationRegistration`
+- `ExperimentalSidebarProjectDecoration`
+- `ExperimentalResolvedSidebarProjectDecoration`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`
