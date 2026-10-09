@@ -45,6 +45,7 @@ import type { SidebarThread } from "../model/sidebar-thread.js";
 import { toast } from "sonner";
 import {
   experimental_useArchiveEnvironmentThreads,
+  experimental_useSidebarProjectDecoration,
   useBbNavigate,
   useEnvironmentProviders,
   useSdk,
@@ -2550,6 +2551,9 @@ function ProjectRowComponent({
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [isRemovePending, setIsRemovePending] = useState(false);
   const isActionsOpen = isDropdownActionsOpen || isContextActionsOpen;
+  const projectDecoration = experimental_useSidebarProjectDecoration(
+    project.id,
+  );
   const projectThreads = useMemo(
     () =>
       isCollapsed && threadListState.status === "ready"
@@ -2624,6 +2628,7 @@ function ProjectRowComponent({
         >
           <TopLevelSidebarSection
             label={project.name}
+            decoration={projectDecoration}
             dropParentKey={buildSidebarEntitySectionId("project", project.id)}
             labelEditor={rename.editor}
             onRename={rename.startEditingFromDoubleClick}
