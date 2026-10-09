@@ -7,6 +7,7 @@ import {
   type PointerEventHandler,
   type ReactNode,
 } from "react";
+import type { ExperimentalResolvedSidebarProjectDecoration } from "@get-bb/plugin-sdk/app";
 import { cn } from "@/lib/utils";
 import { Icon } from "@/components/ui/icon";
 import { LIST_HOVER_TRANSITION } from "@/components/ui/motion";
@@ -57,8 +58,73 @@ interface TopLevelSidebarSectionCollapseControl {
   onToggleCollapsed: () => void;
 }
 
+export const SIDEBAR_PROJECT_TINT_ROW_CLASS = "bb-sidebar-project-tint-row";
+
+interface SidebarSectionLabelProps {
+  label: string;
+  decoration: ExperimentalResolvedSidebarProjectDecoration | null;
+  labelEditor: ReactNode | undefined;
+  onRename: (() => void) | undefined;
+}
+
+export function SidebarSectionLabel({
+  label,
+  decoration,
+  labelEditor,
+  onRename,
+}: SidebarSectionLabelProps) {
+  const accentColor = decoration?.accentColor ?? null;
+  return (
+    <>
+      {decoration?.leading ? (
+        <span
+          data-sidebar-section-leading=""
+          className="relative z-20 inline-flex shrink-0 items-center"
+        >
+          {decoration.leading}
+        </span>
+      ) : null}
+      {labelEditor ?? (
+        <span
+          data-sidebar-section-label=""
+          className={cn(
+            "min-w-0 truncate",
+            accentColor !== null && "font-bold",
+            decoration?.labelClassName,
+          )}
+          style={accentColor !== null ? { color: accentColor } : undefined}
+          title={label}
+          onDoubleClick={
+            onRename
+              ? (event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onRename();
+                }
+              : undefined
+          }
+        >
+          {label}
+        </span>
+      )}
+    </>
+  );
+}
+
+type SidebarSectionTintStyle = CSSProperties & {
+  "--bb-sidebar-project-tint": string;
+};
+
+function sidebarSectionTintStyle(
+  decoration: ExperimentalResolvedSidebarProjectDecoration | null,
+): SidebarSectionTintStyle | undefined {
+  if (!decoration?.tint || decoration.accentColor === null) return undefined;
+  return { "--bb-sidebar-project-tint": decoration.accentColor };
+}
+
 export interface TopLevelSidebarSectionProps {
   label: string;
+  decoration?: ExperimentalResolvedSidebarProjectDecoration | null;
   labelEditor?: ReactNode;
   onRename?: () => void;
   children: ReactNode;
@@ -82,6 +148,7 @@ export interface TopLevelSidebarSectionProps {
 
 export function TopLevelSidebarSection({
   label,
+  decoration = null,
   labelEditor,
   onRename,
   children,
@@ -103,6 +170,7 @@ export function TopLevelSidebarSection({
   isDropTargetActive = false,
 }: TopLevelSidebarSectionProps) {
   const threadDropState = useSectionDropTargetState(dropParentKey);
+  const tintStyle = sidebarSectionTintStyle(decoration);
   const collapsedSplitIndicator = useThreadGroupSplitIndicator(
     collapsedThreads,
     collapseControl?.isCollapsed === true,
@@ -193,7 +261,10 @@ export function TopLevelSidebarSection({
       <SidebarStickyTier
         ref={dragBindings?.setActivatorNodeRef}
         tier="label"
+        style={tintStyle}
+        data-sidebar-section-tint={tintStyle ? "" : undefined}
         className={cn(
+          tintStyle && SIDEBAR_PROJECT_TINT_ROW_CLASS,
           SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
           CHROME_SECTION_LABEL_CLASS,
           SIDEBAR_GROUP_TEXT_CLASS,
@@ -206,23 +277,12 @@ export function TopLevelSidebarSection({
         {...(dragBindings?.listeners ?? {})}
       >
         <span className="relative z-10 flex min-w-0 flex-1 items-center gap-1 text-left">
-          {labelEditor ?? (
-            <span
-              className="min-w-0 truncate"
-              title={label}
-              onDoubleClick={
-                onRename
-                  ? (event) => {
-                      event.preventDefault();
-                      event.stopPropagation();
-                      onRename();
-                    }
-                  : undefined
-              }
-            >
-              {label}
-            </span>
-          )}
+          <SidebarSectionLabel
+            label={label}
+            decoration={decoration}
+            labelEditor={labelEditor}
+            onRename={onRename}
+          />
           {collapseControl ? (
             <button
               type="button"
