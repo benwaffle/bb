@@ -312,3 +312,49 @@ A replacement thread list reads every plugin's groups with
 `experimental_useSidebarThreadGroups()`, which adds a host-assigned `id` and
 the `pluginId`, folds placed threads into `threadIds`, and always sets
 `keepOrder`.
+
+### Decorating sidebar project headers
+
+`app.slots.experimental_sidebarProjectDecoration` decorates the project
+headers in bb's sidebar thread list. `useDecoration(projectId)` is a React
+hook the host calls inside your plugin's context, once per project header
+the list shows, so `useRpc` and `useRealtime` work. Return the same object
+while nothing changed, or `null` for no decoration.
+
+```tsx
+app.slots.experimental_sidebarProjectDecoration({
+  id: "emoji",
+  title: "Project emoji",
+  useDecoration: (projectId) => {
+    const project = useProjectStyle(projectId);
+    return useMemo(
+      () =>
+        project === null
+          ? null
+          : {
+              leading: <EmojiButton projectId={projectId} />,
+              accentColor: project.lightTint,
+              labelClassName: "tracking-tight",
+              tint: true,
+            },
+      [project, projectId],
+    );
+  },
+});
+```
+
+An `ExperimentalSidebarProjectDecoration` has four optional fields. `leading`
+renders before the project name, mounted in your plugin's context; stop
+`pointerdown` and `click` propagation on interactive content so the header
+does not drag or collapse. `accentColor` is a CSS color for the name, which
+also turns bold; colors the browser rejects are dropped. `labelClassName`
+adds classes to the name. `tint: true` washes the header row in a light
+translucent `accentColor`, and bb still layers its hover, open-menu, pressed,
+and drop-target states above it; it is ignored without `accentColor`.
+
+A replacement thread list reads a project's decoration with
+`experimental_useSidebarProjectDecoration(projectId)`, which is also what
+makes bb run the plugins' hooks for that project. It returns `null` or an
+`ExperimentalResolvedSidebarProjectDecoration` with every field set:
+`leading` collects every plugin's node in plugin id order, and the style
+fields come from the first plugin that sets a color or classes.

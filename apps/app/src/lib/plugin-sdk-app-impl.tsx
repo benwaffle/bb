@@ -69,6 +69,7 @@ import {
   useThreadActionRegistrationInfos,
 } from "./thread-actions/thread-action-registry";
 import { useSidebarThreadGroups } from "./plugin-sidebar-thread-groups";
+import { useSidebarProjectDecoration } from "./plugin-sidebar-project-decorations";
 import { useCodeTheme } from "./plugin-code-theme";
 import { copyToClipboard } from "./clipboard";
 
@@ -118,6 +119,7 @@ export const pluginSdkAppImplementation = {
   experimental_THREAD_ACTION_GROUPS,
   experimental_useSidebarThreadPullRequest: useSidebarThreadPullRequest,
   experimental_useSidebarThreadGroups: useSidebarThreadGroups,
+  experimental_useSidebarProjectDecoration: useSidebarProjectDecoration,
   experimental_useSidebarThreadSplit: useSidebarThreadSplit,
   useSidebarThreadDraft,
   useSidebarThreadDraftIds,
