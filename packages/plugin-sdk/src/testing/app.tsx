@@ -47,6 +47,8 @@ import {
   type ExperimentalSidebarNavigationState,
   type ExperimentalResolvedSidebarThreadGroup,
   type ExperimentalSidebarThreadGroupsRegistration,
+  type ExperimentalResolvedSidebarProjectDecoration,
+  type ExperimentalSidebarProjectDecorationRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
   type PluginAppSetup,
@@ -377,6 +379,10 @@ interface SlotEnv {
   threadBulkActions: TestThreadBulkActionsResolver;
   threadActionRegistrations: readonly PluginThreadActionRegistrationInfo[];
   sidebarThreadGroups: readonly ExperimentalResolvedSidebarThreadGroup[];
+  sidebarProjectDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarProjectDecoration
+  >;
   sidebarDraftThreadIds: ReadonlySet<string>;
   experiments: ReadonlySet<string>;
   threadContextKind: ExperimentalThreadContextKind;
@@ -2043,6 +2049,15 @@ const testPluginSdkApp = {
     return useSlotEnv("experimental_useSidebarThreadGroups")
       .sidebarThreadGroups;
   },
+  experimental_useSidebarProjectDecoration(
+    projectId,
+  ): ExperimentalResolvedSidebarProjectDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarProjectDecoration",
+      ).sidebarProjectDecorations.get(projectId) ?? null
+    );
+  },
   useComposerView(): ComposerView {
     const composer = useSlotEnv("useComposerView").composer;
     const version = useSyncExternalStore(
@@ -2106,6 +2121,7 @@ export interface CapturedPluginApp {
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: ExperimentalSidebarNavigationRegistration[];
   sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
+  sidebarProjectDecorations: ExperimentalSidebarProjectDecorationRegistration[];
   threadHeaderActions: import("../internal/plugin-app-registration-collector.js").LegacyThreadHeaderActionRegistration[];
   threadContextSegments: ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
@@ -2390,6 +2406,14 @@ export interface RenderSlotOptions<
    * Groups `experimental_useSidebarThreadGroups()` reports. Omitted → none.
    */
   sidebarThreadGroups?: readonly ExperimentalResolvedSidebarThreadGroup[];
+  /**
+   * Decorations `experimental_useSidebarProjectDecoration()` reports, keyed
+   * by project id. Omitted → every project reports none.
+   */
+  sidebarProjectDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarProjectDecoration
+  >;
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
    * report as holding an unsent draft. Omitted → none.
@@ -3401,6 +3425,9 @@ export function renderSlot<
     threadActionRegistrations:
       options.threadActionRegistrations ?? NO_THREAD_ACTION_REGISTRATIONS,
     sidebarThreadGroups: options.sidebarThreadGroups ?? [],
+    sidebarProjectDecorations: new Map(
+      Object.entries(options.sidebarProjectDecorations ?? {}),
+    ),
     sidebarDraftThreadIds,
     experiments: new Set(options.experiments ?? []),
     threadContextKind: options.threadContextKind ?? "banner",
