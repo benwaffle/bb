@@ -30,6 +30,7 @@ import type {
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
   ExperimentalSidebarThreadGroupsRegistration,
+  ExperimentalSidebarProjectDecorationRegistration,
   PluginSourceCodeRendererRegistration,
   PluginThreadHeaderActionRegistration,
   ExperimentalThreadInfoRowRegistration,
@@ -303,6 +304,7 @@ export interface CollectedPluginAppRegistrations {
   threadLists: PluginThreadListRegistration[];
   experimentalSidebarNavigations: CollectedSidebarNavigationRegistration[];
   sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
+  sidebarProjectDecorations: ExperimentalSidebarProjectDecorationRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
   threadInfoSections: ExperimentalThreadInfoSectionRegistration[];
@@ -442,6 +444,7 @@ export function collectPluginAppRegistrations(
     threadLists: [],
     experimentalSidebarNavigations: [],
     sidebarThreadGroups: [],
+    sidebarProjectDecorations: [],
     threadHeaderActions: [],
     threadInfoRows: [],
     threadInfoSections: [],
@@ -478,6 +481,7 @@ export function collectPluginAppRegistrations(
     sidebarNavigation: new Set<string>(),
     sidebarHeader: new Set<string>(),
     sidebarThreadGroups: new Set<string>(),
+    sidebarProjectDecorations: new Set<string>(),
     threadHeaderAction: new Set<string>(),
     threadInfoRow: new Set<string>(),
     threadInfoSection: new Set<string>(),
@@ -898,6 +902,19 @@ export function collectPluginAppRegistrations(
           id,
           title: requireNonEmptyString(kind, "title", registration.title),
           useGroups: registration.useGroups,
+        });
+      },
+      experimental_sidebarProjectDecoration(registration) {
+        const kind = "slots.experimental_sidebarProjectDecoration";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarProjectDecorations, id);
+        if (typeof registration.useDecoration !== "function") {
+          throw new Error(`${kind}: "useDecoration" must be a function`);
+        }
+        collected.sidebarProjectDecorations.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useDecoration: registration.useDecoration,
         });
       },
       experimental_threadHeaderAction(registration) {
