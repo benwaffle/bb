@@ -64,6 +64,7 @@ import {
 } from "@/components/plugin/PluginPanelHeader";
 import { PluginAppOverlays } from "@/components/plugin/PluginAppOverlays";
 import { PluginSidebarThreadGroupProviders } from "@/lib/plugin-sidebar-thread-groups";
+import { PluginSidebarProjectDecorationProviders } from "@/lib/plugin-sidebar-project-decorations";
 import { AppThreadSectionMoveProvider } from "@/components/thread/ThreadSectionMoveProvider";
 import { ThreadActionsProvider } from "@/components/thread/ThreadActionsProvider";
 import {
@@ -877,6 +878,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               </SidebarStateBridge>
               <PluginAppOverlays />
               <PluginSidebarThreadGroupProviders />
+              <PluginSidebarProjectDecorationProviders />
               <IframeDragGuardOverlay
                 active={isSidebarResizing}
                 cursor="col-resize"

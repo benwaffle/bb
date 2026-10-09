@@ -3070,6 +3070,57 @@ its group.
    needed (it conflicts with inline rename), and whether dragging within a
    `keepOrder` group should be disabled since the provider owns the order.
 
+## `app.slots.experimental_sidebarProjectDecoration` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-09).** Consumer: the project-emoji plugin
+(benwaffle/bb-plugins), which shows each project's emoji before its name and
+colors the header in the emoji's hue. Core caller: the bundled Thread list
+renders every top-level section label through `SidebarSectionLabel`, which
+takes the resolved decoration; custom sections and built-in sections pass
+`null`, and By project headers pass
+`experimental_useSidebarProjectDecoration(project.id)`.
+
+**What it does.** A plugin registers `{ id, title, useDecoration }`.
+`experimental_useSidebarProjectDecoration(projectId)` requests a project; for
+every requested project the host mounts one hidden component per
+registration inside the plugin's context (crash boundary included) and calls
+`useDecoration(projectId)` there, so the hook can use `useRpc`,
+`useRealtime`, and other plugin hooks. The request lasts while any caller for
+that project stays mounted. The hook returns
+`{ leading?, accentColor?, labelClassName?, tint? }` or `null`. The host drops
+an `accentColor` the browser's `CSS.supports("color", …)` rejects, blank
+`labelClassName`, and `tint` without a valid `accentColor`. It merges every
+plugin's output for the project in plugin id order: `leading` collects each
+plugin's node, mounted in that plugin's own `PluginSlotMount`; `accentColor`,
+`labelClassName`, and `tint` come from the first plugin that sets a color or
+classes. The resolved value always carries every field (`null`/`false` for
+absence), or the hook returns `null` when no plugin decorates the project.
+
+The bundled Thread list renders `leading` before the project name (also while
+renaming), colors the name with `accentColor` and makes it bold, appends
+`labelClassName`, and with `tint` sets `--bb-sidebar-project-tint` on the
+header row. `.bb-sidebar-project-tint-row` in `theme.css` paints a 9% oklab
+wash of that color over an opaque sidebar layer, and layers `--state-hover`
+above it on hover, focus-visible, and open menus, and `--state-active` while
+pressed. The thread drop-target overlay still paints above the row.
+
+**Audit before stabilizing.**
+
+1. **Merging.** First plugin by id wins the style fields. Decide whether
+   several plugins should be able to color a header, or whether a priority or
+   a single-owner rule is needed.
+2. **Leading content.** Plugins receive no drag or collapse contract for
+   interactive nodes beyond stopping propagation themselves. Decide whether
+   the host should wrap `leading` with those guards.
+3. **Color validation.** `CSS.supports` is skipped where the runtime lacks
+   it. Decide whether the host should normalize colors, and whether the tint
+   strength should be a host constant or part of the contract.
+4. **Scope.** Only By project headers request decorations. Decide whether
+   machine mode, the project picker, or the home screen should use them.
+5. **Hook lifetime.** Hooks run once per mounted header per registration.
+   Confirm the cost with many projects, or batch them into one hook taking
+   every requested project id.
+
 ## `app.slots.experimental_threadHeaderAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** zero consumers; item 1 (merging behind one registration with `bb.ui.registerThreadAction`) is cheapest to decide before the first one.

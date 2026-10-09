@@ -1553,6 +1553,65 @@ export interface ExperimentalSidebarThreadGroupsRegistration {
 }
 
 /**
+ * How a plugin decorates one project's header in the sidebar thread list.
+ * Every field is optional; return `null` to leave the header undecorated.
+ */
+export interface ExperimentalSidebarProjectDecoration {
+  /**
+   * Rendered before the project name, inside the plugin's context, such as
+   * an emoji button. Stop `pointerdown` and `click` propagation on
+   * interactive content so the header does not drag or collapse.
+   */
+  leading?: ReactNode;
+  /**
+   * CSS color for the project name, which also turns bold. Ignored unless
+   * the browser accepts it as a color.
+   */
+  accentColor?: string;
+  /** Extra classes for the project name. */
+  labelClassName?: string;
+  /**
+   * Paint a subtle wash of `accentColor` behind the header row. Hover, open
+   * menu, and drop-target states still layer above it. Ignored without
+   * `accentColor`.
+   */
+  tint?: boolean;
+}
+
+/**
+ * A project's decoration as `experimental_useSidebarProjectDecoration()`
+ * reports it. `leading` holds every plugin's leading node in plugin id
+ * order, each mounted in its own plugin's context; the style fields come
+ * from the first plugin, in plugin id order, that sets `accentColor` or
+ * `labelClassName`.
+ */
+export interface ExperimentalResolvedSidebarProjectDecoration {
+  /** `null` when no plugin supplies a leading node. */
+  leading: ReactNode | null;
+  /** `null` when no plugin supplies a valid color. */
+  accentColor: string | null;
+  /** `null` when no plugin supplies classes. */
+  labelClassName: string | null;
+  /** `true` only when `accentColor` is set and its plugin asked for a tint. */
+  tint: boolean;
+}
+
+/**
+ * Decorate project headers in the sidebar thread list. `useDecoration` is a
+ * React hook the host calls inside the plugin's context (so `useRpc`,
+ * `useRealtime`, and other plugin hooks work), once per project header the
+ * thread list shows, for as long as that header is mounted. Return the same
+ * object while nothing changed.
+ */
+export interface ExperimentalSidebarProjectDecorationRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  /** Label shown in capability details. */
+  title: string;
+  useDecoration(projectId: string): ExperimentalSidebarProjectDecoration | null;
+}
+
+/**
  * Register this plugin as a viewer/editor for file extensions. By default,
  * matching files render the first applicable opener in deterministic slot
  * order. The user can pin BB's preview or a specific opener per extension
@@ -2017,6 +2076,14 @@ export interface PluginAppSlots {
    */
   experimental_sidebarThreadGroups(
     registration: ExperimentalSidebarThreadGroupsRegistration,
+  ): void;
+  /**
+   * Decorate sidebar project headers (see
+   * {@link ExperimentalSidebarProjectDecorationRegistration}). Experimental:
+   * see docs/api_to_audit.md.
+   */
+  experimental_sidebarProjectDecoration(
+    registration: ExperimentalSidebarProjectDecorationRegistration,
   ): void;
   /**
    * Render a component in the thread header's action row (see
@@ -3454,6 +3521,15 @@ export interface PluginSdkApp {
    * docs/api_to_audit.md.
    */
   experimental_useSidebarThreadGroups(): readonly ExperimentalResolvedSidebarThreadGroup[];
+  /**
+   * Every enabled plugin's `experimental_sidebarProjectDecoration` output
+   * for one project, merged, or `null` when no plugin decorates it. Calling
+   * it is what makes the host run the plugins' hooks for that project. For
+   * thread-list providers. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useSidebarProjectDecoration(
+    projectId: string,
+  ): ExperimentalResolvedSidebarProjectDecoration | null;
   /**
    * Per-row drag-to-split support (see {@link PluginSidebarThreadSplit}).
    * Call it once per rendered row, like the built-in sidebar does.

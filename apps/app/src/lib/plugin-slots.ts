@@ -17,6 +17,7 @@ import type {
   PluginSettingsSectionRegistration,
   PluginSidebarFooterActionRegistration,
   ExperimentalSidebarThreadGroupsRegistration,
+  ExperimentalSidebarProjectDecorationRegistration,
   PluginSourceCodeRendererRegistration,
   PluginThreadHeaderActionRegistration,
   ExperimentalPluginBrowserToolbarActionRegistration,
@@ -47,6 +48,7 @@ export interface PluginRegistrationSet {
   experimentalSidebarFooterItems?: readonly CollectedExperimentalSidebarFooterItem[];
   threadLists?: readonly PluginThreadListRegistration[];
   sidebarThreadGroups?: readonly ExperimentalSidebarThreadGroupsRegistration[];
+  sidebarProjectDecorations?: readonly ExperimentalSidebarProjectDecorationRegistration[];
   threadHeaderActions?: readonly PluginThreadHeaderActionRegistration[];
   browserToolbarActions?: readonly ExperimentalPluginBrowserToolbarActionRegistration[];
   fileOpeners: readonly PluginFileOpenerRegistration[];
@@ -89,6 +91,8 @@ export interface PluginThreadListSlot
   extends PluginThreadListRegistration, PluginSlotBase {}
 export interface ExperimentalSidebarThreadGroupsSlot
   extends ExperimentalSidebarThreadGroupsRegistration, PluginSlotBase {}
+export interface ExperimentalSidebarProjectDecorationSlot
+  extends ExperimentalSidebarProjectDecorationRegistration, PluginSlotBase {}
 interface PluginThreadHeaderActionSlot
   extends PluginThreadHeaderActionRegistration, PluginSlotBase {}
 export interface PluginBrowserToolbarActionSlot
@@ -127,6 +131,7 @@ export interface PluginSlotSnapshot {
   sidebarFooterItems: readonly PluginSidebarFooterItemSlot[];
   threadLists: readonly PluginThreadListSlot[];
   sidebarThreadGroups: readonly ExperimentalSidebarThreadGroupsSlot[];
+  sidebarProjectDecorations: readonly ExperimentalSidebarProjectDecorationSlot[];
   threadHeaderActions: readonly PluginThreadHeaderActionSlot[];
   browserToolbarActions: readonly PluginBrowserToolbarActionSlot[];
   fileOpeners: readonly PluginFileOpenerSlot[];
@@ -154,6 +159,7 @@ export const EMPTY_PLUGIN_SLOT_SNAPSHOT: PluginSlotSnapshot = {
   sidebarFooterItems: [],
   threadLists: [],
   sidebarThreadGroups: [],
+  sidebarProjectDecorations: [],
   threadHeaderActions: [],
   browserToolbarActions: [],
   fileOpeners: [],
@@ -188,6 +194,7 @@ const SLOT_KINDS: readonly SlotKind[] = [
   "sidebarFooterItems",
   "threadLists",
   "sidebarThreadGroups",
+  "sidebarProjectDecorations",
   "threadHeaderActions",
   "browserToolbarActions",
   "fileOpeners",
@@ -246,6 +253,7 @@ function flattenRegistrations(
     sidebarFooterItems: stamp<CollectedSidebarFooterItem>(sidebarFooterItems),
     threadLists: stamp(set.threadLists),
     sidebarThreadGroups: stamp(set.sidebarThreadGroups),
+    sidebarProjectDecorations: stamp(set.sidebarProjectDecorations),
     threadHeaderActions: stamp(set.threadHeaderActions),
     browserToolbarActions: stamp(set.browserToolbarActions),
     fileOpeners: stamp(set.fileOpeners),

@@ -58,6 +58,7 @@ import {
 } from "./plugin-sidebar-split";
 import { useAppNavigationHost } from "./app-navigation-host";
 import { useSidebarThreadGroups } from "./plugin-sidebar-thread-groups";
+import { useSidebarProjectDecoration } from "./plugin-sidebar-project-decorations";
 import { useCodeTheme } from "./plugin-code-theme";
 import { copyToClipboard } from "./clipboard";
 
@@ -95,6 +96,7 @@ export const pluginSdkAppImplementation = {
   experimental_useSidebarThreadActions: useSidebarThreadActions,
   experimental_useSidebarThreadPullRequest: useSidebarThreadPullRequest,
   experimental_useSidebarThreadGroups: useSidebarThreadGroups,
+  experimental_useSidebarProjectDecoration: useSidebarProjectDecoration,
   experimental_useSidebarThreadSplit: useSidebarThreadSplit,
   useSidebarThreadDraft,
   useSidebarThreadDraftIds,

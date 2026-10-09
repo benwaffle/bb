@@ -32,6 +32,7 @@ export const {
   experimental_useSidebarThreadActions,
   experimental_useSidebarThreadPullRequest,
   experimental_useSidebarThreadGroups,
+  experimental_useSidebarProjectDecoration,
   experimental_useSidebarThreadSplit,
   useSidebarThreadDraft,
   useSidebarThreadDraftIds,

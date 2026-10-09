@@ -37,6 +37,7 @@ const {
   useRpc,
   useSdk,
   experimental_useSidebarThreadGroups,
+  experimental_useSidebarProjectDecoration,
   experimental_copyToClipboard,
 } = await import("../../app.js");
 
@@ -579,6 +580,50 @@ describe("sidebar thread groups test runtime", () => {
   });
 });
 
+function SidebarProjectDecorationProbe({ projectId }: { projectId: string }) {
+  const decoration = experimental_useSidebarProjectDecoration(projectId);
+  if (decoration === null) return <p>{`${projectId} undecorated`}</p>;
+  return (
+    <p>
+      {decoration.leading}
+      {` ${projectId} ${decoration.accentColor ?? "no color"} tint ${decoration.tint}`}
+    </p>
+  );
+}
+
+describe("sidebar project decoration test runtime", () => {
+  it("reports the configured decoration per project and null otherwise", () => {
+    renderSlot(
+      {
+        component: () => (
+          <>
+            <SidebarProjectDecorationProbe projectId="proj_app" />
+            <SidebarProjectDecorationProbe projectId="proj_web" />
+          </>
+        ),
+      },
+      {},
+      {
+        sidebarProjectDecorations: {
+          proj_app: {
+            leading: "🚀",
+            accentColor: "oklch(0.8 0.1 250)",
+            labelClassName: null,
+            tint: true,
+          },
+        },
+      },
+    );
+
+    expect(
+      Array.from(document.querySelectorAll("p"), (item) => item.textContent),
+    ).toEqual([
+      "🚀 proj_app oklch(0.8 0.1 250) tint true",
+      "proj_web undecorated",
+    ]);
+  });
+});
+
 describe("loadPluginApp", () => {
   beforeEach(() => {
     messageActionRuns.length = 0;
@@ -642,6 +687,53 @@ describe("loadPluginApp", () => {
       ),
     ).rejects.toThrow(
       'slots.experimental_sidebarThreadGroups: "useGroups" must be a function',
+    );
+  });
+
+  it("captures and validates sidebar project decoration registrations", async () => {
+    const useDecoration = () => null;
+    const captured = await loadPluginApp(
+      definePluginApp((builder) => {
+        builder.slots.experimental_sidebarProjectDecoration({
+          id: "emoji",
+          title: "Project emoji",
+          useDecoration,
+        });
+      }),
+    );
+    expect(captured.sidebarProjectDecorations).toEqual([
+      { id: "emoji", title: "Project emoji", useDecoration },
+    ]);
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.experimental_sidebarProjectDecoration({
+            id: "emoji",
+            title: "Project emoji",
+            useDecoration: undefined as never,
+          });
+        }),
+      ),
+    ).rejects.toThrow(
+      'slots.experimental_sidebarProjectDecoration: "useDecoration" must be a function',
+    );
+    await expect(
+      loadPluginApp(
+        definePluginApp((builder) => {
+          builder.slots.experimental_sidebarProjectDecoration({
+            id: "emoji",
+            title: "Project emoji",
+            useDecoration,
+          });
+          builder.slots.experimental_sidebarProjectDecoration({
+            id: "emoji",
+            title: "Again",
+            useDecoration,
+          });
+        }),
+      ),
+    ).rejects.toThrow(
+      'slots.experimental_sidebarProjectDecoration: duplicate id "emoji"',
     );
   });
 
