@@ -145,6 +145,31 @@ describe("theme.css neutral ramp", () => {
     expect(rule).toContain("linear-gradient(var(--sidebar), var(--sidebar))");
   });
 
+  it("layers hover and pressed states above a plugin project tint on an opaque sidebar", () => {
+    const flat = css.replace(/\s+/g, " ");
+    const tintLayer =
+      "linear-gradient( var(--bb-sidebar-project-tint-background), var(--bb-sidebar-project-tint-background) )";
+    const sidebarLayer = "linear-gradient(var(--sidebar), var(--sidebar))";
+    const rest = flat.match(/\.bb-sidebar-project-tint-row \{([^}]*)\}/)?.[1];
+    const hover = flat.match(
+      /\.bb-sidebar-project-tint-row:is\(([^{]+)\) \{([^}]*)\}/,
+    );
+    const pressed = flat.match(
+      /\.bb-sidebar-project-tint-row:active \{([^}]*)\}/,
+    )?.[1];
+
+    expect(rest).toContain("in oklab");
+    expect(rest).toContain(`${tintLayer}, ${sidebarLayer}`);
+    expect(hover?.[1]).toContain(":hover");
+    expect(hover?.[1]).toContain(':has([data-state="open"])');
+    expect(hover?.[2]).toContain(
+      `linear-gradient(var(--state-hover), var(--state-hover)), ${tintLayer}, ${sidebarLayer}`,
+    );
+    expect(pressed).toContain(
+      `linear-gradient(var(--state-active), var(--state-active)), ${tintLayer}, ${sidebarLayer}`,
+    );
+  });
+
   it("caps the scrollport strip above pinned sidebar rows", () => {
     const rule = css
       .replace(/\s+/g, " ")

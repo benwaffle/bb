@@ -35,6 +35,8 @@ import {
   type ExperimentalSidebarThreadGroup,
   type ExperimentalSidebarThreadGroupThreadRow,
   type ExperimentalSidebarThreadGroupsRegistration,
+  type ExperimentalSidebarProjectDecoration,
+  type ExperimentalSidebarProjectDecorationRegistration,
   type PluginSourceCodeRendererProps,
   type PluginThreadHeaderActionProps,
   type PluginThreadActionItemInput,
@@ -273,6 +275,7 @@ type SlotPropsByName = {
   pendingInteraction: PluginPendingInteractionProps;
   sidebarFooterAction: PluginSidebarFooterActionProps;
   experimental_sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration;
+  experimental_sidebarProjectDecoration: ExperimentalSidebarProjectDecorationRegistration;
   experimental_threadList: PluginThreadListProps;
   experimental_threadHeaderAction: PluginThreadHeaderActionProps;
   experimental_threadAction: PluginThreadActionItemInput<unknown>;
@@ -351,6 +354,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   pendingInteraction: ["interaction", "submit", "cancel"],
   sidebarFooterAction: [],
   experimental_sidebarThreadGroups: ["id", "title", "useGroups"],
+  experimental_sidebarProjectDecoration: ["id", "title", "useDecoration"],
   experimental_threadList: [
     "activeThreadId",
     "activeProjectId",
@@ -496,6 +500,22 @@ const _assertAllSidebarThreadGroupThreadRowFieldsListed: MissingSidebarThreadGro
   ? true
   : never = true;
 void _assertAllSidebarThreadGroupThreadRowFieldsListed;
+
+const SIDEBAR_PROJECT_DECORATION_FIELDS = [
+  "leading",
+  "accentColor",
+  "labelClassName",
+  "tint",
+] as const satisfies readonly (keyof ExperimentalSidebarProjectDecoration)[];
+
+type MissingSidebarProjectDecorationField = Exclude<
+  keyof ExperimentalSidebarProjectDecoration,
+  (typeof SIDEBAR_PROJECT_DECORATION_FIELDS)[number]
+>;
+const _assertAllSidebarProjectDecorationFieldsListed: MissingSidebarProjectDecorationField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarProjectDecorationFieldsListed;
 
 const MESSAGE_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -805,6 +825,16 @@ describe("bb-plugin-authoring skill", () => {
       expect(
         skill,
         `sidebar thread group field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+  });
+
+  it("documents every sidebar project decoration field", () => {
+    expect(skill).toContain("experimental_useSidebarProjectDecoration");
+    for (const field of SIDEBAR_PROJECT_DECORATION_FIELDS) {
+      expect(
+        skill,
+        `sidebar project decoration field "${field}" is not documented in the skill`,
       ).toContain(field);
     }
   });
