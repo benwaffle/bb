@@ -280,6 +280,45 @@
       linear-gradient(var(--sidebar), var(--sidebar));
   }
 
+  .bb-sidebar-project-tint-row {
+    --bb-sidebar-project-tint-background: color-mix(
+      in oklab,
+      var(--bb-sidebar-project-tint) 9%,
+      transparent
+    );
+    background-image:
+      linear-gradient(
+        var(--bb-sidebar-project-tint-background),
+        var(--bb-sidebar-project-tint-background)
+      ),
+      linear-gradient(var(--sidebar), var(--sidebar));
+  }
+
+  .bb-sidebar-project-tint-row:is(
+    :hover,
+    :has([data-state="open"]),
+    :has(:focus-visible),
+    :has([data-sidebar-hover-actions-open="true"])
+  ) {
+    background-image:
+      linear-gradient(var(--state-hover), var(--state-hover)),
+      linear-gradient(
+        var(--bb-sidebar-project-tint-background),
+        var(--bb-sidebar-project-tint-background)
+      ),
+      linear-gradient(var(--sidebar), var(--sidebar));
+  }
+
+  .bb-sidebar-project-tint-row:active {
+    background-image:
+      linear-gradient(var(--state-active), var(--state-active)),
+      linear-gradient(
+        var(--bb-sidebar-project-tint-background),
+        var(--bb-sidebar-project-tint-background)
+      ),
+      linear-gradient(var(--sidebar), var(--sidebar));
+  }
+
   .bb-sidebar-hover-actions {
     pointer-events: none;
     opacity: 0;
