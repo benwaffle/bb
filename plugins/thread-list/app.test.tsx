@@ -329,6 +329,65 @@ describe("thread-list plugin", () => {
     expect(within(threadsGroup).getByText("Personal thread")).not.toBeNull();
   });
 
+  it("decorates a project header with a plugin's leading node, accent color, and tint", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const onEmojiClick = vi.fn();
+    renderList(
+      { organizationMode: "project" },
+      {
+        sidebarProjectDecorations: {
+          proj_app: {
+            leading: (
+              <button type="button" onClick={onEmojiClick}>
+                🚀
+              </button>
+            ),
+            accentColor: "rgb(120, 160, 255)",
+            labelClassName: "tracking-tight",
+            tint: true,
+          },
+        },
+      },
+    );
+
+    const name = await screen.findByTitle("App");
+    const header = name.closest("[data-sidebar-sticky-tier]") as HTMLElement;
+    expect(name.style.color).toBe("rgb(120, 160, 255)");
+    expect(name.className).toContain("font-bold");
+    expect(name.className).toContain("tracking-tight");
+    expect(header.classList).toContain("bb-sidebar-project-tint-row");
+    expect(header.style.getPropertyValue("--bb-sidebar-project-tint")).toBe(
+      "rgb(120, 160, 255)",
+    );
+
+    const leading = within(header).getByRole("button", { name: "🚀" });
+    expect(
+      leading.compareDocumentPosition(name) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    fireEvent.click(leading);
+    expect(onEmojiClick).toHaveBeenCalledTimes(1);
+
+    expect(header.classList).toContain("bb-sidebar-hover-actions-row");
+    fireEvent.pointerDown(
+      within(header).getByRole("button", { name: "App actions" }),
+      { button: 0, ctrlKey: false },
+    );
+    await screen.findByRole("menu");
+    expect(header.querySelector('[data-state="open"]')).not.toBeNull();
+    expect(header.classList).toContain("bb-sidebar-project-tint-row");
+
+    const webName = screen.getByTitle("Web");
+    const webHeader = webName.closest(
+      "[data-sidebar-sticky-tier]",
+    ) as HTMLElement;
+    expect(webName.getAttribute("style")).toBeNull();
+    expect(webName.className).not.toContain("font-bold");
+    expect(webHeader.classList).not.toContain("bb-sidebar-project-tint-row");
+    expect(
+      webHeader.querySelector("[data-sidebar-section-leading]"),
+    ).toBeNull();
+  });
+
   it("nests a project's threads and placeholder rows under plugin thread groups", async () => {
     setPreferencesMirrorStorageForTest(null);
     const onSelect = vi.fn();

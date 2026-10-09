@@ -63,6 +63,7 @@ import {
 } from "@/components/plugin/PluginPanelHeader";
 import { PluginAppOverlays } from "@/components/plugin/PluginAppOverlays";
 import { PluginSidebarThreadGroupProviders } from "@/lib/plugin-sidebar-thread-groups";
+import { PluginSidebarProjectDecorationProviders } from "@/lib/plugin-sidebar-project-decorations";
 import { ThreadActionsProvider } from "@/components/thread/ThreadActionsProvider";
 import {
   usePluginNavPanelChrome,
@@ -875,6 +876,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             </SidebarStateBridge>
             <PluginAppOverlays />
             <PluginSidebarThreadGroupProviders />
+            <PluginSidebarProjectDecorationProviders />
             <IframeDragGuardOverlay
               active={isSidebarResizing}
               cursor="col-resize"

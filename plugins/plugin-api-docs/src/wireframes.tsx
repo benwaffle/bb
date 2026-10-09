@@ -575,10 +575,19 @@ const SIDEBAR_SECTION_RENDERERS: Record<string, () => ReactNode> = {
       <span className="block px-2 pb-1 pt-2 text-xs text-subtle-foreground/75">
         Projects
       </span>
-      <span className="flex h-6.5 items-center gap-1.5 rounded-md px-2">
-        <span className="min-w-0 truncate">acme-app</span>
-        <MiniIcon icon="ChevronDown" className="size-3.5" />
-      </span>
+      <Mark
+        id="sidebar-project-decoration"
+        label="A project header a plugin decorated with an emoji, name color, and tint"
+        className="z-[2] block"
+      >
+        <span className="flex h-6.5 items-center gap-1.5 rounded-md bg-primary/10 px-2">
+          <span aria-hidden>🚀</span>
+          <span className="min-w-0 truncate font-bold text-primary">
+            acme-app
+          </span>
+          <MiniIcon icon="ChevronDown" className="size-3.5" />
+        </span>
+      </Mark>
       <Mark
         id="sidebar-thread-groups"
         label="A plugin's thread group, with a row for work without a thread"
