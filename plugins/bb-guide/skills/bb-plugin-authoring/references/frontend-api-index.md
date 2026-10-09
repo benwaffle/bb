@@ -47,6 +47,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_useSidebarThreadPullRequest`
 - `experimental_useSidebarThreadGroups` — every plugin's sidebar thread
   groups, for thread-list providers
+- `experimental_useSidebarProjectDecoration` — every plugin's merged
+  decoration for one sidebar project header, for thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `useSidebarThreadDraft`
 - `useSidebarThreadDraftIds`
@@ -191,6 +193,9 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalSidebarThreadGroupRowIcon`
 - `ExperimentalSidebarThreadGroupRowTrailing`
 - `ExperimentalResolvedSidebarThreadGroup`
+- `ExperimentalSidebarProjectDecorationRegistration`
+- `ExperimentalSidebarProjectDecoration`
+- `ExperimentalResolvedSidebarProjectDecoration`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`
