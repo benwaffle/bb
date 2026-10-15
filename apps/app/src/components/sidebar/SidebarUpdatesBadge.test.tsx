@@ -571,7 +571,8 @@ describe("SidebarUpdatesBadge", () => {
     const button = updateButton();
     expect(button.getAttribute("aria-label")).toBe("Updating");
     const spinner = button.querySelector('[data-icon="Loading"]');
-    expect(spinner?.classList.contains("animate-spin")).toBe(true);
+    expect(spinner?.getAttribute("data-progress-indicator")).toBe("active");
+    expect(spinner?.classList.contains("animate-progress-ring")).toBe(true);
     const card = await openCard();
     expect(rowStates(card).map(([, state]) => state)).toEqual([
       "updating",
