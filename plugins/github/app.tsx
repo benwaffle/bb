@@ -1296,13 +1296,24 @@ function checkDotClass(status: PullCheck["status"]): string {
   return "bg-muted-foreground/50";
 }
 
-function ChecksSection({ checks }: { checks: PullCheck[] }) {
-  const [open, setOpen] = useState(() =>
-    checks.some((check) => check.status === "failure"),
+function ChecksSection({
+  checks,
+  compact,
+}: {
+  checks: PullCheck[];
+  compact: boolean;
+}) {
+  const [open, setOpen] = useState(
+    () => !compact && checks.some((check) => check.status === "failure"),
   );
   if (checks.length === 0) return null;
   const passing = checks.filter((check) => check.status === "success").length;
   const failing = checks.filter((check) => check.status === "failure").length;
+  const visibleChecks = open
+    ? checks
+    : compact
+      ? checks.filter((check) => check.status === "failure")
+      : [];
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <button
@@ -1327,9 +1338,9 @@ function ChecksSection({ checks }: { checks: PullCheck[] }) {
           {open ? "▾" : "▸"}
         </span>
       </button>
-      {open ? (
+      {visibleChecks.length > 0 ? (
         <div className="divide-y divide-border border-t border-border">
-          {checks.map((check, index) => (
+          {visibleChecks.map((check, index) => (
             <div
               key={`${check.name}-${index}`}
               className="flex items-center gap-2 px-3 py-1.5 text-xs"
@@ -1357,15 +1368,17 @@ function ChecksSection({ checks }: { checks: PullCheck[] }) {
 }
 
 function FileDiffCard({
+  defaultOpen,
   environmentId,
   file,
   url,
 }: {
+  defaultOpen: boolean;
   environmentId: string | null;
   file: PullFile;
   url: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(defaultOpen);
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex w-full items-center gap-2 px-3 py-2 hover:bg-accent/50">
@@ -1468,6 +1481,18 @@ type PullTimelineEntry =
       createdAt: string;
     };
 
+function isTimelineReview(review: PullDetail["reviews"][number]): boolean {
+  return review.body.length > 0 || review.state !== "COMMENTED";
+}
+
+function hasPullActivity(pull: PullDetail): boolean {
+  return (
+    pull.comments.length > 0 ||
+    pull.reviewThreads.length > 0 ||
+    pull.reviews.some(isTimelineReview)
+  );
+}
+
 function PullTimeline({ pull }: { pull: PullDetail }) {
   const entries = useMemo<PullTimelineEntry[]>(() => {
     const merged: PullTimelineEntry[] = [
@@ -1476,9 +1501,7 @@ function PullTimeline({ pull }: { pull: PullDetail }) {
         ...comment,
       })),
       ...pull.reviews
-        .filter(
-          (review) => review.body.length > 0 || review.state !== "COMMENTED",
-        )
+        .filter(isTimelineReview)
         .map((review) => ({ type: "review" as const, ...review })),
     ];
     return merged.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -1599,12 +1622,37 @@ function PullCommentBox({
   );
 }
 
+function CollapsedSection({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        className="flex items-center gap-1.5 text-left text-xs font-semibold text-muted-foreground hover:text-foreground"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span>{open ? "▾" : "▸"}</span>
+        {label}
+      </button>
+      {open ? children : null}
+    </div>
+  );
+}
+
 function PullDetailView({
   repo,
   number,
   onBack,
   backLabel = "Pull requests",
   compact = false,
+  showReviewAction = true,
   workspaceEnvironmentId = null,
 }: {
   repo: string;
@@ -1612,6 +1660,7 @@ function PullDetailView({
   onBack?: () => void;
   backLabel?: string;
   compact?: boolean;
+  showReviewAction?: boolean;
   workspaceEnvironmentId?: string | null;
 }) {
   const rpc = useRpc<typeof githubRpcContract>();
@@ -1640,79 +1689,100 @@ function PullDetailView({
   }
 
   const pullLinks = links[`pr:${repo}#${number}`];
-  const mainColumn = (
-    <div className="flex min-w-0 flex-1 flex-col gap-4">
-      <ChecksSection checks={pull.checks} />
-
-      <div className="overflow-hidden rounded-lg border border-border bg-card">
-        <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
-          <Avatar login={pull.author} />
-          <span className="font-medium text-foreground">{pull.author}</span>
-          opened this pull request · updated {relativeTime(pull.updatedAt)}
-        </div>
-        <div className="p-4">
-          {pull.body.length > 0 ? (
-            <Markdown content={pull.body} className="text-sm" />
-          ) : (
-            <p className="text-sm text-muted-foreground">(no description)</p>
-          )}
-        </div>
+  const checksSection = (
+    <ChecksSection checks={pull.checks} compact={compact} />
+  );
+  const bodyCard = (
+    <div className="overflow-hidden rounded-lg border border-border bg-card">
+      <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-2 text-xs text-muted-foreground">
+        <Avatar login={pull.author} />
+        <span className="font-medium text-foreground">{pull.author}</span>
+        opened this pull request · updated {relativeTime(pull.updatedAt)}
       </div>
-
-      <PullTimeline pull={pull} />
-
-      {pull.files.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground">
-            Files changed · {pull.files.length}
-            <span className="ml-2 font-normal">
-              <span className="text-green-600 dark:text-green-400">
-                +{pull.additions}
-              </span>{" "}
-              <span className="text-red-600 dark:text-red-400">
-                −{pull.deletions}
-              </span>
+      <div className="p-4">
+        {pull.body.length > 0 ? (
+          <Markdown content={pull.body} className="text-sm" />
+        ) : (
+          <p className="text-sm text-muted-foreground">(no description)</p>
+        )}
+      </div>
+    </div>
+  );
+  const timeline = <PullTimeline pull={pull} />;
+  const filesSection =
+    pull.files.length > 0 ? (
+      <div className="flex flex-col gap-2">
+        <h3 className="text-xs font-semibold text-muted-foreground">
+          Files changed · {pull.files.length}
+          <span className="ml-2 font-normal">
+            <span className="text-green-600 dark:text-green-400">
+              +{pull.additions}
+            </span>{" "}
+            <span className="text-red-600 dark:text-red-400">
+              −{pull.deletions}
             </span>
-          </h3>
-          {pull.files.map((file) => (
-            <FileDiffCard
-              key={file.path}
-              environmentId={workspaceEnvironmentId}
-              file={file}
-              url={pull.url}
-            />
-          ))}
-        </div>
+          </span>
+        </h3>
+        {pull.files.map((file) => (
+          <FileDiffCard
+            key={file.path}
+            defaultOpen={compact}
+            environmentId={workspaceEnvironmentId}
+            file={file}
+            url={pull.url}
+          />
+        ))}
+      </div>
+    ) : null;
+  const commentBox = (
+    <PullCommentBox repo={repo} number={number} onPosted={load} />
+  );
+  const mainColumn = compact ? (
+    <div className="flex min-w-0 flex-1 flex-col gap-4">
+      {filesSection}
+      {checksSection}
+      <CollapsedSection label="Description">{bodyCard}</CollapsedSection>
+      {hasPullActivity(pull) ? (
+        <CollapsedSection label="Activity">{timeline}</CollapsedSection>
       ) : null}
-
-      <PullCommentBox repo={repo} number={number} onPosted={load} />
+      {commentBox}
+    </div>
+  ) : (
+    <div className="flex min-w-0 flex-1 flex-col gap-4">
+      {checksSection}
+      {bodyCard}
+      {timeline}
+      {filesSection}
+      {commentBox}
     </div>
   );
 
   return (
     <div className="@container/github-detail flex flex-col gap-4">
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        {onBack !== undefined ? (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 px-2"
-            onClick={onBack}
+      {compact ? null : (
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          {onBack !== undefined ? (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 px-2"
+              onClick={onBack}
+            >
+              ← {backLabel}
+            </Button>
+          ) : null}
+          <span className="min-w-0 truncate">
+            {repo} · #{number}
+          </span>
+          <span className="flex-1" />
+          <UrlLink
+            href={pull.url}
+            className="shrink-0 underline hover:text-foreground"
           >
-            ← {backLabel}
-          </Button>
-        ) : null}
-        <span className="min-w-0 truncate">
-          {repo} · #{number}
-        </span>
-        <span className="flex-1" />
-        <UrlLink
-          href={pull.url}
-          className="shrink-0 underline hover:text-foreground"
-        >
-          Open on GitHub ↗
-        </UrlLink>
-      </div>
+            Open on GitHub ↗
+          </UrlLink>
+        </div>
+      )}
 
       <div className="flex items-start gap-3">
         <h2
@@ -1723,13 +1793,15 @@ function PullDetailView({
             #{pull.number}
           </span>
         </h2>
-        <Button
-          size="sm"
-          disabled={spawningKey !== null}
-          onClick={() => spawn("startReview", repo, number)}
-        >
-          {spawningKey !== null ? "Starting…" : "Review with agent"}
-        </Button>
+        {showReviewAction ? (
+          <Button
+            size="sm"
+            disabled={spawningKey !== null}
+            onClick={() => spawn("startReview", repo, number)}
+          >
+            {spawningKey !== null ? "Starting…" : "Review with agent"}
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -1749,6 +1821,14 @@ function PullDetailView({
         </span>
         <LabelChips labels={pull.labels} className="flex flex-wrap" />
         <ThreadPills links={pullLinks} />
+        {compact ? (
+          <UrlLink
+            href={pull.url}
+            className="ml-auto shrink-0 underline hover:text-foreground"
+          >
+            Open on GitHub ↗
+          </UrlLink>
+        ) : null}
       </div>
 
       {compact ? (
@@ -1853,6 +1933,7 @@ function PullPanelTab({ threadId }: PluginThreadPanelProps) {
     repo: string;
     number: number;
     environmentId: string | null;
+    linkedToThread: boolean;
   } | null>(null);
 
   useEffect(() => {
@@ -1860,7 +1941,9 @@ function PullPanelTab({ threadId }: PluginThreadPanelProps) {
     rpc.call("pullForThread", { threadId }).then(
       (result) => {
         if (cancelled) return;
-        if (result.pull !== null) setSelected(result.pull);
+        if (result.pull !== null) {
+          setSelected({ ...result.pull, linkedToThread: true });
+        }
         setResolved(true);
       },
       () => {
@@ -1883,7 +1966,12 @@ function PullPanelTab({ threadId }: PluginThreadPanelProps) {
         </p>
         <PullPickerList
           onPick={(repo, number) =>
-            setSelected({ repo, number, environmentId: null })
+            setSelected({
+              repo,
+              number,
+              environmentId: null,
+              linkedToThread: false,
+            })
           }
         />
       </div>
@@ -1894,9 +1982,8 @@ function PullPanelTab({ threadId }: PluginThreadPanelProps) {
       repo={selected.repo}
       number={selected.number}
       compact
+      showReviewAction={!selected.linkedToThread}
       workspaceEnvironmentId={selected.environmentId}
-      backLabel="All PRs"
-      onBack={() => setSelected(null)}
     />
   );
 }
