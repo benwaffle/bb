@@ -38,7 +38,6 @@ import FolderUnknownIcon from "@hugeicons/core-free-icons/FolderUnknownIcon";
 import HelpCircleIcon from "@hugeicons/core-free-icons/HelpCircleIcon";
 import Home07Icon from "@hugeicons/core-free-icons/Home07Icon";
 import InformationCircleIcon from "@hugeicons/core-free-icons/InformationCircleIcon";
-import Loading03Icon from "@hugeicons/core-free-icons/Loading03Icon";
 import MessageQuestionIcon from "@hugeicons/core-free-icons/MessageQuestionIcon";
 import MoreHorizontalIcon from "@hugeicons/core-free-icons/MoreHorizontalIcon";
 import Search01Icon from "@hugeicons/core-free-icons/Search01Icon";
@@ -154,6 +153,8 @@ const SectionMoveStrokeRoundedIcon: IconSvgElement = [
   ],
 ];
 
+const EMPTY_PROGRESS_ICON: IconSvgElement = [];
+
 const CORE_ICON_MAP = {
   AlertCircle: AlertCircleIcon,
   AlertTriangle: Alert02Icon,
@@ -187,7 +188,7 @@ const CORE_ICON_MAP = {
   Home: Home07Icon,
   Info: InformationCircleIcon,
   ListTodo: CheckListIcon,
-  Loading: Loading03Icon,
+  Loading: EMPTY_PROGRESS_ICON,
   MessageQuestion: MessageQuestionIcon,
   MessageCirclePlus: BubbleChatAddIcon,
   MessageSquarePlus: BubbleChatAddIcon,
@@ -199,7 +200,7 @@ const CORE_ICON_MAP = {
   SectionMove: SectionMoveStrokeRoundedIcon,
   Settings: Settings01Icon,
   SlidersHorizontal: SlidersHorizontalIcon,
-  Spinner: Loading03Icon,
+  Spinner: EMPTY_PROGRESS_ICON,
   Target: Target02Icon,
   Terminal: ComputerTerminal01Icon,
   Toolbox: ToolboxIcon,
@@ -382,6 +383,54 @@ function PluginAssetIcon({
   );
 }
 
+const PROGRESS_ICON_NAMES: ReadonlySet<string> = new Set([
+  "Loading",
+  "Spinner",
+]);
+const SPIN_CLASS_PATTERN = /(^|\s)animate-spin(?=\s|$)/u;
+const SPIN_CLASSES = new Set(["animate-spin", "motion-reduce:animate-none"]);
+
+function ProgressIcon({
+  name,
+  className,
+  style,
+  "aria-hidden": ariaHidden,
+  "aria-label": ariaLabel,
+}: IconProps) {
+  const active = SPIN_CLASS_PATTERN.test(className ?? "");
+  const restingClassName = (className ?? "")
+    .split(/\s+/u)
+    .filter((token) => !SPIN_CLASSES.has(token))
+    .join(" ");
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      width={24}
+      height={24}
+      className={cn(restingClassName)}
+      style={style}
+      aria-hidden={ariaHidden}
+      aria-label={ariaLabel}
+      data-icon={name}
+      data-icon-root=""
+      data-progress-indicator={active ? "active" : "done"}
+    >
+      <circle
+        cx={12}
+        cy={12}
+        r={5}
+        fill="currentColor"
+        className={
+          active
+            ? "text-progress animate-progress-pulse motion-reduce:animate-none"
+            : undefined
+        }
+      />
+    </svg>
+  );
+}
+
 function BuiltinIcon({
   name,
   className,
@@ -389,6 +438,17 @@ function BuiltinIcon({
   "aria-hidden": ariaHidden,
   "aria-label": ariaLabel,
 }: IconProps) {
+  if (PROGRESS_ICON_NAMES.has(name)) {
+    return (
+      <ProgressIcon
+        name={name}
+        className={className}
+        style={style}
+        aria-hidden={ariaHidden}
+        aria-label={ariaLabel}
+      />
+    );
+  }
   const coreIcon = CORE_ICON_LOOKUP[name];
   if (coreIcon !== undefined) {
     return (
