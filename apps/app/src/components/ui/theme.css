@@ -58,6 +58,8 @@
   /* GitHub's merged-PR purple — the one chromatic exception in the PR state
    * dots, matching the universal merged-PR color language. */
   --color-pr-merged: var(--pr-merged);
+  --color-progress: var(--pr-merged);
+  --animate-progress-pulse: progress-pulse 1.2s ease-in-out infinite alternate;
   --color-brand-discord: var(--brand-discord);
   --color-diff-removed: var(--diff-removed);
   --color-border: var(--border);
@@ -1082,6 +1084,15 @@ body.sidebar-resizing [data-sidebar="panel"] {
     .animate-shine {
       -webkit-text-fill-color: currentColor;
     }
+  }
+}
+
+@keyframes progress-pulse {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
   }
 }
 
