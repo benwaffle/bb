@@ -295,7 +295,8 @@ describe("SidebarUpdatesBadge", () => {
     const providerChip = screen.getByTestId("sidebar-updates-badge-providers");
     const loadingIcon = providerChip.querySelector('[data-icon="Loading"]');
     expect(loadingIcon).toBeTruthy();
-    expect(loadingIcon?.classList.contains("animate-spin")).toBe(true);
+    expect(loadingIcon?.getAttribute("data-progress-indicator")).toBe("active");
+    expect(loadingIcon?.classList.contains("animate-progress-ring")).toBe(true);
     expect(providerChip.querySelector('[data-icon="Download"]')).toBeNull();
 
     providerCliInstallRunnerState.runningJobKey = null;
