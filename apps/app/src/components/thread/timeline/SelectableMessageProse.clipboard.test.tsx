@@ -48,19 +48,13 @@ function copyRange(range: Range) {
 }
 
 it.each([
-  ["src/export_notes.ts", "file:///workspace/src/export_notes.ts"],
-  [
-    "src/отчёт_данные.ts",
-    "file:///workspace/src/%D0%BE%D1%82%D1%87%D1%91%D1%82_%D0%B4%D0%B0%D0%BD%D0%BD%D1%8B%D0%B5.ts",
-  ],
-  ["/workspace/src/export_notes.ts", "file:///workspace/src/export_notes.ts"],
-  [
-    "C:\\workspace\\src\\export_notes.ts",
-    "file:///C:/workspace/src/export_notes.ts",
-  ],
+  "src/export_notes.ts",
+  "src/отчёт_данные.ts",
+  "/workspace/src/export_notes.ts",
+  "C:\\workspace\\src\\export_notes.ts",
 ])(
-  "copies auto-linked inline code %s as code while preserving authored links",
-  (reference, href) => {
+  "copies inline code %s as a plain code span while preserving authored links",
+  (reference) => {
     const content = `**Changed**: \`${reference}\` and [Review](file:///workspace/review.md).`;
     const { container } = render(
       <SelectableMessageProse>
@@ -76,14 +70,17 @@ it.each([
         />
       </SelectableMessageProse>,
     );
+    const code = container.querySelector("code");
+    expect(code?.textContent).toBe(reference);
+    expect(code?.closest("a")).toBeNull();
+    expect(container.querySelectorAll("a")).toHaveLength(1);
     const range = document.createRange();
     range.selectNodeContents(container.firstElementChild!);
     const { data } = copyRange(range);
-    expect(data.get("text/html")).toContain(`<a href="${href}"`);
     expect(data.get("text/plain")).toBe(content);
 
     window.getSelection()!.removeAllRanges();
-    range.selectNodeContents(container.querySelector("a")!);
+    range.selectNode(code!);
     expect(copyRange(range).data.get("text/plain")).toBe(`\`${reference}\``);
   },
 );

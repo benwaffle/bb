@@ -284,9 +284,7 @@ type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> &
 interface MarkdownCodeRendererProps extends MarkdownCodeProps {
   codeFenceSourceOffset: number;
   imagePolicy: MarkdownImagePolicy;
-  linkRouting?: MarkdownLinkRouting;
   preferredTheme: Theme;
-  rewriteLocalhostLinks: boolean;
 }
 type MarkdownHeadingProps = ComponentPropsWithoutRef<"h1"> & ExtraProps;
 type MarkdownHrProps = ComponentPropsWithoutRef<"hr"> & ExtraProps;
@@ -586,37 +584,6 @@ function buildLocalAwareUrlTransform({
   };
 }
 
-function resolveInlineCodeFileHref({
-  codeText,
-  localFileRouting,
-}: {
-  codeText: string;
-  localFileRouting: MarkdownLocalFileLinkRouting | undefined;
-}): string | null {
-  if (
-    localFileRouting === undefined ||
-    codeText.length === 0 ||
-    /\s/u.test(codeText)
-  ) {
-    return null;
-  }
-
-  const target = resolveMarkdownLocalFileTarget(
-    codeText,
-    localFileRouting.absoluteLinks,
-    localFileRouting.relativeLinks,
-  );
-  if (target === null) {
-    return null;
-  }
-
-  return /^(?:[/\\]|\.{1,2}[/\\]|[a-zA-Z]:[/\\]|file:\/\/)/u.test(codeText) ||
-    /\.[\p{L}\p{N}_-]+$/u.test(target.link.path) ||
-    target.link.lineRange !== null
-    ? target.href
-    : null;
-}
-
 const markdownLinkGraphemes = new Intl.Segmenter(undefined, {
   granularity: "grapheme",
 });
@@ -906,10 +873,8 @@ function MarkdownCode({
   children,
   codeFenceSourceOffset,
   imagePolicy,
-  linkRouting,
   node: _node,
   preferredTheme,
-  rewriteLocalhostLinks,
   "data-code-fence-offset": codeFenceOffset,
   "data-code-fence-closed": codeFenceClosed,
   ...props
@@ -938,23 +903,6 @@ function MarkdownCode({
         offset={codeFenceSourceOffset + Number(codeFenceOffset)}
         original={original}
       />
-    );
-  }
-
-  const localFileHref = resolveInlineCodeFileHref({
-    codeText,
-    localFileRouting: linkRouting?.localFile,
-  });
-  if (localFileHref !== null) {
-    return (
-      <MarkdownAnchor
-        data-clipboard-inline-code=""
-        href={localFileHref}
-        linkRouting={linkRouting}
-        rewriteLocalhostLinks={rewriteLocalhostLinks}
-      >
-        {codeText}
-      </MarkdownAnchor>
     );
   }
 
@@ -1392,21 +1340,14 @@ function MarkdownLink(props: MarkdownAnchorProps) {
 }
 
 function MarkdownCodeRenderer(props: MarkdownCodeProps) {
-  const {
-    imagePolicy,
-    imageSourceOffset,
-    linkRouting,
-    preferredTheme,
-    rewriteLocalhostLinks,
-  } = useMarkdownRenderOptions();
+  const { imagePolicy, imageSourceOffset, preferredTheme } =
+    useMarkdownRenderOptions();
   return (
     <MarkdownCode
       {...props}
       codeFenceSourceOffset={imageSourceOffset}
       imagePolicy={imagePolicy}
-      linkRouting={linkRouting}
       preferredTheme={preferredTheme}
-      rewriteLocalhostLinks={rewriteLocalhostLinks}
     />
   );
 }
