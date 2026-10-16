@@ -82,7 +82,6 @@ import {
   remarkHeadingIds,
   resolveMarkdownLinkTarget,
   resolveMarkdownLocalFileTarget,
-  type ResolvedMarkdownLocalFileTarget,
 } from "./markdown-link-target.js";
 import {
   MarkdownLocalFileContextMenuContext,
@@ -137,7 +136,6 @@ import {
   useRewriteLocalhostLinksPreference,
 } from "@/lib/localhost-link-rewrite-preference";
 import { useAppNavigationHost } from "@/lib/app-navigation-host";
-import { useHostPathExists } from "@/hooks/queries/host-path-queries";
 import { cn } from "@bb/shared-ui/lib/utils";
 import remarkDirective from "remark-directive";
 import { PromptMentionPill } from "@/components/thread/timeline/ConversationMessageMentions.js";
@@ -276,21 +274,10 @@ type MarkdownBlockquoteProps = ComponentPropsWithoutRef<"blockquote"> &
 type MarkdownCodeProps = ComponentPropsWithoutRef<"code"> &
   ExtraProps &
   CodeFenceElementProps;
-interface MarkdownInlineCodeFileLinkProps {
-  code: ReactNode;
-  codeText: string;
-  hostId: string;
-  linkRouting: MarkdownLinkRouting | undefined;
-  rewriteLocalhostLinks: boolean;
-  target: ResolvedMarkdownLocalFileTarget;
-}
-
 interface MarkdownCodeRendererProps extends MarkdownCodeProps {
   codeFenceSourceOffset: number;
   imagePolicy: MarkdownImagePolicy;
-  linkRouting?: MarkdownLinkRouting;
   preferredTheme: Theme;
-  rewriteLocalhostLinks: boolean;
 }
 type MarkdownHeadingProps = ComponentPropsWithoutRef<"h1"> & ExtraProps;
 type MarkdownHrProps = ComponentPropsWithoutRef<"hr"> & ExtraProps;
@@ -529,33 +516,6 @@ function buildLocalAwareUrlTransform({
       return value;
     return (fallbackUrlTransform ?? defaultUrlTransform)(value, key, node);
   };
-}
-
-function resolveInlineCodeFileTarget({
-  codeText,
-  localFileRouting,
-}: {
-  codeText: string;
-  localFileRouting: MarkdownLocalFileLinkRouting;
-}): ResolvedMarkdownLocalFileTarget | null {
-  if (codeText.length === 0 || /\s/u.test(codeText)) {
-    return null;
-  }
-
-  const target = resolveMarkdownLocalFileTarget(
-    codeText,
-    localFileRouting.absoluteLinks,
-    localFileRouting.relativeLinks,
-  );
-  if (target === null) {
-    return null;
-  }
-
-  return /^(?:[/\\]|\.{1,2}[/\\]|[a-zA-Z]:[/\\]|file:\/\/)/u.test(codeText) ||
-    /\.[\p{L}\p{N}_-]+$/u.test(target.link.path) ||
-    target.link.lineRange !== null
-    ? target
-    : null;
 }
 
 const markdownLinkGraphemes = new Intl.Segmenter(undefined, {
@@ -833,10 +793,8 @@ function MarkdownCode({
   children,
   codeFenceSourceOffset,
   imagePolicy,
-  linkRouting,
   node: _node,
   preferredTheme,
-  rewriteLocalhostLinks,
   "data-code-fence-offset": codeFenceOffset,
   "data-code-fence-closed": codeFenceClosed,
   ...props
@@ -868,59 +826,13 @@ function MarkdownCode({
     );
   }
 
-  const code = (
+  return (
     <code
       className="rounded bg-muted/70 px-1.5 py-0.5 font-mono text-xs"
       {...props}
     >
       {children}
     </code>
-  );
-  const localFileRouting = linkRouting?.localFile;
-  if (localFileRouting === undefined || localFileRouting.hostId === null) {
-    return code;
-  }
-  const localFileTarget = resolveInlineCodeFileTarget({
-    codeText,
-    localFileRouting,
-  });
-  if (localFileTarget !== null) {
-    return (
-      <MarkdownInlineCodeFileLink
-        code={code}
-        codeText={codeText}
-        hostId={localFileRouting.hostId}
-        linkRouting={linkRouting}
-        rewriteLocalhostLinks={rewriteLocalhostLinks}
-        target={localFileTarget}
-      />
-    );
-  }
-
-  return code;
-}
-
-function MarkdownInlineCodeFileLink({
-  code,
-  codeText,
-  hostId,
-  linkRouting,
-  rewriteLocalhostLinks,
-  target,
-}: MarkdownInlineCodeFileLinkProps) {
-  const exists = useHostPathExists(hostId, target.link.path);
-  if (!exists) {
-    return code;
-  }
-  return (
-    <MarkdownAnchor
-      data-clipboard-inline-code=""
-      href={target.href}
-      linkRouting={linkRouting}
-      rewriteLocalhostLinks={rewriteLocalhostLinks}
-    >
-      {codeText}
-    </MarkdownAnchor>
   );
 }
 
@@ -1373,21 +1285,14 @@ function MarkdownLink(props: MarkdownAnchorProps) {
 }
 
 function MarkdownCodeRenderer(props: MarkdownCodeProps) {
-  const {
-    imagePolicy,
-    imageSourceOffset,
-    linkRouting,
-    preferredTheme,
-    rewriteLocalhostLinks,
-  } = useMarkdownRenderOptions();
+  const { imagePolicy, imageSourceOffset, preferredTheme } =
+    useMarkdownRenderOptions();
   return (
     <MarkdownCode
       {...props}
       codeFenceSourceOffset={imageSourceOffset}
       imagePolicy={imagePolicy}
-      linkRouting={linkRouting}
       preferredTheme={preferredTheme}
-      rewriteLocalhostLinks={rewriteLocalhostLinks}
     />
   );
 }
