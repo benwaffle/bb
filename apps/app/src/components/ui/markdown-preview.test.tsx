@@ -364,53 +364,15 @@ describe("MarkdownPreview", () => {
   });
 
   it.each([
-    ["README.md", "/workspace/README.md", null],
-    ["docs/guide.markdown:4", "/workspace/docs/guide.markdown", 4],
-    ["src/app.ts", "/workspace/src/app.ts", null],
-    ["src/app.ts:42", "/workspace/src/app.ts", 42],
-    ["src/app.ts:42:3", "/workspace/src/app.ts", 42],
-    ["package.json:12:3", "/workspace/package.json", 12],
-    ["./scripts/run", "/workspace/scripts/run", null],
-    ["scripts/run:7", "/workspace/scripts/run", 7],
-    ["/workspace/scripts/run", "/workspace/scripts/run", null],
-    ["./scripts/run:7:2", "/workspace/scripts/run", 7],
-    ["Dockerfile:8", "/workspace/Dockerfile", 8],
-    [".gitignore", "/workspace/.gitignore", null],
-    ["/workspace/src/app.ts:9:2", "/workspace/src/app.ts", 9],
-    ["C:\\repo\\src\\app.ts:12:3", "C:\\repo\\src\\app.ts", 12],
-  ])(
-    "opens inline-code file reference %s at its line",
-    async (reference, path, line) => {
-      const { wrapper } = createMarkdownLocalFileHostTestWrapper(() => true);
-      render(
-        <MarkdownPreview
-          content={`Read \`${reference}\`.`}
-          linkRouting={inlineCodeLinkRouting}
-        />,
-        { wrapper },
-      );
-
-      const link = await screen.findByRole("link", { name: reference });
-      expect(link.getAttribute("href")).toBe(
-        `${path.startsWith("C:") ? "file:///C:/repo/src/app.ts" : `file://${path}`}${line === null ? "" : `#L${line}`}`,
-      );
-      fireEvent.click(link);
-      expect(
-        workspaceLinkRouting.localFile.onOpenLink,
-      ).toHaveBeenCalledExactlyOnceWith({
-        path,
-        lineRange:
-          line === null ? null : { startLineNumber: line, endLineNumber: line },
-        openTargetId: null,
-      });
-    },
-  );
-
-  it.each([
+    "foo/bar.ts",
+    "README.md",
+    "src/app.ts:42:3",
+    "/workspace/src/app.ts:9:2",
     "origin/main",
     "...[origin/main]",
     "feature/my-branch",
     "scripts/run",
+    "./scripts/run",
     "orange",
     "npm.test()",
     "cat src/app.ts",
@@ -419,7 +381,7 @@ describe("MarkdownPreview", () => {
     "src/app.ts:9007199254740992",
     "../outside.ts:4",
     "src/app.ts?raw",
-  ])("keeps non-file inline code %s literal", (reference) => {
+  ])("renders inline code %s as a code span, not a link", (reference) => {
     const { pathsExist, wrapper } = createMarkdownLocalFileHostTestWrapper(
       () => true,
     );
@@ -434,36 +396,6 @@ describe("MarkdownPreview", () => {
     expect(screen.queryByRole("link", { name: reference })).toBeNull();
     expect(screen.getByText(reference).tagName).toBe("CODE");
     expect(pathsExist).not.toHaveBeenCalled();
-  });
-
-  it("links only inline-code file references that exist on the host, checked in one batch", async () => {
-    const { pathsExist, wrapper } = createMarkdownLocalFileHostTestWrapper(
-      (path) => path === "/workspace/src/app.ts",
-    );
-    render(
-      <MarkdownPreview
-        content="Edit `src/app.ts:4`, `scheduler.py`, `thread.idle`, and `bb.app`."
-        linkRouting={inlineCodeLinkRouting}
-      />,
-      { wrapper },
-    );
-
-    expect(
-      (await screen.findByRole("link", { name: "src/app.ts:4" })).getAttribute(
-        "href",
-      ),
-    ).toBe("file:///workspace/src/app.ts#L4");
-    for (const reference of ["scheduler.py", "thread.idle", "bb.app"]) {
-      expect(screen.queryByRole("link", { name: reference })).toBeNull();
-      expect(screen.getByText(reference).tagName).toBe("CODE");
-    }
-    expect(pathsExist).toHaveBeenCalledOnce();
-    expect([...pathsExist.mock.calls[0]![0].paths].sort()).toEqual([
-      "/workspace/bb.app",
-      "/workspace/scheduler.py",
-      "/workspace/src/app.ts",
-      "/workspace/thread.idle",
-    ]);
   });
 
   it("keeps inline-code file references as code without a host to check them on", () => {
@@ -739,11 +671,11 @@ describe("MarkdownPreview", () => {
   it("scrolls in-page fragment links to their target inside the same preview", () => {
     const onOpenLink = vi.fn(() => true);
     const scrolled: string[] = [];
-    vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(
-      function (this: Element) {
-        scrolled.push(this.id);
-      },
-    );
+    vi.spyOn(Element.prototype, "scrollIntoView").mockImplementation(function (
+      this: Element,
+    ) {
+      scrolled.push(this.id);
+    });
     render(
       <>
         <MarkdownPreview
