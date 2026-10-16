@@ -252,6 +252,9 @@ export interface EventProjectionFileReadMessage
   callId: string;
   path: string;
   cmd: string | null;
+  toolName: string | null;
+  toolArgs: JsonObject | null;
+  output: string;
   completedAt: number | null;
   status: EventProjectionItemActivityStatus;
 }
@@ -264,6 +267,9 @@ export interface EventProjectionSearchMessage
   query: string;
   path: string | null;
   cmd: string | null;
+  toolName: string | null;
+  toolArgs: JsonObject | null;
+  output: string;
   completedAt: number | null;
   status: EventProjectionItemActivityStatus;
 }
