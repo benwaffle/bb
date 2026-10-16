@@ -22,6 +22,13 @@ describe("bb thread context", () => {
         estimated: true,
         snapshot: {
           capturedAt: "2026-09-11T12:00:00.000Z",
+          providerSessionId: "session-1",
+          providerTurnId: null,
+          model: "claude-opus-5-5",
+          usedTokens: 100,
+          contextWindowTokens: 1_000,
+          autoCompactAtTokens: null,
+          estimated: true,
           categories: [
             {
               id: "custom",
@@ -46,6 +53,9 @@ describe("bb thread context", () => {
     expect(get).toHaveBeenCalledWith({ param: { id: "thread-1" } });
     expect(collectLogLines(vi.mocked(console.log))).toContain(
       "Estimated context: 100 / 1,000 tokens",
+    );
+    expect(collectLogLines(vi.mocked(console.log))).toContain(
+      "Captured: 2026-09-11T12:00:00.000Z",
     );
     expect(collectLogLines(vi.mocked(console.log))).toContain(
       "Custom category: 100",
