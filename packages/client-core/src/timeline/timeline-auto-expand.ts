@@ -1,7 +1,6 @@
 import {
   assertNever,
   findTimelineFrontierRow,
-  hasTimelineExplorationIntent,
   type ThreadTimelineViewRow,
   type TimelineViewWorkRow,
   type TimelineWorkSummaryChild,
@@ -40,12 +39,10 @@ function isWorkRowExpandable(row: TimelineViewWorkRow): boolean {
         row.presentation.detail.trim().length > 0
       );
     case "command":
-      return !hasTimelineExplorationIntent(row);
     case "tool":
-      return true;
     case "file-read":
     case "search":
-      return false;
+      return true;
     case "plan-steps":
       return row.steps.length > 0;
     case "extension":

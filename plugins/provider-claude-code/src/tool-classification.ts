@@ -144,6 +144,14 @@ export function getClaudeFileEditPath(args: ClaudeFileEditArgs): string | null {
   return args.file_path ?? args.path ?? null;
 }
 
+function readOnlyToolInvocation(
+  toolName: string,
+  input: unknown,
+): { tool: string; args?: Record<string, unknown> } {
+  const args = toOptionalRecord(input);
+  return { tool: toolName, ...(args ? { args } : {}) };
+}
+
 function genericTool(toolName: string, args: unknown): ClaudeClassifiedTool {
   const toolArguments = toOptionalRecord(args);
   return {
@@ -383,7 +391,11 @@ export function classifyClaudeToolUse(args: {
         : undefined;
       return path
         ? {
-            shape: { type: "fileRead", path },
+            shape: {
+              type: "fileRead",
+              path,
+              ...readOnlyToolInvocation(toolName, input),
+            },
             presentation: fileReadPresentation(path),
           }
         : genericTool(toolName, input);
@@ -407,6 +419,7 @@ export function classifyClaudeToolUse(args: {
           mode,
           query,
           ...(path ? { path } : {}),
+          ...readOnlyToolInvocation(toolName, input),
         },
         presentation: searchPresentation({ mode, query }),
       };

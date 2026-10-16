@@ -134,6 +134,9 @@ function fileReadRow(path: string): TimelineFileReadWorkRow {
     callId: "file-read-call-1",
     path,
     cmd: null,
+    toolName: null,
+    toolArgs: null,
+    output: "",
     completedAt: 2_101,
   };
 }

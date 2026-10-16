@@ -26,6 +26,7 @@ import type {
   TimelineSearchWorkRow,
   TimelineSystemOperationKind,
   TimelineSystemRow,
+  TimelineToolArgs,
   TimelineToolWorkRow,
   TimelineTurnRow,
   TimelineWebFetchWorkRow,
@@ -108,12 +109,15 @@ interface FileReadRowArgs extends RowBaseOverrideArgs {
   cmd?: string | null;
   durationMs?: number | null;
   id?: string;
+  output?: string;
   path: string;
   presentation?: TimelineRowPresentation;
   seq?: number;
   sourceSeqEnd?: number;
   sourceSeqStart?: number;
   status?: TimelineRowStatus;
+  toolArgs?: TimelineToolArgs;
+  toolName?: string | null;
   turnId?: string | null;
 }
 
@@ -123,6 +127,7 @@ interface SearchRowArgs extends RowBaseOverrideArgs {
   durationMs?: number | null;
   id?: string;
   mode: TimelineSearchWorkRow["mode"];
+  output?: string;
   path?: string | null;
   presentation?: TimelineRowPresentation;
   query: string;
@@ -130,6 +135,8 @@ interface SearchRowArgs extends RowBaseOverrideArgs {
   sourceSeqEnd?: number;
   sourceSeqStart?: number;
   status?: TimelineRowStatus;
+  toolArgs?: TimelineToolArgs;
+  toolName?: string | null;
   turnId?: string | null;
 }
 
@@ -609,6 +616,9 @@ export function fileReadRow({
   cmd = null,
   createdAt,
   durationMs = 60,
+  output = "",
+  toolArgs = null,
+  toolName = null,
   id = DEFAULT_FILE_READ_ID,
   path,
   presentation,
@@ -638,6 +648,9 @@ export function fileReadRow({
     callId: callId ?? id,
     path,
     cmd,
+    toolName,
+    toolArgs,
+    output,
     completedAt: completedAtFromDuration(base.startedAt, durationMs),
     ...(presentation ? { presentation } : {}),
   };
@@ -648,6 +661,9 @@ export function searchRow({
   cmd = null,
   createdAt,
   durationMs = 60,
+  output = "",
+  toolArgs = null,
+  toolName = null,
   id = DEFAULT_SEARCH_ID,
   mode,
   path = null,
@@ -681,6 +697,9 @@ export function searchRow({
     query,
     path,
     cmd,
+    toolName,
+    toolArgs,
+    output,
     completedAt: completedAtFromDuration(base.startedAt, durationMs),
     ...(presentation ? { presentation } : {}),
   };
