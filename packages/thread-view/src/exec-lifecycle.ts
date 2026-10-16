@@ -24,7 +24,7 @@ interface DelegationMetadata {
   model?: string;
 }
 
-function parseToolArgs(
+export function parseToolArgs(
   args: Record<string, unknown> | null,
 ): JsonObject | null {
   if (!args) return null;
