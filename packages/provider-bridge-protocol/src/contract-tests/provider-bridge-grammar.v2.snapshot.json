@@ -236,7 +236,9 @@
     "fileRead": {
       "type": "required",
       "path": "required",
-      "cmd": "optional"
+      "cmd": "optional",
+      "tool": "optional",
+      "args": "optional"
     },
     "imageGeneration": {
       "type": "required",
@@ -269,7 +271,9 @@
       "mode": "required",
       "query": "required",
       "path": "optional",
-      "cmd": "optional"
+      "cmd": "optional",
+      "tool": "optional",
+      "args": "optional"
     },
     "tool": {
       "type": "required",
