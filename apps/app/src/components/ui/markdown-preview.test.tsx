@@ -355,51 +355,15 @@ describe("MarkdownPreview", () => {
   });
 
   it.each([
-    ["README.md", "/workspace/README.md", null],
-    ["docs/guide.markdown:4", "/workspace/docs/guide.markdown", 4],
-    ["src/app.ts", "/workspace/src/app.ts", null],
-    ["src/app.ts:42", "/workspace/src/app.ts", 42],
-    ["src/app.ts:42:3", "/workspace/src/app.ts", 42],
-    ["package.json:12:3", "/workspace/package.json", 12],
-    ["./scripts/run", "/workspace/scripts/run", null],
-    ["scripts/run:7", "/workspace/scripts/run", 7],
-    ["/workspace/scripts/run", "/workspace/scripts/run", null],
-    ["./scripts/run:7:2", "/workspace/scripts/run", 7],
-    ["Dockerfile:8", "/workspace/Dockerfile", 8],
-    [".gitignore", "/workspace/.gitignore", null],
-    ["/workspace/src/app.ts:9:2", "/workspace/src/app.ts", 9],
-    ["C:\\repo\\src\\app.ts:12:3", "C:\\repo\\src\\app.ts", 12],
-  ])(
-    "opens inline-code file reference %s at its line",
-    (reference, path, line) => {
-      render(
-        <MarkdownPreview
-          content={`Read \`${reference}\`.`}
-          linkRouting={workspaceLinkRouting}
-        />,
-      );
-
-      const link = screen.getByRole("link", { name: reference });
-      expect(link.getAttribute("href")).toBe(
-        `${path.startsWith("C:") ? "file:///C:/repo/src/app.ts" : `file://${path}`}${line === null ? "" : `#L${line}`}`,
-      );
-      fireEvent.click(link);
-      expect(
-        workspaceLinkRouting.localFile.onOpenLink,
-      ).toHaveBeenCalledExactlyOnceWith({
-        path,
-        lineRange:
-          line === null ? null : { startLineNumber: line, endLineNumber: line },
-        openTargetId: null,
-      });
-    },
-  );
-
-  it.each([
+    "foo/bar.ts",
+    "README.md",
+    "src/app.ts:42:3",
+    "/workspace/src/app.ts:9:2",
     "origin/main",
     "...[origin/main]",
     "feature/my-branch",
     "scripts/run",
+    "./scripts/run",
     "orange",
     "npm.test()",
     "cat src/app.ts",
@@ -408,7 +372,7 @@ describe("MarkdownPreview", () => {
     "src/app.ts:9007199254740992",
     "../outside.ts:4",
     "src/app.ts?raw",
-  ])("keeps non-file inline code %s literal", (reference) => {
+  ])("renders inline code %s as a code span, not a link", (reference) => {
     render(
       <MarkdownPreview
         content={`Read \`${reference}\`.`}
