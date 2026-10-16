@@ -390,6 +390,13 @@ function buildTimelineRowTitleRenderState({
 }: TimelineRowTitleRenderStateArgs): TimelineRowTitleRenderState {
   if (compactActivityIntents && shouldRenderCompactActivityIntentRows(row)) {
     const titles = buildTimelineActivityIntentTitles(row);
+    const [onlyTitle] = titles;
+    if (titles.length === 1 && onlyTitle !== undefined) {
+      return {
+        kind: "row-title",
+        title: onlyTitle.title,
+      };
+    }
     if (titles.length > 0) {
       return {
         kind: "compact-activity-intents",
@@ -1111,7 +1118,10 @@ function TimelineSystemDetailBlock({
 function hasDeferredPlaceholderContent(row: ThreadTimelineViewRow): boolean {
   return (
     row.kind === "work" &&
-    (row.workKind === "command" || row.workKind === "tool")
+    (row.workKind === "command" ||
+      row.workKind === "tool" ||
+      row.workKind === "file-read" ||
+      row.workKind === "search")
   );
 }
 
@@ -1853,7 +1863,9 @@ function timelineRowHoverPreviewKind(
     case "work":
       return row.workKind === "command" ||
         row.workKind === "tool" ||
-        row.workKind === "file-change"
+        row.workKind === "file-change" ||
+        row.workKind === "file-read" ||
+        row.workKind === "search"
         ? "body"
         : null;
     case "conversation":
