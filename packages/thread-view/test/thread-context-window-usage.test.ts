@@ -85,13 +85,49 @@ describe("context snapshot projection", () => {
       snapshot,
     });
   });
-  it("drops older details even when a newer aggregate has the same totals", () => {
+  it("keeps the newest breakdown while later estimates update the total", () => {
     expect(
       extractThreadContextWindowUsage([
-        event(2, { usedTokens: 100, modelContextWindow: null }),
         first,
+        event(2, { usedTokens: 150, modelContextWindow: 1_000 }),
+        event(3, { usedTokens: 180, modelContextWindow: null }),
       ]),
-    ).toEqual({ usedTokens: 100, modelContextWindow: 1_000, estimated: true });
+    ).toEqual({
+      usedTokens: 180,
+      modelContextWindow: 1_000,
+      estimated: true,
+      snapshot,
+    });
+  });
+  it("prefers the newest breakdown over older ones", () => {
+    const nextSnapshot = { ...snapshot, usedTokens: 300 };
+    expect(
+      extractThreadContextWindowUsage([
+        first,
+        event(2, {
+          usedTokens: 300,
+          modelContextWindow: 1_000,
+          snapshot: nextSnapshot,
+        }),
+        event(3, { usedTokens: 320, modelContextWindow: 1_000 }),
+      ])?.snapshot,
+    ).toBe(nextSnapshot);
+  });
+  it("drops a kept breakdown after a reset or a session change", () => {
+    const later = event(3, { usedTokens: 200, modelContextWindow: 1_000 });
+    expect(
+      extractThreadContextWindowUsage([
+        first,
+        event(2, { usedTokens: null, modelContextWindow: null }),
+        later,
+      ]),
+    ).not.toHaveProperty("snapshot");
+    if (later.event.type === "thread/contextWindowUsage/updated") {
+      later.event.providerThreadId = "session-2";
+    }
+    expect(extractThreadContextWindowUsage([first, later])).not.toHaveProperty(
+      "snapshot",
+    );
   });
   it("invalidates prior usage on reset and restores only the new measurement", () => {
     const reset = event(2, { usedTokens: null, modelContextWindow: null });
@@ -141,6 +177,7 @@ describe("auto-compact display window", () => {
         usedTokens,
         modelContextWindow: 256_000,
         estimated: true,
+        snapshot: compactSnapshot,
       });
     }
     const nextSnapshot = {
@@ -195,7 +232,7 @@ describe("auto-compact display window", () => {
             ? [captured, update]
             : [captured, middle, update],
         ),
-      ).toEqual({
+      ).toMatchObject({
         usedTokens: 160_000,
         modelContextWindow: 1_000_000,
         estimated: true,
