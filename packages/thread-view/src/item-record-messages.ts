@@ -503,6 +503,7 @@ function itemRecordMessages(
               kind: "file-read",
               path: item.path,
               cmd: item.cmd ?? null,
+              ...readOnlyToolInvocation(record, item),
               status: activityStatus(record, item.status),
             },
           ];
@@ -515,6 +516,7 @@ function itemRecordMessages(
               query: item.query,
               path: item.path ?? null,
               cmd: item.cmd ?? null,
+              ...readOnlyToolInvocation(record, item),
               status: activityStatus(record, item.status),
             },
           ];
@@ -585,6 +587,21 @@ function itemRecordMessages(
     case "userMessage":
       return [];
   }
+}
+
+function readOnlyToolInvocation(
+  record: ItemRecord,
+  item: Extract<ThreadEventItem, { type: "fileRead" | "search" }>,
+) {
+  const first =
+    record.firstItem?.type === "fileRead" || record.firstItem?.type === "search"
+      ? record.firstItem
+      : null;
+  return {
+    toolName: item.tool ?? first?.tool ?? null,
+    toolArgs: toolArgs(item.arguments ?? first?.arguments),
+    output: item.result ?? first?.result ?? "",
+  };
 }
 
 function activityKind(

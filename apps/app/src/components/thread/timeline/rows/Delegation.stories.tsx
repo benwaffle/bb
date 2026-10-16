@@ -83,6 +83,9 @@ const correctnessChild03: TimelineRow = {
   callId: "toolu_01XfjG4aRkJFecL7GnEc3vLH",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174307811,
 };
 
@@ -100,6 +103,9 @@ const correctnessChild04: TimelineRow = {
   callId: "toolu_015zVQkMM47412gCpawWXUEP",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/shared/provider-tool-call-contract.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174307811,
 };
 
@@ -117,6 +123,9 @@ const correctnessChild05: TimelineRow = {
   callId: "toolu_019jw4CN4WEd6ERQZEgRN7Pm",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/domain/src/provider-types.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174307811,
 };
 
@@ -169,6 +178,9 @@ const correctnessChild07: TimelineRow = {
   query: "getActiveTurnId",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174307811,
 };
 
@@ -186,6 +198,9 @@ const correctnessChild08: TimelineRow = {
   callId: "toolu_01RzyDhxnqDW48wDAib6jNKg",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174307849,
 };
 
@@ -203,6 +218,9 @@ const correctnessChild09: TimelineRow = {
   callId: "toolu_01R1yNfRG8iq6y6VFhZV5vuk",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-turn-state.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320113,
 };
 
@@ -220,6 +238,9 @@ const correctnessChild10: TimelineRow = {
   callId: "toolu_01MzvBB9Xz6AYAUDuHK9ei9v",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.tool-calls.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -272,6 +293,9 @@ const correctnessChild12: TimelineRow = {
   query: "without a turn id",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -289,6 +313,9 @@ const correctnessChild13: TimelineRow = {
   callId: "toolu_01MXGm4YpNuPruFS8ypKHpgJ",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -306,6 +333,9 @@ const correctnessChild14: TimelineRow = {
   callId: "toolu_011nVJrg2Fu5oQhZCPraot5z",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -323,6 +353,9 @@ const correctnessChild15: TimelineRow = {
   callId: "toolu_01RT7BtsquuXF1nZgsoAVpTh",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174321398,
 };
 
@@ -340,6 +373,9 @@ const correctnessChild16: TimelineRow = {
   callId: "toolu_01Xh9vSHvDVNbbya5BwTNJnq",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174322765,
 };
 
@@ -357,6 +393,9 @@ const correctnessChild17: TimelineRow = {
   callId: "toolu_01Pwrk89FbvmiHknCqNte62x",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/docs/CODE_REVIEW.md",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174324388,
 };
 
@@ -374,6 +413,9 @@ const correctnessChild18: TimelineRow = {
   callId: "toolu_017GFMs55ESo9nU3A2fAqP94",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/shared/provider-tool-call-contract.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174326400,
 };
 const completedDelegation: TimelineRow = {
@@ -456,6 +498,9 @@ const maintainabilityChild02: TimelineRow = {
   callId: "toolu_01JWtVVgmGTPtFxDyL42Zcse",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/domain/src/provider-types.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174324519,
 };
 
@@ -691,6 +736,9 @@ const maintainabilityChild11: TimelineRow = {
   query: "getActiveTurnId|activeTurnId",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174331743,
 };
 
@@ -708,6 +756,9 @@ const maintainabilityChild12: TimelineRow = {
   callId: "toolu_01AewZ2V8UKq8x2zGUpmYTJc",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174331956,
 };
 
@@ -725,6 +776,9 @@ const maintainabilityChild13: TimelineRow = {
   callId: "toolu_01RrkCGuMaJRJnq1UEaUhZra",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/shared/provider-tool-call-contract.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174332201,
 };
 
@@ -742,6 +796,9 @@ const maintainabilityChild14: TimelineRow = {
   callId: "toolu_018jZNMCkMxNfkUUKKTL83jg",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-turn-state.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174334659,
 };
 
@@ -761,6 +818,9 @@ const maintainabilityChild15: TimelineRow = {
   query: "normalizeProviderRequestTurnId|normalizeDecodedTurnId",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174335009,
 };
 
@@ -778,6 +838,9 @@ const maintainabilityChild16: TimelineRow = {
   callId: "toolu_013HiJs8nJhPy9B8FK1qdvtR",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/docs/CODE_REVIEW.md",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174337233,
 };
 
@@ -795,6 +858,9 @@ const maintainabilityChild17: TimelineRow = {
   callId: "toolu_01DiyVs3dWcvgcadf3u5T5TD",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/docs/AGENTS.md",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174337304,
 };
 
@@ -814,6 +880,9 @@ const maintainabilityChild18: TimelineRow = {
   query: "**/AGENTS.md",
   path: null,
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174339096,
 };
 
@@ -831,6 +900,9 @@ const maintainabilityChild19: TimelineRow = {
   callId: "toolu_01BKymQzXAXtFPNnCzgo9wgK",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.tool-calls.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174339267,
 };
 
@@ -848,6 +920,9 @@ const maintainabilityChild20: TimelineRow = {
   callId: "toolu_01LdKey3EgtP3UvJSKba7xZD",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/AGENTS.md",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174340928,
 };
 
@@ -865,6 +940,9 @@ const maintainabilityChild21: TimelineRow = {
   callId: "toolu_01TVs6USWf18cG7TjeeCZePk",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/provider-adapter.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174343741,
 };
 
@@ -1007,6 +1085,9 @@ const testQualityChild03: TimelineRow = {
   callId: "toolu_017R2qfR7Ew5FtjAkHxindVG",
   path: "/Users/michael/.claude/projects/-Users-michael--bb-dev-worktrees-env-stt3jzymfp-bb/84f9bb6d-8a5e-4eba-af26-c530415265b1/tool-results/brm54bnvm.txt",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -1024,6 +1105,9 @@ const testQualityChild04: TimelineRow = {
   callId: "toolu_0126Lp4nhkfV2L27g1WRVDTK",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -1041,6 +1125,9 @@ const testQualityChild05: TimelineRow = {
   callId: "toolu_01S9M2AYPpp49BXjbJK1HP8s",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -1091,6 +1178,9 @@ const testQualityChild07: TimelineRow = {
   callId: "toolu_01Eiv3DJQp4wX5Sxm1iygUzs",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174320120,
 };
 
@@ -1108,6 +1198,9 @@ const testQualityChild08: TimelineRow = {
   callId: "toolu_01MCxco7vLc7G3hF7ZiGD4qw",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174321234,
 };
 
@@ -1125,6 +1218,9 @@ const testQualityChild09: TimelineRow = {
   callId: "toolu_01JchQ7TkFdQdGrBRWSbncWT",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.tool-calls.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174326775,
 };
 
@@ -1142,6 +1238,9 @@ const testQualityChild10: TimelineRow = {
   callId: "toolu_01E2asMizztDz5CyN14dMhpN",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.tool-calls.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174328806,
 };
 
@@ -1159,6 +1258,9 @@ const testQualityChild11: TimelineRow = {
   callId: "toolu_01J4gkAxEfdC64X11afYxem8",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/shared/provider-tool-call-contract.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174330819,
 };
 
@@ -1176,6 +1278,9 @@ const testQualityChild12: TimelineRow = {
   callId: "toolu_014pEj9Xye9WvvNVqGmvkmqu",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/apps/server/test/internal/internal-events-tool-calls.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174333366,
 };
 
@@ -1193,6 +1298,9 @@ const testQualityChild13: TimelineRow = {
   callId: "toolu_01SKjRPqYQFmCEzaGSh6FfJa",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/apps/host-daemon/test/integration/daemon.integration.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174335699,
 };
 
@@ -1210,6 +1318,9 @@ const testQualityChild14: TimelineRow = {
   callId: "toolu_01C7q5NApoZD4cMZ7RRFHHDw",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/apps/host-daemon/test/integration/daemon.integration.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174336890,
 };
 
@@ -1227,6 +1338,9 @@ const testQualityChild15: TimelineRow = {
   callId: "toolu_01ArcrJfbandowa85ykUZhcq",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/apps/host-daemon/test/integration/daemon.integration.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174339071,
 };
 
@@ -1244,6 +1358,9 @@ const testQualityChild16: TimelineRow = {
   callId: "toolu_01HkrwxKJMBAw7578K5uBkMz",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/tests/integration/fake/smoke/tool-calls.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174340950,
 };
 
@@ -1261,6 +1378,9 @@ const testQualityChild17: TimelineRow = {
   callId: "toolu_01Dr58Ys2UuPG5exzsGw6spz",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.interactive-requests.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174342822,
 };
 
@@ -1278,6 +1398,9 @@ const testQualityChild18: TimelineRow = {
   callId: "toolu_01K5G3ZkQ3niia6HV2kf3t2p",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime.interactive-requests.test.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174344194,
 };
 
@@ -1297,6 +1420,9 @@ const testQualityChild19: TimelineRow = {
   query: "resolveThreadId.*null|resolveThreadId.*return.*false",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174346469,
 };
 
@@ -1316,6 +1442,9 @@ const testQualityChild20: TimelineRow = {
   query: "normalizeProviderRequestTurnId|getActiveTurnId|sendJsonRpcError",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/packages/agent-runtime/src/runtime-provider-requests.ts",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174348304,
 };
 
@@ -1335,6 +1464,9 @@ const testQualityChild21: TimelineRow = {
   query: "CODE_REVIEW.md",
   path: null,
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174349701,
 };
 
@@ -1352,6 +1484,9 @@ const testQualityChild22: TimelineRow = {
   callId: "toolu_01T4hVAKKBqVzJ9kHS9pc93G",
   path: "/Users/michael/.bb-dev/worktrees/env_stt3jzymfp/bb/docs/CODE_REVIEW.md",
   cmd: null,
+  toolName: null,
+  toolArgs: null,
+  output: "",
   completedAt: 1778174351117,
 };
 const errorDelegation: TimelineRow = {

@@ -6,7 +6,9 @@ import {
   conversationRow,
   delegationRow,
   extensionRow,
+  fileReadRow,
   imageViewRow,
+  searchRow,
   systemRow,
   workflowRow,
 } from "@/test/fixtures/thread-timeline-rows";
@@ -64,6 +66,26 @@ describe("isRowExpandable", () => {
       label: "an extension row with detail text",
       row: extensionRow({
         presentation: { ...extensionPresentation, detail: "Echoed **2**" },
+      }),
+      expandable: true,
+    },
+    {
+      label: "a search row",
+      row: searchRow({ mode: "content", query: "TODO", path: "src" }),
+      expandable: true,
+    },
+    {
+      label: "a file-read row",
+      row: fileReadRow({ path: "src/index.ts" }),
+      expandable: true,
+    },
+    {
+      label: "a command row summarized by an exploration intent",
+      row: commandRow({
+        command: "ls src",
+        activityIntents: [
+          { type: "list_files", command: "ls src", path: "src" },
+        ],
       }),
       expandable: true,
     },

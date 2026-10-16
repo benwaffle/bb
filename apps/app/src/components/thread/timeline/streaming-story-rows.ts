@@ -25,6 +25,9 @@ export function explorationRow(
     status: "completed" as const,
     callId: step.callId,
     cmd: null,
+    toolName: null,
+    toolArgs: null,
+    output: "",
     completedAt: seq,
   };
   switch (step.intent.type) {

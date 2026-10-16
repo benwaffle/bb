@@ -179,6 +179,7 @@ function timelineWorkRowRenderSignature(row: TimelineViewWorkRow): string {
         row.callId,
         row.path,
         row.cmd,
+        row.toolName,
         row.completedAt,
       ]);
     case "search":
@@ -189,6 +190,7 @@ function timelineWorkRowRenderSignature(row: TimelineViewWorkRow): string {
         row.query,
         row.path,
         row.cmd,
+        row.toolName,
         row.completedAt,
       ]);
     case "plan-steps":
