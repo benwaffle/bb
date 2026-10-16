@@ -14,6 +14,7 @@ import type { TimelineRow } from "@bb/server-contract";
 import {
   commandRow,
   conversationRow,
+  searchRow,
   systemRow,
 } from "@/test/fixtures/thread-timeline-rows";
 import { sdk } from "@/lib/sdk";
@@ -270,6 +271,106 @@ describe("timeline row hover preview", () => {
     expect(preview()?.textContent).toContain(`$ ${fullCommand}`);
     expect(preview()?.textContent).toContain("done");
     expect(header.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("shows a collapsed search tool row's input and matches", async () => {
+    renderTimeline([
+      userMessage(100),
+      searchRow({
+        id: "grep-1",
+        seq: 200,
+        createdAt: 200,
+        startedAt: 200,
+        turnId: "turn-1",
+        mode: "content",
+        query: "TODO",
+        path: "src",
+        toolName: "Grep",
+        toolArgs: { pattern: "TODO", path: "src", glob: "*.ts" },
+        output: "src/a.ts:3:// TODO",
+      }),
+      assistantMessage(300),
+    ]);
+    const header = screen.getByRole("button", {
+      name: /Searched for TODO in src/,
+    });
+
+    fireEvent.pointerEnter(header);
+    advance(400);
+    await settleLazyRenderers();
+
+    expect(preview()?.textContent).toContain("glob: *.ts");
+    expect(preview()?.textContent).toContain("src/a.ts:3:// TODO");
+    expect(header.getAttribute("aria-expanded")).toBe("false");
+  });
+
+  it("shows a deferred search row at once and fills in its matches after loading them", async () => {
+    const resolveDetails = resolveDetailsOnDemand();
+    const loaded = searchRow({
+      id: "grep-deferred",
+      callId: "call-grep",
+      seq: 200,
+      createdAt: 200,
+      startedAt: 200,
+      threadId: "thr_main",
+      turnId: "turn-1",
+      mode: "content",
+      query: "TODO",
+      path: "src",
+      toolName: "Grep",
+      toolArgs: { pattern: "TODO", path: "src" },
+      output: "FULL-DEFERRED-MATCHES",
+    });
+    renderTimeline([
+      userMessage(100),
+      { ...loaded, output: "", contentDeferred: true },
+      assistantMessage(300),
+    ]);
+    const header = screen.getByRole("button", {
+      name: /Searched for TODO in src/,
+    });
+
+    fireEvent.pointerEnter(header);
+    advance(400);
+    await settleLazyRenderers();
+
+    expect(preview()?.textContent).toContain("pattern: TODO");
+    expect(timelineTurnSummaryDetails.mock.calls[0]?.[0]).toMatchObject({
+      itemId: "call-grep",
+    });
+
+    resolveDetails([loaded]);
+    await flushDetailsLoad();
+
+    expect(preview()?.textContent).toContain("FULL-DEFERRED-MATCHES");
+  });
+
+  it("shows a shell command summarized as a file listing", async () => {
+    renderTimeline([
+      userMessage(100),
+      commandRow({
+        id: "ls-1",
+        seq: 200,
+        createdAt: 200,
+        startedAt: 200,
+        turnId: "turn-1",
+        command: "ls src",
+        output: "a.ts",
+        exitCode: 0,
+        activityIntents: [
+          { type: "list_files", command: "ls src", path: "src" },
+        ],
+      }),
+      assistantMessage(300),
+    ]);
+    const header = screen.getByRole("button", { name: /Listed files in src/ });
+
+    fireEvent.pointerEnter(header);
+    advance(400);
+    await settleLazyRenderers();
+
+    expect(preview()?.textContent).toContain("$ ls src");
+    expect(preview()?.textContent).toContain("a.ts");
   });
 
   it("does not open on keyboard focus alone", () => {
