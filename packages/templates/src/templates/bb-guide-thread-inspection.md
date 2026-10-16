@@ -83,7 +83,9 @@ Inspecting:
   `thread context` reads the latest stored context measurement without starting
   a provider request; `--json` prints `{ usage: ... }` (`null` when unavailable).
   Claude Code includes an estimated breakdown when available; other providers
-  report totals. When the provider reports the session's cumulative cost,
+  report totals. While a turn runs, `usage.snapshot` keeps the last turn's
+  breakdown (cleared by compaction) and its `usedTokens` lags the live total;
+  `Captured:` then notes the last turn. When the provider reports the session's cumulative cost,
   `usage.cost` is `{ amount, currency }`. With the `compactExpiredCache`
   experiment on, `usage.compactionOfferAt` is when the provider's prompt cache
   for this context expires (Claude Code and Pi report cache lifetimes); after
