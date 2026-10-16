@@ -6,6 +6,7 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import {
   calculateContextWindowUsagePercent,
   formatCompactTokenCount,
+  formatContextSnapshotAge,
   formatContextWindowReadout,
   formatUsageCost,
 } from "./thread-context-window-usage.js";
@@ -51,6 +52,9 @@ export function ThreadContextWindowCard({
   const windowTokensLabel = formatCompactTokenCount(usage.modelContextWindow);
   const titleLabel = usage.estimated ? "Estimated context" : "Context window";
   const costLabel = usage.cost ? formatUsageCost(usage.cost) : null;
+  const detailsAgeLabel = details
+    ? formatContextSnapshotAge(usage, Date.now())
+    : null;
 
   return (
     <div
@@ -140,29 +144,36 @@ export function ThreadContextWindowCard({
               />
             </ContextWindowReveal>
           </div>
-          <button
-            type="button"
-            className="ml-auto mt-2 flex cursor-pointer items-center gap-1.5 rounded-xs text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:pointer-coarse:mt-3 max-md:pointer-coarse:py-1 max-md:pointer-coarse:text-sm"
-            aria-expanded={detailsExpanded}
-            aria-controls={detailsId}
-            onClick={() => setDetailsExpanded((value) => !value)}
-          >
-            {detailsExpanded ? "Hide details" : "Show details"}
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1"
-              aria-hidden="true"
-              data-icon-root=""
-              className={cn(
-                "size-3 transition-transform duration-200 ease-out motion-reduce:transition-none",
-                detailsExpanded && "rotate-180",
-              )}
+          <div className="mt-2 flex items-center justify-between gap-2 max-md:pointer-coarse:mt-3">
+            {detailsAgeLabel ? (
+              <span className="text-xs text-muted-foreground max-md:pointer-coarse:text-sm">
+                {detailsAgeLabel}
+              </span>
+            ) : null}
+            <button
+              type="button"
+              className="ml-auto flex cursor-pointer items-center gap-1.5 rounded-xs text-xs text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring max-md:pointer-coarse:py-1 max-md:pointer-coarse:text-sm"
+              aria-expanded={detailsExpanded}
+              aria-controls={detailsId}
+              onClick={() => setDetailsExpanded((value) => !value)}
             >
-              <path d="m4 6 4 4 4-4" />
-            </svg>
-          </button>
+              {detailsExpanded ? "Hide details" : "Show details"}
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                aria-hidden="true"
+                data-icon-root=""
+                className={cn(
+                  "size-3 transition-transform duration-200 ease-out motion-reduce:transition-none",
+                  detailsExpanded && "rotate-180",
+                )}
+              >
+                <path d="m4 6 4 4 4-4" />
+              </svg>
+            </button>
+          </div>
         </>
       ) : null}
     </div>
