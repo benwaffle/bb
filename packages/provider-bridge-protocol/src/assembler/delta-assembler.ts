@@ -71,6 +71,11 @@ const MAX_THREAD_STATES = 256;
 const MAX_ID_MAP_ENTRIES = 1024;
 const MAX_SETTLED_ITEM_KEYS = 512;
 
+type ReadOnlyToolInvocation = Pick<
+  Extract<ThreadEventItem, { type: "fileRead" | "search" }>,
+  "tool" | "arguments" | "result"
+>;
+
 interface OpenItemState {
   bbItemId: string;
   key: DeltaItemKey;
@@ -577,9 +582,33 @@ export function createDeltaAssembler(
     );
   }
 
+  function readOnlyToolInvocationFromShape(
+    shape: Extract<DeltaItemShape, { type: "fileRead" | "search" }>,
+    resultText: string | undefined,
+  ): ReadOnlyToolInvocation {
+    return {
+      ...(shape.tool === undefined ? {} : { tool: shape.tool }),
+      ...(shape.args === undefined ? {} : { arguments: shape.args }),
+      ...(resultText === undefined ? {} : { result: resultText }),
+    };
+  }
+
+  function readOnlyToolInvocationFromItem(
+    item: Extract<ThreadEventItem, { type: "fileRead" | "search" }>,
+    resultText: string | undefined,
+  ): ReadOnlyToolInvocation {
+    const result = resultText ?? item.result;
+    return {
+      ...(item.tool === undefined ? {} : { tool: item.tool }),
+      ...(item.arguments === undefined ? {} : { arguments: item.arguments }),
+      ...(result === undefined ? {} : { result }),
+    };
+  }
+
   function buildFileReadItem(
     bbItemId: string,
-    shape: Extract<DeltaItemShape, { type: "fileRead" }>,
+    shape: Pick<Extract<DeltaItemShape, { type: "fileRead" }>, "path" | "cmd">,
+    invocation: ReadOnlyToolInvocation,
     status: ThreadEventItemStatus,
     parentToolCallId: string | undefined,
   ): Extract<ThreadEventItem, { type: "fileRead" }> {
@@ -589,6 +618,7 @@ export function createDeltaAssembler(
         id: bbItemId,
         path: shape.path,
         ...(shape.cmd === undefined ? {} : { cmd: shape.cmd }),
+        ...invocation,
         status,
       },
       parentToolCallId,
@@ -597,7 +627,11 @@ export function createDeltaAssembler(
 
   function buildSearchItem(
     bbItemId: string,
-    shape: Extract<DeltaItemShape, { type: "search" }>,
+    shape: Pick<
+      Extract<DeltaItemShape, { type: "search" }>,
+      "mode" | "query" | "path" | "cmd"
+    >,
+    invocation: ReadOnlyToolInvocation,
     status: ThreadEventItemStatus,
     parentToolCallId: string | undefined,
   ): Extract<ThreadEventItem, { type: "search" }> {
@@ -609,6 +643,7 @@ export function createDeltaAssembler(
         query: shape.query,
         ...(shape.path === undefined ? {} : { path: shape.path }),
         ...(shape.cmd === undefined ? {} : { cmd: shape.cmd }),
+        ...invocation,
         status,
       },
       parentToolCallId,
@@ -846,9 +881,21 @@ export function createDeltaAssembler(
       case "backgroundTask":
         return buildBackgroundTaskItem(bbItemId, shape, parentToolCallId);
       case "fileRead":
-        return buildFileReadItem(bbItemId, shape, "pending", parentToolCallId);
+        return buildFileReadItem(
+          bbItemId,
+          shape,
+          readOnlyToolInvocationFromShape(shape, undefined),
+          "pending",
+          parentToolCallId,
+        );
       case "search":
-        return buildSearchItem(bbItemId, shape, "pending", parentToolCallId);
+        return buildSearchItem(
+          bbItemId,
+          shape,
+          readOnlyToolInvocationFromShape(shape, undefined),
+          "pending",
+          parentToolCallId,
+        );
       case "delegation":
         return buildDelegationItem(
           bbItemId,
@@ -951,9 +998,21 @@ export function createDeltaAssembler(
           parent,
         );
       case "fileRead":
-        return buildFileReadItem(started.id, started, close.status, parent);
+        return buildFileReadItem(
+          started.id,
+          started,
+          readOnlyToolInvocationFromItem(started, close.resultText),
+          close.status,
+          parent,
+        );
       case "search":
-        return buildSearchItem(started.id, started, close.status, parent);
+        return buildSearchItem(
+          started.id,
+          started,
+          readOnlyToolInvocationFromItem(started, close.resultText),
+          close.status,
+          parent,
+        );
       case "delegation":
         return buildDelegationItem(started.id, started, close.status, parent);
       case "planSteps":
@@ -1098,11 +1157,18 @@ export function createDeltaAssembler(
         return buildFileReadItem(
           bbItemId,
           shape,
+          readOnlyToolInvocationFromShape(shape, close.resultText),
           close.status,
           parentToolCallId,
         );
       case "search":
-        return buildSearchItem(bbItemId, shape, close.status, parentToolCallId);
+        return buildSearchItem(
+          bbItemId,
+          shape,
+          readOnlyToolInvocationFromShape(shape, close.resultText),
+          close.status,
+          parentToolCallId,
+        );
       case "delegation":
         return buildDelegationItem(
           bbItemId,
