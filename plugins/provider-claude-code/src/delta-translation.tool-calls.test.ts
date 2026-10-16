@@ -553,6 +553,8 @@ describe("claude tool-use translation (delta path)", () => {
           type: "fileRead",
           id: harness.itemId("tool-read-1"),
           path: "src/index.ts",
+          tool: "Read",
+          arguments: { file_path: "src/index.ts" },
           status: "pending",
           presentation: {
             label: { pending: "Reading file", completed: "Read file" },
@@ -571,6 +573,8 @@ describe("claude tool-use translation (delta path)", () => {
           mode: "content",
           query: "TODO",
           path: "src",
+          tool: "Grep",
+          arguments: { pattern: "TODO", path: "src" },
           status: "pending",
           presentation: {
             label: { pending: "Searching files", completed: "Searched files" },
@@ -589,6 +593,8 @@ describe("claude tool-use translation (delta path)", () => {
           mode: "path",
           query: "**/*.ts",
           path: "src",
+          tool: "Glob",
+          arguments: { pattern: "**/*.ts", path: "src" },
           status: "pending",
           presentation: {
             label: { pending: "Finding files", completed: "Found files" },
@@ -625,6 +631,9 @@ describe("claude tool-use translation (delta path)", () => {
           type: "fileRead",
           id: harness.itemId("tool-read-1"),
           path: "src/index.ts",
+          tool: "Read",
+          arguments: { file_path: "src/index.ts" },
+          result: "1\texport const x = 1;",
           status: "completed",
           presentation: expect.objectContaining({ title: "index.ts" }),
         },
@@ -636,7 +645,56 @@ describe("claude tool-use translation (delta path)", () => {
         item: expect.objectContaining({
           type: "search",
           id: harness.itemId("tool-grep-1"),
+          tool: "Grep",
+          arguments: { pattern: "TODO", path: "src" },
+          result: "src/a.ts:3:// TODO",
           status: "completed",
+        }),
+      }),
+    );
+  });
+
+  it("bounds kept search results and reports the omitted length", () => {
+    const harness = createClaudeDeltaHarness();
+    harness.translate({
+      type: "assistant",
+      message: {
+        role: "assistant",
+        content: [
+          {
+            type: "tool_use",
+            id: "tool-glob-big",
+            name: "Glob",
+            input: { pattern: "**/*" },
+          },
+        ],
+      },
+      session_id: "sess-1",
+    });
+    const listing = "a/".repeat(10_000);
+
+    const closed = harness.translate({
+      type: "user",
+      message: {
+        role: "user",
+        content: [
+          {
+            type: "tool_result",
+            tool_use_id: "tool-glob-big",
+            content: listing,
+          },
+        ],
+      },
+      session_id: "sess-1",
+    });
+
+    expect(closed).toContainEqual(
+      expect.objectContaining({
+        type: "item/completed",
+        item: expect.objectContaining({
+          type: "search",
+          id: harness.itemId("tool-glob-big"),
+          result: `${listing.slice(0, 16_000)}\n… 4,000 more characters`,
         }),
       }),
     );
