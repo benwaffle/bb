@@ -77,10 +77,16 @@ export type DeltaBackgroundTaskShape = z.infer<
   typeof deltaBackgroundTaskShapeSchema
 >;
 
+const deltaReadOnlyToolInvocationFields = {
+  tool: z.string().optional(),
+  args: z.record(z.string(), z.unknown()).optional(),
+};
+
 export const deltaFileReadShapeSchema = z.object({
   type: z.literal("fileRead"),
   path: z.string(),
   cmd: z.string().optional(),
+  ...deltaReadOnlyToolInvocationFields,
 });
 export type DeltaFileReadShape = z.infer<typeof deltaFileReadShapeSchema>;
 
@@ -90,6 +96,7 @@ export const deltaSearchShapeSchema = z.object({
   query: z.string(),
   path: z.string().optional(),
   cmd: z.string().optional(),
+  ...deltaReadOnlyToolInvocationFields,
 });
 export type DeltaSearchShape = z.infer<typeof deltaSearchShapeSchema>;
 

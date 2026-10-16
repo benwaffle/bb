@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { TimelineToolArgs } from "@bb/server-contract";
 import {
   assertNever,
   fileNameFromPath,
@@ -50,6 +51,20 @@ interface CommandWorkRowBodyProps {
 
 interface ToolWorkRowBodyProps {
   row: Extract<TimelineViewWorkRow, { workKind: "tool" }>;
+}
+
+interface ReadOnlyToolWorkRowBodyProps {
+  row: ReadOnlyToolWorkRow;
+}
+
+type ReadOnlyToolWorkRow = Extract<
+  TimelineViewWorkRow,
+  { workKind: "file-read" | "search" }
+>;
+
+interface ReadOnlyToolInvocation {
+  toolName: string;
+  args: TimelineToolArgs;
 }
 
 interface OutputPreviewNoteProps {
@@ -220,6 +235,71 @@ function ToolWorkRowBody({ row }: ToolWorkRowBodyProps) {
   );
 }
 
+const SEARCH_MODE_TOOL_LABELS: Record<
+  Extract<ReadOnlyToolWorkRow, { workKind: "search" }>["mode"],
+  string
+> = {
+  content: "Search",
+  path: "Find files",
+  list: "List files",
+};
+
+function compactToolArgs(
+  entries: Record<string, string | null>,
+): TimelineToolArgs {
+  const args: Record<string, string> = {};
+  for (const [key, value] of Object.entries(entries)) {
+    if (value !== null && value.length > 0) {
+      args[key] = value;
+    }
+  }
+  return args;
+}
+
+function readOnlyToolInvocation(
+  row: ReadOnlyToolWorkRow,
+): ReadOnlyToolInvocation {
+  if (row.workKind === "file-read") {
+    return {
+      toolName: row.toolName ?? "Read",
+      args: row.toolArgs ?? compactToolArgs({ path: row.path }),
+    };
+  }
+  return {
+    toolName: row.toolName ?? SEARCH_MODE_TOOL_LABELS[row.mode],
+    args:
+      row.toolArgs ??
+      compactToolArgs({
+        pattern: row.mode === "list" ? null : row.query,
+        path: row.path,
+      }),
+  };
+}
+
+function ReadOnlyToolWorkRowBody({ row }: ReadOnlyToolWorkRowBodyProps) {
+  const streaming = row.status === "pending";
+  if (row.cmd !== null) {
+    return (
+      <LazyTerminalOutputBlock
+        commandLine={`$ ${row.cmd}`}
+        metadataLines={[]}
+        output={row.output}
+        exitCode={null}
+        streaming={streaming}
+      />
+    );
+  }
+  const invocation = readOnlyToolInvocation(row);
+  return (
+    <ToolCallDetailBlock
+      toolName={invocation.toolName}
+      args={invocation.args}
+      output={row.output}
+      streaming={streaming}
+    />
+  );
+}
+
 export function WorkRowBody({
   resolveImageViewSrc,
   row,
@@ -275,11 +355,12 @@ export function WorkRowBody({
       return (
         <ImageWorkRowBody row={row} resolveImageViewSrc={resolveImageViewSrc} />
       );
+    case "file-read":
+    case "search":
+      return <ReadOnlyToolWorkRowBody row={row} />;
     case "approval":
     case "web-search":
     case "web-fetch":
-    case "file-read":
-    case "search":
       return null;
     default:
       return assertNever(row);
