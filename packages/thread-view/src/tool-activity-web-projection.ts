@@ -106,6 +106,9 @@ function createWebActivityMessage(
         kind: "file-read",
         path: payload.path,
         cmd: payload.cmd,
+        toolName: payload.toolName,
+        toolArgs: payload.toolArgs,
+        output: payload.output ?? "",
         status,
       };
     case "search":
@@ -116,6 +119,9 @@ function createWebActivityMessage(
         query: payload.query,
         path: payload.path,
         cmd: payload.cmd,
+        toolName: payload.toolName,
+        toolArgs: payload.toolArgs,
+        output: payload.output ?? "",
         status,
       };
     case "plan-steps":
@@ -192,6 +198,7 @@ function mergeWebActivityMessage(
   if (target.kind === "file-read" && payload.itemKind === "file-read") {
     target.path = payload.path;
     target.cmd = payload.cmd;
+    mergeReadOnlyToolInvocation(target, payload);
     return;
   }
 
@@ -200,6 +207,7 @@ function mergeWebActivityMessage(
     target.query = payload.query;
     target.path = payload.path;
     target.cmd = payload.cmd;
+    mergeReadOnlyToolInvocation(target, payload);
     return;
   }
 
@@ -213,6 +221,24 @@ function mergeWebActivityMessage(
     target.extensionKind = payload.extensionKind;
     target.payload = payload.payload;
     target.presentation = payload.presentation;
+  }
+}
+
+function mergeReadOnlyToolInvocation(
+  target: Extract<ViewWebActivityMessage, { kind: "file-read" | "search" }>,
+  payload: Extract<
+    WebActivityLifecycleEvent,
+    { itemKind: "file-read" | "search" }
+  >,
+): void {
+  if (payload.toolName !== null) {
+    target.toolName = payload.toolName;
+  }
+  if (payload.toolArgs !== null) {
+    target.toolArgs = payload.toolArgs;
+  }
+  if (payload.output !== null) {
+    target.output = payload.output;
   }
 }
 
