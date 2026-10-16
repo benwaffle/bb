@@ -99,6 +99,13 @@ export function resolveDeferredTimelineContent(
         : { outputPreview: match.outputPreview }),
     };
   }
+  if (
+    (row.workKind === "file-read" && match.workKind === "file-read") ||
+    (row.workKind === "search" && match.workKind === "search")
+  ) {
+    const { contentDeferred: _contentDeferred, ...rest } = row;
+    return { ...rest, output: match.output };
+  }
   if (row.workKind === "file-change" && match.workKind === "file-change") {
     const { contentDeferred: _contentDeferred, ...rest } = row;
     return {
