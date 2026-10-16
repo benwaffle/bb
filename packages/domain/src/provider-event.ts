@@ -179,11 +179,18 @@ const threadEventImageViewItemSchema = z.object({
   parentToolCallId: z.string().optional(),
 });
 
+const readOnlyToolInvocationFields = {
+  tool: z.string().optional(),
+  arguments: z.record(z.string(), z.unknown()).optional(),
+  result: z.string().optional(),
+};
+
 export const threadEventFileReadItemSchema = z.object({
   type: z.literal("fileRead"),
   id: z.string(),
   path: z.string(),
   cmd: z.string().optional(),
+  ...readOnlyToolInvocationFields,
   status: threadEventItemStatusSchema,
   ...itemPresentationField,
   parentToolCallId: z.string().optional(),
@@ -202,6 +209,7 @@ export const threadEventSearchItemSchema = z.object({
   query: z.string(),
   path: z.string().optional(),
   cmd: z.string().optional(),
+  ...readOnlyToolInvocationFields,
   status: threadEventItemStatusSchema,
   ...itemPresentationField,
   parentToolCallId: z.string().optional(),

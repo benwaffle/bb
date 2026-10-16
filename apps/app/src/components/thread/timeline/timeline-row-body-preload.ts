@@ -87,6 +87,9 @@ function timelineRowBodySplits(
       return FILE_CHANGE_SPLITS;
     case "command":
       return COMMAND_SPLITS;
+    case "file-read":
+    case "search":
+      return row.cmd === null ? NO_SPLITS : COMMAND_SPLITS;
     default:
       return NO_SPLITS;
   }
