@@ -382,13 +382,21 @@ export type TimelineImageGenerationWorkRow = z.infer<
   typeof timelineImageGenerationWorkRowSchema
 >;
 
+const timelineReadOnlyToolInvocationFields = {
+  toolName: z.string().nullable(),
+  toolArgs: z.record(z.string(), jsonValueSchema).nullable(),
+  output: z.string(),
+};
+
 export const timelineFileReadWorkRowSchema = timelineWorkRowBaseSchema.extend({
   workKind: z.literal("file-read"),
   callId: z.string(),
   path: z.string(),
   cmd: z.string().nullable(),
+  ...timelineReadOnlyToolInvocationFields,
   completedAt: z.number().nullable(),
   ...timelineRowPresentationField,
+  ...timelineContentDeferredField,
 });
 export type TimelineFileReadWorkRow = z.infer<
   typeof timelineFileReadWorkRowSchema
@@ -401,8 +409,10 @@ export const timelineSearchWorkRowSchema = timelineWorkRowBaseSchema.extend({
   query: z.string(),
   path: z.string().nullable(),
   cmd: z.string().nullable(),
+  ...timelineReadOnlyToolInvocationFields,
   completedAt: z.number().nullable(),
   ...timelineRowPresentationField,
+  ...timelineContentDeferredField,
 });
 export type TimelineSearchWorkRow = z.infer<typeof timelineSearchWorkRowSchema>;
 
