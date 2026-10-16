@@ -159,6 +159,9 @@ interface FileReadEventArgs extends ProviderTurnEventOptions {
   itemId?: string;
   path: string;
   cmd?: string;
+  tool?: string;
+  arguments?: Record<string, unknown>;
+  result?: string;
   presentation?: ThreadEventItemPresentation;
   status?: "pending" | "completed" | "failed" | "interrupted";
 }
@@ -169,6 +172,9 @@ interface SearchEventArgs extends ProviderTurnEventOptions {
   query: string;
   path?: string;
   cmd?: string;
+  tool?: string;
+  arguments?: Record<string, unknown>;
+  result?: string;
   presentation?: ThreadEventItemPresentation;
   status?: "pending" | "completed" | "failed" | "interrupted";
 }
@@ -1113,6 +1119,7 @@ export function createTimelineEventFactory(
             id: args.itemId ?? `file-read-${base.seq}`,
             path: args.path,
             ...(args.cmd === undefined ? {} : { cmd: args.cmd }),
+            ...readOnlyToolInvocationFields(args),
             status: args.status ?? "pending",
             ...(args.presentation === undefined
               ? {}
@@ -1133,6 +1140,7 @@ export function createTimelineEventFactory(
             id: args.itemId ?? `file-read-${base.seq}`,
             path: args.path,
             ...(args.cmd === undefined ? {} : { cmd: args.cmd }),
+            ...readOnlyToolInvocationFields(args),
             status: args.status ?? "completed",
             ...(args.presentation === undefined
               ? {}
@@ -1155,6 +1163,7 @@ export function createTimelineEventFactory(
             query: args.query,
             ...(args.path === undefined ? {} : { path: args.path }),
             ...(args.cmd === undefined ? {} : { cmd: args.cmd }),
+            ...readOnlyToolInvocationFields(args),
             status: args.status ?? "pending",
             ...(args.presentation === undefined
               ? {}
@@ -1177,6 +1186,7 @@ export function createTimelineEventFactory(
             query: args.query,
             ...(args.path === undefined ? {} : { path: args.path }),
             ...(args.cmd === undefined ? {} : { cmd: args.cmd }),
+            ...readOnlyToolInvocationFields(args),
             status: args.status ?? "completed",
             ...(args.presentation === undefined
               ? {}
@@ -1561,4 +1571,14 @@ export function messageKinds(
   messages: readonly EventProjectionMessage[],
 ): string[] {
   return messages.map((message) => message.kind);
+}
+
+function readOnlyToolInvocationFields(
+  args: FileReadEventArgs | SearchEventArgs,
+): Pick<FileReadEventArgs, "tool" | "arguments" | "result"> {
+  return {
+    ...(args.tool === undefined ? {} : { tool: args.tool }),
+    ...(args.arguments === undefined ? {} : { arguments: args.arguments }),
+    ...(args.result === undefined ? {} : { result: args.result }),
+  };
 }

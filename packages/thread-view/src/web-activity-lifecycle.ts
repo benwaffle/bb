@@ -1,14 +1,17 @@
 import {
   parseLegacyImageGenerationCompletion,
   type ExtensionKind,
+  type JsonObject,
   type JsonValue,
   type ThreadEvent,
+  type ThreadEventItem,
   type ThreadEventItemPresentation,
   type ThreadEventItemStatus,
   type ThreadEventPlanStep,
   type ThreadEventSearchMode,
 } from "@bb/domain";
 import { getEventParentToolCallId } from "./event-decode.js";
+import { parseToolArgs } from "./exec-lifecycle.js";
 
 interface ItemActivityLifecycleBase {
   kind: "begin" | "end";
@@ -46,13 +49,25 @@ interface ImageGenerationLifecycleEvent extends StatusedItemActivityLifecycleBas
   transparentBackground: boolean;
 }
 
-export interface FileReadLifecycleEvent extends StatusedItemActivityLifecycleBase {
+interface ReadOnlyToolInvocationLifecycleFields {
+  toolName: string | null;
+  toolArgs: JsonObject | null;
+  output: string | null;
+}
+
+export interface FileReadLifecycleEvent
+  extends
+    StatusedItemActivityLifecycleBase,
+    ReadOnlyToolInvocationLifecycleFields {
   itemKind: "file-read";
   path: string;
   cmd: string | null;
 }
 
-export interface SearchLifecycleEvent extends StatusedItemActivityLifecycleBase {
+export interface SearchLifecycleEvent
+  extends
+    StatusedItemActivityLifecycleBase,
+    ReadOnlyToolInvocationLifecycleFields {
   itemKind: "search";
   mode: ThreadEventSearchMode;
   query: string;
@@ -147,6 +162,7 @@ export function parseWebActivityLifecycleEvent(
         itemKind: "file-read",
         path: item.path,
         cmd: item.cmd ?? null,
+        ...readOnlyToolInvocationFields(item),
         status: item.status,
         ...(item.presentation ? { presentation: item.presentation } : {}),
       };
@@ -158,6 +174,7 @@ export function parseWebActivityLifecycleEvent(
         query: item.query,
         path: item.path ?? null,
         cmd: item.cmd ?? null,
+        ...readOnlyToolInvocationFields(item),
         status: item.status,
         ...(item.presentation ? { presentation: item.presentation } : {}),
       };
@@ -182,6 +199,16 @@ export function parseWebActivityLifecycleEvent(
     default:
       return null;
   }
+}
+
+function readOnlyToolInvocationFields(
+  item: Extract<ThreadEventItem, { type: "fileRead" | "search" }>,
+): ReadOnlyToolInvocationLifecycleFields {
+  return {
+    toolName: item.tool ?? null,
+    toolArgs: parseToolArgs(item.arguments ?? null),
+    output: item.result ?? null,
+  };
 }
 
 function parseLegacyImageGeneration(
