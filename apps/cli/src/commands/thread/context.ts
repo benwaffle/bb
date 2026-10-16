@@ -42,7 +42,11 @@ export function registerContextCommand(
             );
           }
           if (!usage.snapshot) return;
-          console.log(`Captured: ${usage.snapshot.capturedAt}`);
+          const lastTurn =
+            usage.snapshot.usedTokens === usage.usedTokens
+              ? ""
+              : ` (last turn, ${count(usage.snapshot.usedTokens)} tokens)`;
+          console.log(`Captured: ${usage.snapshot.capturedAt}${lastTurn}`);
           for (const category of usage.snapshot.categories) {
             const kind = category.kind === "used" ? "" : ` (${category.kind})`;
             console.log(`${category.label}${kind}: ${count(category.tokens)}`);
