@@ -24,7 +24,7 @@ const snapshot: ContextSnapshot = {
 };
 
 describe("recorded thread context API", () => {
-  it("returns the persisted root snapshot, drops superseded details, and respects clear boundaries", async () => {
+  it("returns the persisted root snapshot, keeps it while the total updates, and respects clear boundaries", async () => {
     await withTestHarness(async (harness) => {
       const { thread } = seedThreadFixture(harness);
       const endpoint = `/api/v1/threads/${thread.id}/context`;
@@ -107,7 +107,12 @@ describe("recorded thread context API", () => {
         },
       ]);
       expect(await read()).toEqual({
-        usage: { usedTokens: 200, modelContextWindow: 1_000, estimated: false },
+        usage: {
+          usedTokens: 200,
+          modelContextWindow: 1_000,
+          estimated: false,
+          snapshot,
+        },
       });
       insertEvents(harness.db, harness.hub, [
         {

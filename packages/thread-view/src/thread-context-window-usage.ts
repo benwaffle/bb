@@ -61,6 +61,7 @@ export function extractThreadContextWindowUsage(
   events: readonly ThreadEventWithMeta[],
 ): ThreadContextWindowUsage | null {
   let snapshot: ContextSnapshot | undefined;
+  let snapshotResolved = false;
   let estimated: boolean | undefined;
   let modelContextWindow: number | undefined;
   let usedTokens: number | undefined;
@@ -100,8 +101,19 @@ export function extractThreadContextWindowUsage(
       }
     }
 
+    if (!snapshotResolved) {
+      if (
+        signal.providerThreadId !== providerThreadId ||
+        signal.usedTokens === null
+      ) {
+        snapshotResolved = true;
+      } else if (signal.snapshot?.usedTokens === signal.usedTokens) {
+        snapshot = signal.snapshot;
+        snapshotResolved = true;
+      }
+    }
+
     if (usedTokens === undefined && !usageIsUnknown) {
-      snapshot = signal.snapshot;
       if (signal.usedTokens === null) {
         usageIsUnknown = true;
         estimated = signal.estimated;
@@ -121,7 +133,8 @@ export function extractThreadContextWindowUsage(
     if (
       (usedTokens !== undefined || usageIsUnknown) &&
       modelContextWindow !== undefined &&
-      windowResolved
+      windowResolved &&
+      snapshotResolved
     ) {
       break;
     }
@@ -134,11 +147,7 @@ export function extractThreadContextWindowUsage(
   modelContextWindow = retainedWindow ?? modelContextWindow;
 
   return {
-    ...(snapshot &&
-    snapshot.usedTokens === usedTokens &&
-    snapshot.contextWindowTokens === modelContextWindow
-      ? { snapshot }
-      : {}),
+    ...(snapshot ? { snapshot } : {}),
     estimated: estimated ?? false,
     modelContextWindow,
     usedTokens,
