@@ -109,6 +109,21 @@ function terminalToolShape(
   return shape;
 }
 
+export const READ_ONLY_TOOL_RESULT_MAX_CHARS = 16_000;
+
+function boundReadOnlyToolResult(text: string): string {
+  if (text.length <= READ_ONLY_TOOL_RESULT_MAX_CHARS) {
+    return text;
+  }
+  const lastKept = text.charCodeAt(READ_ONLY_TOOL_RESULT_MAX_CHARS - 1);
+  const end =
+    lastKept >= 0xd800 && lastKept <= 0xdbff
+      ? READ_ONLY_TOOL_RESULT_MAX_CHARS - 1
+      : READ_ONLY_TOOL_RESULT_MAX_CHARS;
+  const omitted = text.length - end;
+  return `${text.slice(0, end)}\n… ${omitted.toLocaleString("en-US")} more characters`;
+}
+
 function terminalCloseFields(
   shape: DeltaItemShape,
   outputText: string | undefined,
@@ -125,6 +140,9 @@ function terminalCloseFields(
       };
     case "fileRead":
     case "search":
+      return outputText === undefined
+        ? {}
+        : { resultText: boundReadOnlyToolResult(outputText) };
     case "delegation":
       return {};
     default:
