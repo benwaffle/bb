@@ -277,6 +277,8 @@ describe("v3 item projection", () => {
           mode: "content",
           query: "TODO",
           path: "src",
+          tool: "Grep",
+          arguments: { pattern: "TODO", path: "src", glob: "*.ts" },
           presentation: SEARCH_PRESENTATION,
           createdAt: 3_000,
         }),
@@ -286,6 +288,9 @@ describe("v3 item projection", () => {
           mode: "content",
           query: "TODO",
           path: "src",
+          tool: "Grep",
+          arguments: { pattern: "TODO", path: "src", glob: "*.ts" },
+          result: "src/a.ts:3:// TODO",
           presentation: SEARCH_PRESENTATION,
           createdAt: 4_000,
         }),
@@ -372,10 +377,14 @@ describe("v3 item projection", () => {
       mode: "content",
       query: "TODO",
       path: "src",
+      toolName: "Grep",
+      toolArgs: { pattern: "TODO", path: "src", glob: "*.ts" },
+      output: "src/a.ts:3:// TODO",
       presentation: SEARCH_PRESENTATION,
     });
     const glob = workRow(v3.rows, "search", "glob-1");
     expect(glob).not.toHaveProperty("presentation");
+    expect(glob).toMatchObject({ toolName: null, toolArgs: null, output: "" });
 
     const intents = (rows: TimelineWorkRow[]) =>
       rows.flatMap((row) =>
