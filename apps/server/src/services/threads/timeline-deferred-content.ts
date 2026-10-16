@@ -57,6 +57,13 @@ function deferRowContent(row: TimelineRow): TimelineRow {
         const { outputPreview: _outputPreview, ...rest } = row;
         return { ...rest, output: "", contentDeferred: true };
       }
+      case "file-read":
+      case "search": {
+        if (row.output.length <= TIMELINE_DEFERRED_CONTENT_MIN_CHARS) {
+          return row;
+        }
+        return { ...row, output: "", contentDeferred: true };
+      }
       case "file-change": {
         const chars =
           (row.change.diff?.length ?? 0) +
