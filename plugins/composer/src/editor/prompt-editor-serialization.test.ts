@@ -216,6 +216,38 @@ describe("prompt editor serialization", () => {
     expect(roundTrip(value)).toEqual(value);
   });
 
+  it("serializes arguments typed after a command pill as the literal slash command line", () => {
+    const mention = {
+      kind: "command" as const,
+      trigger: "/" as const,
+      name: "code-review",
+      source: "skill" as const,
+      origin: "builtin" as const,
+      label: "code-review",
+      argumentHint: "[low|medium|high]",
+    };
+    const doc = Node.fromJSON(schema, {
+      type: "doc",
+      content: [
+        {
+          type: "paragraph",
+          content: [
+            {
+              type: "mention",
+              attrs: { mention, serializedText: "/code-review" },
+            },
+            { type: "text", text: " low --fix" },
+          ],
+        },
+      ],
+    });
+
+    expect(promptEditorValueFromDoc(doc)).toEqual({
+      text: "/code-review low --fix",
+      mentions: [{ from: 0, to: "/code-review".length, ...mention }],
+    });
+  });
+
   it("serializes a selected skill as a pill without materializing argument hint text", () => {
     const text = "/review ";
     const mentions: ComposerMention[] = [
