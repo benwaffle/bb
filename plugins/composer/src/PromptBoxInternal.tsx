@@ -45,6 +45,7 @@ import {
   type ReactNode,
   type Ref,
 } from "react";
+import { commandSuggestionSubmitsOnEnter } from "./mentions/command-submit";
 import {
   commandPillDismissedRangeEnd,
   findActiveTrigger,
@@ -3034,7 +3035,7 @@ export function PromptBoxInternal({
   const chooseSuggestion = useCallback(
     (item: TypeaheadSuggestion) => {
       applyTrigger(item);
-      if (item.kind === "command" && item.origin === "builtin") {
+      if (item.kind === "command" && commandSuggestionSubmitsOnEnter(item)) {
         setPendingCommandSubmit(true);
       }
     },
