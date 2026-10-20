@@ -37,6 +37,7 @@ import {
   type Ref,
 } from "react";
 import {
+  commandSuggestionSubmitsOnEnter,
   composerMentionFromPromptTextMention,
   composerMentionGroupsFromOrdered,
   groupCommandSuggestions,
@@ -3573,7 +3574,7 @@ export function PromptBoxInternal({
             if (
               event.key === "Enter" &&
               selected.kind === "command" &&
-              selected.origin === "builtin"
+              commandSuggestionSubmitsOnEnter(selected)
             ) {
               setPendingCommandSubmit(true);
             }
