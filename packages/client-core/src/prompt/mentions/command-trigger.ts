@@ -3,6 +3,10 @@ import type {
   PromptMentionCommandTrigger,
   ProviderComposerAction,
 } from "@bb/domain";
+import type {
+  ProviderCommandOrigin,
+  ProviderCommandSource,
+} from "@bb/server-contract";
 
 export type ProviderPromptActionCommand = ProviderComposerCommand;
 
@@ -60,4 +64,18 @@ export function commandPillDismissedRangeEnd({
   trailingText: string;
 }): number {
   return triggerPosition + 1 + trailingText.length;
+}
+
+const SUBMIT_ON_ENTER_COMMANDS = new Set(["clear", "compact"]);
+
+export function commandSuggestionSubmitsOnEnter(suggestion: {
+  name: string;
+  source: ProviderCommandSource;
+  origin: ProviderCommandOrigin;
+}): boolean {
+  return (
+    suggestion.source === "command" &&
+    suggestion.origin === "builtin" &&
+    SUBMIT_ON_ENTER_COMMANDS.has(suggestion.name)
+  );
 }
