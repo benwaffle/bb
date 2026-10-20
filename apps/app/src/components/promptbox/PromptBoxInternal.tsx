@@ -39,6 +39,7 @@ import {
 } from "react";
 import {
   commandPillDismissedRangeEnd,
+  commandSuggestionSubmitsOnEnter,
   findActiveTrigger,
   orderCommandSuggestions,
   type ActiveTrigger,
@@ -3596,7 +3597,7 @@ export function PromptBoxInternal({
             if (
               event.key === "Enter" &&
               selected.kind === "command" &&
-              selected.origin === "builtin"
+              commandSuggestionSubmitsOnEnter(selected)
             ) {
               setPendingCommandSubmit(true);
             }
