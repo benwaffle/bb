@@ -42,6 +42,7 @@ import {
   type ExperimentalSidebarProjectDecorationRegistration,
   type ExperimentalSidebarThreadDecoration,
   type ExperimentalSidebarThreadDecorationRegistration,
+  type ExperimentalSidebarThreadRowDecoration,
   type PluginSourceCodeRendererProps,
   type PluginThreadHeaderActionProps,
   type ExperimentalThreadContextSegmentProps,
@@ -376,7 +377,12 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   sidebarFooterAction: [],
   experimental_sidebarThreadGroups: ["id", "title", "useGroups"],
   experimental_sidebarProjectDecoration: ["id", "title", "useDecoration"],
-  experimental_sidebarThreadDecoration: ["id", "title", "useDecoration"],
+  experimental_sidebarThreadDecoration: [
+    "id",
+    "title",
+    "useDecoration",
+    "useThreadDecoration",
+  ],
   experimental_threadList: [
     "activeThreadId",
     "activeProjectId",
@@ -654,6 +660,22 @@ const _assertAllSidebarThreadDecorationFieldsListed: MissingSidebarThreadDecorat
   ? true
   : never = true;
 void _assertAllSidebarThreadDecorationFieldsListed;
+
+const SIDEBAR_THREAD_ROW_DECORATION_FIELDS = [
+  "icon",
+  "label",
+  "description",
+  "trailing",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadRowDecoration)[];
+
+type MissingSidebarThreadRowDecorationField = Exclude<
+  keyof ExperimentalSidebarThreadRowDecoration,
+  (typeof SIDEBAR_THREAD_ROW_DECORATION_FIELDS)[number]
+>;
+const _assertAllSidebarThreadRowDecorationFieldsListed: MissingSidebarThreadRowDecorationField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadRowDecorationFieldsListed;
 
 const MESSAGE_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -943,6 +965,16 @@ describe("bb-plugin-authoring skill", () => {
         skill,
         `sidebar thread decoration field "${field}" is not documented in the skill`,
       ).toContain(field);
+    }
+  });
+
+  it("documents every sidebar thread row decoration field", () => {
+    expect(skill).toContain("experimental_useSidebarThreadRowDecoration");
+    for (const field of SIDEBAR_THREAD_ROW_DECORATION_FIELDS) {
+      expect(
+        skill,
+        `sidebar thread row decoration field "${field}" is not documented in the skill`,
+      ).toContain(`\`${field}\``);
     }
   });
 

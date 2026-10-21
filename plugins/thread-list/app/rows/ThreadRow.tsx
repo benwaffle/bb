@@ -44,6 +44,8 @@ import {
   experimental_THREAD_ACTION_GROUPS,
   experimental_useThreadActions,
   experimental_useSidebarThreadSplit,
+  experimental_useSidebarThreadDecoration,
+  experimental_useSidebarThreadRowDecoration,
   experimental_ProviderIcon as ProviderIcon,
   ThreadTitle,
   useSidebarSplitLayout,
@@ -51,6 +53,8 @@ import {
   useSidebarThreadRowStatus,
   useSidebarThreadShortcut,
   useSdk,
+  type ExperimentalResolvedSidebarThreadDecoration,
+  type ExperimentalResolvedSidebarThreadRowDecoration,
   type PluginSidebarSplitPane,
   type PluginThreadActionsInlineItem,
   type PluginThreadActionsTriggerProps,
@@ -59,12 +63,17 @@ import {
 } from "@get-bb/plugin-sdk/app";
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import {
+  useThreadRowPullRequest,
+  type ThreadRowPullRequest,
+} from "./githubPrStatus.js";
+import {
   NO_THREAD_IDS,
   useThreadsHaveDraft,
 } from "../list/sidebarDraftPresence.js";
 import { useSidebarProjectName } from "../model/use-sidebar-data.js";
 import {
   sidebarShowProviderIconsAtom,
+  sidebarTwoLineRowsAtom,
   threadRowActionsAtom,
 } from "../preferences/atoms.js";
 import { ShortcutPill } from "@/components/ui/shortcut-pill";
@@ -87,6 +96,10 @@ import {
   usePluginThreadDecoration,
 } from "./pluginThreadDecoration.js";
 import { SidebarRowControls } from "./SidebarRowControls.js";
+import {
+  ThreadRowSecondLine,
+  useThreadRowSecondLine,
+} from "./ThreadRowSecondLine.js";
 import {
   SIDEBAR_CONTROL_BUTTON_CLASS,
   SIDEBAR_ROW_BASE_CLASS,
@@ -180,6 +193,17 @@ interface ThreadRowProps {
   options: ThreadRowOptions;
 }
 
+interface ThreadRowSourcesProps extends ThreadRowProps {
+  isOutsideProjectHeader: boolean;
+  projectDecoration: ExperimentalResolvedSidebarThreadDecoration | null;
+  rowDecoration: ExperimentalResolvedSidebarThreadRowDecoration | null;
+}
+
+interface ThreadRowBodyProps extends ThreadRowSourcesProps {
+  twoLineRows: boolean;
+  pullRequest: ThreadRowPullRequest | null;
+}
+
 type ThreadRowClickCaptureHandler = MouseEventHandler<HTMLDivElement>;
 
 interface ThreadRowContainerArgs {
@@ -218,9 +242,12 @@ function getHoverActionsInsetStyle(actionCount: number): CSSProperties {
   } as CSSProperties;
 }
 
-function getThreadRowStyle(depth: number): CSSProperties {
+function getThreadRowStyle(depth: number, isTwoLine: boolean): CSSProperties {
   return {
     paddingLeft: getSidebarThreadRowPaddingLeft(depth),
+    ...(isTwoLine
+      ? ({ "--bb-sidebar-sticky-tier-height": "auto" } as CSSProperties)
+      : {}),
   };
 }
 
@@ -381,13 +408,69 @@ function useThreadSplitMiniMap(
   }, [layout, threadId]);
 }
 
-function ThreadRowComponent({
+function ThreadRowComponent(props: ThreadRowProps) {
+  const isOutsideProjectHeader =
+    useContext(SidebarHeaderProjectContext) !== props.thread.projectId;
+  return isOutsideProjectHeader ? (
+    <PluginDecoratedThreadRow {...props} />
+  ) : (
+    <ThreadRowWithSecondLineSources
+      {...props}
+      isOutsideProjectHeader={false}
+      projectDecoration={null}
+      rowDecoration={null}
+    />
+  );
+}
+
+function PluginDecoratedThreadRow(props: ThreadRowProps) {
+  const projectDecoration = experimental_useSidebarThreadDecoration(
+    props.thread.projectId,
+  );
+  const rowDecoration = experimental_useSidebarThreadRowDecoration(
+    props.thread.id,
+    props.thread.projectId,
+  );
+  return (
+    <ThreadRowWithSecondLineSources
+      {...props}
+      isOutsideProjectHeader
+      projectDecoration={projectDecoration}
+      rowDecoration={rowDecoration}
+    />
+  );
+}
+
+function ThreadRowWithSecondLineSources(props: ThreadRowSourcesProps) {
+  const twoLineRows = useAtomValue(sidebarTwoLineRowsAtom);
+  const environment = props.thread.environment;
+  return twoLineRows && environment?.branchName && environment.id ? (
+    <ThreadRowWithPullRequest {...props} environmentId={environment.id} />
+  ) : (
+    <ThreadRowBody {...props} twoLineRows={twoLineRows} pullRequest={null} />
+  );
+}
+
+function ThreadRowWithPullRequest({
+  environmentId,
+  ...props
+}: ThreadRowSourcesProps & { environmentId: string }) {
+  const pullRequest = useThreadRowPullRequest(environmentId);
+  return <ThreadRowBody {...props} twoLineRows pullRequest={pullRequest} />;
+}
+
+function ThreadRowBody({
   thread,
   crossProjectId,
   isActive,
   onProjectSelect,
   options,
-}: ThreadRowProps) {
+  isOutsideProjectHeader,
+  projectDecoration,
+  rowDecoration,
+  twoLineRows,
+  pullRequest,
+}: ThreadRowBodyProps) {
   const [isDropdownActionsOpen, setIsDropdownActionsOpen] = useState(false);
   const [isContextActionsOpen, setIsContextActionsOpen] = useState(false);
   const sdk = useSdk();
@@ -398,9 +481,10 @@ function ThreadRowComponent({
   const multiSelection = useMultiSelectionContaining(thread.id);
   const showProviderIcons = useAtomValue(sidebarShowProviderIconsAtom);
   const providers = useContext(SidebarProvidersContext);
-  const provider = showProviderIcons
-    ? providers.find((candidate) => candidate.id === thread.providerId)
-    : undefined;
+  const provider =
+    showProviderIcons && rowDecoration?.icon == null
+      ? providers.find((candidate) => candidate.id === thread.providerId)
+      : undefined;
   const shortcut = useSidebarThreadShortcut(thread.id);
   const pluginThreadRowStatus = useSidebarThreadRowStatus(thread.id);
   const { hasUnsubmittedDraft: hasComposerDraft } = useSidebarThreadDraft(
@@ -412,10 +496,24 @@ function ThreadRowComponent({
     hasComposerDraft,
   );
   const labelTitle = thread.displayTitle;
-  const decoration = usePluginThreadDecoration(thread.id);
-  const showsProjectLeading =
-    useContext(SidebarHeaderProjectContext) !== thread.projectId;
-  const description = decoration?.description ?? null;
+  const groupDecoration = usePluginThreadDecoration(thread.id);
+  const rowIcon = groupDecoration?.icon ?? rowDecoration?.icon ?? null;
+  const rowTrailing =
+    groupDecoration?.trailing ?? rowDecoration?.trailing ?? null;
+  const description =
+    groupDecoration?.description ?? rowDecoration?.description ?? null;
+  const secondLine = useThreadRowSecondLine({
+    thread,
+    isOutsideProjectHeader,
+    projectDecoration,
+    label: rowDecoration?.label ?? null,
+    pullRequest,
+  });
+  const showsSecondLine = twoLineRows && secondLine !== null;
+  const showsProjectLeading = isOutsideProjectHeader && !showsSecondLine;
+  const lineOneHeightClass = options.isCompact
+    ? COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS
+    : COARSE_POINTER_ROW_HEIGHT_CLASS;
   const crossProjectName = useSidebarProjectName(crossProjectId);
   const crossProjectLabel =
     crossProjectId === null
@@ -565,9 +663,7 @@ function ThreadRowComponent({
     SIDEBAR_ROW_BASE_CLASS,
     LIST_HOVER_TRANSITION,
     parentOptions?.stickyLevel === undefined && "relative",
-    options.isCompact
-      ? COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS
-      : COARSE_POINTER_ROW_HEIGHT_CLASS,
+    showsSecondLine ? "h-auto items-start pb-1" : lineOneHeightClass,
     showActive
       ? SIDEBAR_ROW_SELECTED_STATE_CLASS
       : SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
@@ -579,7 +675,7 @@ function ThreadRowComponent({
     reorderPlacement && REORDER_PLACEMENT_CLASS[reorderPlacement],
     isCustomizingActions && "bg-sidebar-accent",
   );
-  const rowStyle = getThreadRowStyle(options.depth);
+  const rowStyle = getThreadRowStyle(options.depth, showsSecondLine);
   const parentGuideLeft =
     options.depth > 0 ? getSidebarThreadGroupLineLeft(options.depth - 1) : null;
   const handleRowClickCapture = useCallback<ThreadRowClickCaptureHandler>(
@@ -625,6 +721,117 @@ function ThreadRowComponent({
     }
     rename.onCloseAutoFocus(event);
   };
+
+  const lineOne = (
+    <>
+      <span
+        className={cn(
+          "pointer-events-none relative flex min-w-0 items-center self-stretch",
+          ((crossProjectLabel === null && (!parentOptions || !hasChildren)) ||
+            isEditing) &&
+            "flex-1",
+        )}
+      >
+        {provider ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                data-sidebar-thread-provider={provider.id}
+                role="img"
+                aria-label={provider.displayName}
+                className="pointer-events-auto relative z-[31] flex size-4 shrink-0 items-center justify-center mr-1.5 text-muted-foreground"
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  rowLinkRef.current?.click();
+                }}
+              >
+                <ProviderIcon
+                  providerKind="agent"
+                  provider={provider}
+                  className="size-4"
+                />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top">{provider.displayName}</TooltipContent>
+          </Tooltip>
+        ) : null}
+        <PluginThreadDepthRail depth={groupDecoration?.depth ?? 0} />
+        {showsProjectLeading ? (
+          <PluginThreadProjectLeading
+            projectId={thread.projectId}
+            onActivate={() => rowLinkRef.current?.click()}
+          />
+        ) : null}
+        {rowIcon === null ? null : (
+          <span className="mr-1.5 flex shrink-0">
+            <PluginRowIcon icon={rowIcon} />
+          </span>
+        )}
+        {isEditing ? (
+          <span className="pointer-events-auto relative z-10 min-w-0 flex-1 overflow-visible">
+            {editor}
+          </span>
+        ) : (
+          <span
+            className={cn(
+              "bb-thread-title",
+              (crossProjectLabel !== null ||
+                description !== null ||
+                rowTrailing !== null) &&
+                "min-w-0 truncate",
+            )}
+            title={labelTitle}
+            onDoubleClick={startTitleEditing}
+          >
+            <ThreadTitle threadId={thread.id} />
+          </span>
+        )}
+        {description === null || isEditing ? null : (
+          <span
+            data-sidebar-thread-description=""
+            className="ml-2 shrink-0 truncate text-subtle-foreground"
+          >
+            {description}
+          </span>
+        )}
+        {rowTrailing === null || isEditing ? null : (
+          <PluginRowTrailing trailing={rowTrailing} />
+        )}
+      </span>
+      {crossProjectLabel !== null ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              data-sidebar-thread-cross-project=""
+              role="img"
+              aria-label={crossProjectLabel}
+              className="relative z-[31] flex size-5 shrink-0 items-center justify-center text-muted-foreground"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                rowLinkRef.current?.click();
+              }}
+            >
+              <Icon name="FolderExport" className="size-3.5" aria-hidden />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top">{crossProjectLabel}</TooltipContent>
+        </Tooltip>
+      ) : null}
+      {parentOptions && hasChildren ? (
+        <SidebarChildToggleChevron
+          disabled={isEditing}
+          className={isEditing ? "hidden" : undefined}
+          isCollapsed={isParentCollapsed}
+          expandLabel={`Expand ${labelTitle} threads`}
+          collapseLabel={`Collapse ${labelTitle} threads`}
+          onToggle={() => parentOptions.onToggleCollapsed(thread.id)}
+          revealOnHover={!isParentCollapsed}
+        />
+      ) : null}
+    </>
+  );
 
   const rowContent = (
     <>
@@ -689,112 +896,21 @@ function ThreadRowComponent({
           aria-keyshortcuts={shortcut?.ariaKeyshortcuts}
           className="absolute inset-0 rounded-md outline-none"
         />
-        <span
-          className={cn(
-            "pointer-events-none relative flex min-w-0 items-center self-stretch",
-            ((crossProjectLabel === null && (!parentOptions || !hasChildren)) ||
-              isEditing) &&
-              "flex-1",
-          )}
-        >
-          {provider ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span
-                  data-sidebar-thread-provider={provider.id}
-                  role="img"
-                  aria-label={provider.displayName}
-                  className="pointer-events-auto relative z-[31] flex size-4 shrink-0 items-center justify-center mr-1.5 text-muted-foreground"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    rowLinkRef.current?.click();
-                  }}
-                >
-                  <ProviderIcon
-                    providerKind="agent"
-                    provider={provider}
-                    className="size-4"
-                  />
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="top">{provider.displayName}</TooltipContent>
-            </Tooltip>
-          ) : null}
-          <PluginThreadDepthRail depth={decoration?.depth ?? 0} />
-          {showsProjectLeading ? (
-            <PluginThreadProjectLeading
-              projectId={thread.projectId}
-              onActivate={() => rowLinkRef.current?.click()}
-            />
-          ) : null}
-          {decoration?.icon == null ? null : (
-            <span className="mr-1.5 flex shrink-0">
-              <PluginRowIcon icon={decoration.icon} />
-            </span>
-          )}
-          {isEditing ? (
-            <span className="pointer-events-auto relative z-10 min-w-0 flex-1 overflow-visible">
-              {editor}
-            </span>
-          ) : (
+        {showsSecondLine && secondLine !== null ? (
+          <span className="flex min-w-0 flex-1 flex-col self-stretch">
             <span
               className={cn(
-                "bb-thread-title",
-                (crossProjectLabel !== null ||
-                  description !== null ||
-                  decoration?.trailing != null) &&
-                  "min-w-0 truncate",
+                "flex min-w-0 items-center gap-1.5",
+                lineOneHeightClass,
               )}
-              title={labelTitle}
-              onDoubleClick={startTitleEditing}
             >
-              <ThreadTitle threadId={thread.id} />
+              {lineOne}
             </span>
-          )}
-          {description === null || isEditing ? null : (
-            <span
-              data-sidebar-thread-description=""
-              className="ml-2 shrink-0 truncate text-subtle-foreground"
-            >
-              {description}
-            </span>
-          )}
-          {decoration?.trailing == null || isEditing ? null : (
-            <PluginRowTrailing trailing={decoration.trailing} />
-          )}
-        </span>
-        {crossProjectLabel !== null ? (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                data-sidebar-thread-cross-project=""
-                role="img"
-                aria-label={crossProjectLabel}
-                className="relative z-[31] flex size-5 shrink-0 items-center justify-center text-muted-foreground"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  rowLinkRef.current?.click();
-                }}
-              >
-                <Icon name="FolderExport" className="size-3.5" aria-hidden />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="top">{crossProjectLabel}</TooltipContent>
-          </Tooltip>
-        ) : null}
-        {parentOptions && hasChildren ? (
-          <SidebarChildToggleChevron
-            disabled={isEditing}
-            className={isEditing ? "hidden" : undefined}
-            isCollapsed={isParentCollapsed}
-            expandLabel={`Expand ${labelTitle} threads`}
-            collapseLabel={`Collapse ${labelTitle} threads`}
-            onToggle={() => parentOptions.onToggleCollapsed(thread.id)}
-            revealOnHover={!isParentCollapsed}
-          />
-        ) : null}
+            <ThreadRowSecondLine line={secondLine} />
+          </span>
+        ) : (
+          lineOne
+        )}
       </span>
       {rowDragBindings && !rowDragBindings.disabled && !isActionsOpen ? (
         <SidebarThreadDragChip
@@ -807,6 +923,7 @@ function ThreadRowComponent({
         data-sidebar-thread-trailing=""
         className={cn(
           "flex shrink-0 items-center gap-0.5",
+          showsSecondLine && lineOneHeightClass,
           !isActionsOpen &&
             "group-data-[sidebar-touch-armed=true]/thread-row:hidden",
           (isEditing || isCustomizingActions) && "hidden",
