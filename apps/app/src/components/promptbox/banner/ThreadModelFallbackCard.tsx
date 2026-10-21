@@ -31,6 +31,11 @@ function modelLabel(model: string): string {
   return [name, version].filter(Boolean).join(" ") || model;
 }
 
+const REASON_LABELS: Record<ThreadTimelineModelFallback["reason"], string> = {
+  refusal: "safeguards flagged the request",
+  provider: "the original model was unavailable",
+};
+
 export function ThreadModelFallbackCard({
   fallback,
   threadId,
@@ -64,8 +69,8 @@ export function ThreadModelFallbackCard({
           className="min-w-0 flex-1 truncate text-muted-foreground"
           title={fallback.message}
         >
-          Switched from {modelLabel(fallback.originalModel)} to{" "}
-          {modelLabel(fallback.fallbackModel)}
+          Switched to {modelLabel(fallback.fallbackModel)}:{" "}
+          {REASON_LABELS[fallback.reason]}
         </span>
         <button
           type="button"

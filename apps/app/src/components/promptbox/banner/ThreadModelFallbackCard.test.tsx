@@ -25,7 +25,9 @@ describe("ThreadModelFallbackCard", () => {
     );
 
     expect(screen.getByText("Model fallback")).toBeTruthy();
-    expect(screen.getByText("Switched from Fable 5 to Opus 4.8")).toBeTruthy();
+    expect(
+      screen.getByText("Switched to Opus 4.8: safeguards flagged the request"),
+    ).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Dismiss model fallback" }),
@@ -35,6 +37,26 @@ describe("ThreadModelFallbackCard", () => {
     first.unmount();
     render(<ThreadModelFallbackCard fallback={fallback} threadId="thread-1" />);
     expect(screen.queryByText("Model fallback")).toBeNull();
+  });
+
+  it("names a provider fallback reason and keeps the raw provider message on hover", () => {
+    render(
+      <ThreadModelFallbackCard
+        fallback={{
+          ...fallback,
+          reason: "provider",
+          message: "Opus 5 is overloaded. Switched to Opus 4.8.",
+        }}
+        threadId="thread-1"
+      />,
+    );
+
+    const summary = screen.getByText(
+      "Switched to Opus 4.8: the original model was unavailable",
+    );
+    expect(summary.getAttribute("title")).toBe(
+      "Opus 5 is overloaded. Switched to Opus 4.8.",
+    );
   });
 
   it("shows a later fallback occurrence after an earlier one was dismissed", () => {
