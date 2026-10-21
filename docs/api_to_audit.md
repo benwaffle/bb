@@ -2616,6 +2616,27 @@ tooltip and accessible label; clicking it opens the thread.
 3. **Overlap.** Decide whether this should merge with
    `experimental_sidebarProjectDecoration` into one per-project slot.
 
+**Per-thread hook (added 2026-10-21).** The registration also takes an
+optional `useThreadDecoration(threadId, projectId)` returning
+`{ icon?, label?, description?, trailing? }` or `null`; `icon`,
+`description`, and `trailing` reuse the `experimental_sidebarThreadGroups`
+thread row shapes. At least one of `useDecoration` and `useThreadDecoration`
+is required. Thread-list providers read it with
+`experimental_useSidebarThreadRowDecoration(threadId, projectId)`, which
+requests the hook for that row; the first plugin by id with a valid field
+wins. Consumer: the pr-review plugin, whose ticket groups and PR icons do not
+render in flat modes. Core caller: the bundled Thread list's `ThreadRow`, for
+the same rows that read the per-project decoration. It draws `icon` in place
+of the provider icon, `description` and `trailing` as for group rows, and
+`label` on the row's second line.
+
+4. **Per-row cost.** The host mounts one hook per plugin per visible flat
+   row. Measure with long flat lists, or batch into one hook taking every
+   requested thread id.
+5. **Merging with groups.** Group thread rows render only under a project
+   header, where this hook does not run, so a plugin describes the same
+   thread twice. Decide whether one hook should serve both.
+
 ## `app.slots.experimental_threadHeaderAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** There are no consumers, and item 1 (merging

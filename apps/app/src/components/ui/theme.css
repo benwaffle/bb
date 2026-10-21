@@ -167,16 +167,14 @@
     );
     /* The first pinned parent level (a parent thread or worktree
        group header) sits directly below the project row. Deeper levels stack
-       from this base via --bb-sidebar-sticky-parent-level (set inline per row),
-       capped in JS so a deep chain can't pin more ancestors than the viewport
+       from this base by the rendered heights of their pinned ancestors
+       (--bb-sidebar-sticky-parent-offset) plus one child gap per level
+       (--bb-sidebar-sticky-parent-level), both set inline per row. JS caps the
+       level so a deep chain can't pin more ancestors than the viewport
        affords. The section variant (no project row) overrides the base below. */
     --bb-sidebar-sticky-parent-base-top: calc(
       var(--bb-sidebar-sticky-project-top) +
         var(--bb-sidebar-sticky-row-height) + var(--bb-sidebar-sticky-row-gap)
-    );
-    --bb-sidebar-sticky-parent-stride: calc(
-      var(--bb-sidebar-sticky-row-height) +
-        var(--bb-sidebar-sticky-child-row-gap)
     );
     --bb-sidebar-sticky-parent-base-z: 40;
 
@@ -441,14 +439,15 @@
   }
 
   [data-sidebar-sticky-stack] [data-sidebar-sticky-tier="parent"] {
-    /* Depth-driven: each level pins one row-stride below the previous, so a
-       chain of nested parents stacks without per-level CSS. The level is set
-       inline per row (see SidebarStickyTier); JS caps how many levels get the
-       tier at all. */
+    /* Each level pins directly below its pinned ancestors, whose rendered
+       heights SidebarStickyGroup sums into the inline offset, so one-line and
+       two-line parents stack without per-level CSS. JS caps how many levels
+       get the tier at all. */
     --bb-sidebar-sticky-tier-top: calc(
       var(--bb-sidebar-sticky-parent-base-top) +
+        var(--bb-sidebar-sticky-parent-offset, 0px) +
         var(--bb-sidebar-sticky-parent-level, 0) *
-        var(--bb-sidebar-sticky-parent-stride)
+        var(--bb-sidebar-sticky-child-row-gap)
     );
     --bb-sidebar-sticky-tier-height: var(--bb-sidebar-sticky-row-height);
     /* Shallower ancestors win the overlap, so z-index descends with depth. */
