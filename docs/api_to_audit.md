@@ -2617,10 +2617,17 @@ every provider's groups, in plugin id order and with a host-assigned `id`
 and `keepOrder` drop the entries and ignore the flag, so providers list
 placed threads in `threadIds` too.
 
-The bundled Thread list applies the groups in Organize → By project. Among a
+The bundled Thread list applies the groups in every Organize mode. Among a
 project's root threads, a group takes the threads it names that no earlier
 group claimed. It renders as a collapsible header when it holds at least two
-threads or any placeholder rows; otherwise its thread stays a plain row.
+threads or any placeholder rows; otherwise its thread stays a plain row. In
+the flat lists of Custom and By machine modes, a group renders only when at
+least one of its threads is in the list: its header takes the position of its
+highest-sorting member, shows the project's decoration leading and title (or
+the project name) after the label, and nests its threads, which leave their
+standalone positions and drop the project from their second line. In Custom
+mode the group joins the custom section of its highest-sorting member; in By
+machine mode each machine section groups its own members.
 Plugin groups apply before worktree grouping. Without `keepOrder` the group's
 threads follow the list's sort, above its placeholder rows; with it, threads
 only `threadIds` lists come first in that order, then `rows` as given. A
@@ -2653,9 +2660,10 @@ its group.
 
 **Audit before stabilizing.**
 
-1. **Modes.** Groups apply only in By project mode. Decide whether
-   chronological and machine modes should apply them, and how a group spans
-   custom sections there.
+1. **Modes.** Flat modes place a group in the custom section of its
+   highest-sorting member and split it across machine sections, repeating
+   its placeholder rows in each. Decide whether a group should instead span
+   sections.
 2. **Placeholder rows.** Rows carry plugin callbacks into host-rendered UI.
    Confirm a click handler plus one button is enough, whether the four tones
    and the dot/text trailing cover providers' states, and whether rows need
