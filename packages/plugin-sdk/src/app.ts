@@ -309,6 +309,9 @@ export const experimental_useSidebarThreadGroups = runtimeFunction(
 export const experimental_useSidebarProjectDecoration = runtimeFunction(
   "experimental_useSidebarProjectDecoration",
 );
+export const experimental_useSidebarThreadDecoration = runtimeFunction(
+  "experimental_useSidebarThreadDecoration",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );
