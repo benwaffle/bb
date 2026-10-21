@@ -27,6 +27,7 @@ import {
   sidebarShowRowMetadataAtom,
   THREAD_ROW_METADATA_EXPERIMENT,
   sidebarTwoLineRowsAtom,
+  sidebarDayLabelsAtom,
 } from "../preferences/atoms.js";
 
 const SIDEBAR_ORGANIZE_OPTIONS = [
@@ -157,6 +158,7 @@ function SidebarViewItems({ page }: { page: SidebarViewPage }) {
     THREAD_ROW_METADATA_EXPERIMENT,
   );
   const [twoLineRows, setTwoLineRows] = useAtom(sidebarTwoLineRowsAtom);
+  const [dayLabels, setDayLabels] = useAtom(sidebarDayLabelsAtom);
   const selectedSort = sort === "none" ? "updated" : sort;
   if (page === "filter") {
     return (
@@ -287,6 +289,19 @@ function SidebarViewItems({ page }: { page: SidebarViewPage }) {
             Two-line rows
             <span className="ml-auto inline-flex size-4 shrink-0 items-center justify-center">
               {twoLineRows && <Icon name="Check" className="size-4" />}
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            role="menuitemcheckbox"
+            aria-checked={dayLabels}
+            onSelect={(event) => {
+              event.preventDefault();
+              setDayLabels(!dayLabels);
+            }}
+          >
+            Day labels
+            <span className="ml-auto inline-flex size-4 shrink-0 items-center justify-center">
+              {dayLabels && <Icon name="Check" className="size-4" />}
             </span>
           </DropdownMenuItem>
         </DropdownMenuGroup>

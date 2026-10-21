@@ -108,6 +108,12 @@ export const preferenceDefinitions = {
     "Give thread rows a second muted line with the thread's project, plugin label, and pull request or branch. Inside a project's header the line shows only the pull request or branch, and rows with nothing to show keep one line.",
     null,
   ),
+  dayLabels: definePreference(
+    z.boolean(),
+    true,
+    "Split Custom and By machine sections into Today, Yesterday, This week, and Earlier by each thread's last update, while the list is sorted by update time newest first. Plugin groups sit in the day of their newest thread.",
+    null,
+  ),
   threadLifecycles: definePreference(
     z
       .array(z.enum(["active", "archived"]))
