@@ -2914,6 +2914,27 @@ tooltip and accessible label; clicking it opens the thread.
 3. **Overlap.** Decide whether this should merge with
    `experimental_sidebarProjectDecoration` into one per-project slot.
 
+**Per-thread hook (added 2026-10-21).** The registration also takes an
+optional `useThreadDecoration(threadId, projectId)` returning
+`{ icon?, label?, description?, trailing? }` or `null`; `icon`,
+`description`, and `trailing` reuse the `experimental_sidebarThreadGroups`
+thread row shapes. At least one of `useDecoration` and `useThreadDecoration`
+is required. Thread-list providers read it with
+`experimental_useSidebarThreadRowDecoration(threadId, projectId)`, which
+requests the hook for that row; the first plugin by id with a valid field
+wins. Consumer: the pr-review plugin, whose ticket groups and PR icons do not
+render in flat modes. Core caller: the bundled Thread list's `ThreadRow`, for
+the same rows that read the per-project decoration. It draws `icon` in place
+of the provider icon, `description` and `trailing` as for group rows, and
+`label` on the row's second line.
+
+4. **Per-row cost.** The host mounts one hook per plugin per visible flat
+   row. Measure with long flat lists, or batch into one hook taking every
+   requested thread id.
+5. **Merging with groups.** Group thread rows render only under a project
+   header, where this hook does not run, so a plugin describes the same
+   thread twice. Decide whether one hook should serve both.
+
 ## `app.slots.experimental_threadInfoRow` / `app.slots.experimental_threadInfoSection` / `experimental_THREAD_INFO_ROW_GROUPS` / `experimental_THREAD_INFO_SECTION_GROUPS` / `experimental_InfoSection` / `experimental_DetailRow` / `experimental_InfoList` / `experimental_InfoListRow` (`@get-bb/plugin-sdk/app`)
 
 A registration is `{ id, group, order?, component }`. The component receives
@@ -3000,7 +3021,8 @@ draw without waiting.
 `experimental_ThreadRowMetadata` on a line under each row's title, the same call a
 plugin-built list makes, only while the `threadRowMetadata` experiment is on
 and the user turns on Organize → Rows → Metadata (`showRowMetadata`); both are
-off by default. The row grows to two lines only
+off by default. While Two-line rows (`twoLineRows`) gives the row a second
+line, the items join the end of that line instead. The row grows to two lines only
 while an item draws something, the line is hidden while the row is renamed or
 customized, and clicks on it go through the row's own click handling. The
 GitHub PR Status plugin registers the first item: the current-branch pull

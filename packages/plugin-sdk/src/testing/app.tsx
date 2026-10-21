@@ -50,6 +50,7 @@ import {
   type ExperimentalResolvedSidebarProjectDecoration,
   type ExperimentalSidebarProjectDecorationRegistration,
   type ExperimentalResolvedSidebarThreadDecoration,
+  type ExperimentalResolvedSidebarThreadRowDecoration,
   type ExperimentalSidebarThreadDecorationRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
@@ -374,6 +375,10 @@ interface SlotEnv {
   sidebarThreadDecorations: ReadonlyMap<
     string,
     ExperimentalResolvedSidebarThreadDecoration
+  >;
+  sidebarThreadRowDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarThreadRowDecoration
   >;
   sidebarDraftThreadIds: ReadonlySet<string>;
   experiments: ReadonlySet<string>;
@@ -1975,6 +1980,15 @@ const testPluginSdkApp = {
       ).sidebarThreadDecorations.get(projectId) ?? null
     );
   },
+  experimental_useSidebarThreadRowDecoration(
+    threadId,
+  ): ExperimentalResolvedSidebarThreadRowDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarThreadRowDecoration",
+      ).sidebarThreadRowDecorations.get(threadId) ?? null
+    );
+  },
   useComposerView(): ComposerView {
     const composer = useSlotEnv("useComposerView").composer;
     const version = useSyncExternalStore(
@@ -2336,6 +2350,14 @@ export interface RenderSlotOptions<
   sidebarThreadDecorations?: Record<
     string,
     ExperimentalResolvedSidebarThreadDecoration
+  >;
+  /**
+   * Decorations `experimental_useSidebarThreadRowDecoration()` reports,
+   * keyed by thread id. Omitted → every thread reports none.
+   */
+  sidebarThreadRowDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarThreadRowDecoration
   >;
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
@@ -3315,6 +3337,9 @@ export function renderSlot<
     ),
     sidebarThreadDecorations: new Map(
       Object.entries(options.sidebarThreadDecorations ?? {}),
+    ),
+    sidebarThreadRowDecorations: new Map(
+      Object.entries(options.sidebarThreadRowDecorations ?? {}),
     ),
     sidebarDraftThreadIds,
     experiments: new Set(options.experiments ?? []),

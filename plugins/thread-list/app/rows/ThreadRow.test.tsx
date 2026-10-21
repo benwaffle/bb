@@ -16,6 +16,8 @@ import { SidebarTouchSensor } from "../dnd/sidebarTouchSensor.js";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarRenameProvider } from "./SidebarInlineRename.js";
 import type {
+  ExperimentalResolvedSidebarThreadDecoration,
+  ExperimentalResolvedSidebarThreadRowDecoration,
   PluginSidebarProject,
   PluginSidebarSplitLayout,
   PluginSidebarThread,
@@ -33,16 +35,20 @@ import {
 } from "@get-bb/plugin-sdk/testing/app";
 import { NO_COLLAPSED_CHILD_ACTIVITY } from "../model/thread-activity.js";
 import {
-  makeSidebarEnvironment,
-  makeSidebarThread,
   makePluginProject,
+  makeSidebarEnvironment,
+  makeSidebarPullRequest,
+  pullRequestsRpc,
+  makeSidebarThread,
 } from "../model/fixtures.js";
+import { SidebarHeaderProjectContext } from "./pluginThreadDecoration.js";
 import {
   sidebarShowProviderIconsAtom,
   sidebarShowRowMetadataAtom,
 } from "../preferences/atoms.js";
 import { SidebarProjectsContext } from "../model/use-sidebar-data.js";
 import type { ThreadRowOptions } from "./ThreadRow.js";
+import type { ThreadRowPullRequest } from "./githubPrStatus.js";
 import {
   preferenceValueAtom,
   resetPreferencesSyncForTest,
@@ -95,6 +101,7 @@ interface HarnessProps {
   projects?: PluginSidebarProject[];
   providers?: PluginProvidersState["providers"];
   isCompactViewport?: boolean;
+  headerProjectId?: string | null;
   crossProjectId?: string | null;
   isActive?: boolean;
   options?: ThreadRowOptions;
@@ -110,6 +117,7 @@ function ThreadRowHarness({
   projects = [],
   providers = [],
   isCompactViewport,
+  headerProjectId = null,
   crossProjectId = null,
   isActive = false,
   options = DEFAULT_OPTIONS,
@@ -151,16 +159,20 @@ function ThreadRowHarness({
                       onKeyDown={onRowEvent}
                       onClick={onRowEvent}
                     >
-                      {row}
-                      {siblings.map((sibling) => (
-                        <ThreadRow
-                          key={sibling.id}
-                          thread={sibling}
-                          crossProjectId={crossProjectId}
-                          isActive={false}
-                          options={options}
-                        />
-                      ))}
+                      <SidebarHeaderProjectContext.Provider
+                        value={headerProjectId}
+                      >
+                        {row}
+                        {siblings.map((sibling) => (
+                          <ThreadRow
+                            key={sibling.id}
+                            thread={sibling}
+                            crossProjectId={crossProjectId}
+                            isActive={false}
+                            options={options}
+                          />
+                        ))}
+                      </SidebarHeaderProjectContext.Provider>
                     </div>
                   </ThreadRowActionsCustomizingContext.Provider>
                 </CustomizeRowActionsContext.Provider>
@@ -193,6 +205,9 @@ interface RenderThreadRowArgs extends Omit<HarnessProps, "thread"> {
   threadActions?: TestThreadActionsResolver;
   threadBulkActions?: TestThreadBulkActionsResolver;
   experiments?: string[];
+  projectDecoration?: ExperimentalResolvedSidebarThreadDecoration;
+  rowDecoration?: ExperimentalResolvedSidebarThreadRowDecoration;
+  pullRequest?: ThreadRowPullRequest;
 }
 
 function renderThreadRow({
@@ -208,6 +223,9 @@ function renderThreadRow({
   threadActions = hostThreadActions(),
   threadBulkActions,
   experiments,
+  projectDecoration,
+  rowDecoration,
+  pullRequest,
   ...harness
 }: RenderThreadRowArgs = {}): RenderedSlot & {
   rerenderThreadRow(nextThread: PluginSidebarThread): void;
@@ -239,6 +257,17 @@ function renderThreadRow({
       threadActions,
       threadBulkActions,
       experiments,
+      sidebarThreadDecorations: projectDecoration
+        ? { [thread.projectId]: projectDecoration }
+        : {},
+      sidebarThreadRowDecorations: rowDecoration
+        ? { [thread.id]: rowDecoration }
+        : {},
+      rpc: pullRequestsRpc(
+        pullRequest && thread.environment?.id
+          ? { [thread.environment.id]: pullRequest }
+          : {},
+      ),
     },
   );
   return Object.assign(slot, {
@@ -373,6 +402,29 @@ function hostThreadActions({
   };
 }
 
+function testProvider(): PluginProvidersState["providers"][number] {
+  return {
+    id: "provider-test",
+    pluginId: "provider-test",
+    displayName: "Test Provider",
+    logoUrl: "/provider-test.svg",
+    available: true,
+    maintenance: { health: false, usage: false, installation: false },
+    capabilities: {
+      supportsThreadArchive: true,
+      supportsThreadRename: true,
+      supportsServiceTier: false,
+      supportsNativeUserQuestion: false,
+      supportsFork: true,
+      supportsSessionRewind: false,
+      modelCatalogScope: "workspace",
+      permissionModes: ["accept-edits", "auto", "full"],
+    },
+    composerActions: [],
+    completedTurnDisplay: "collapse",
+  };
+}
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
@@ -381,28 +433,129 @@ afterEach(() => {
 });
 
 describe("ThreadRow", () => {
+  const BRANCHED_THREAD = createThread({
+    environment: makeSidebarEnvironment({ branchName: "feature/rows" }),
+  });
+  const APP_PROJECT = makePluginProject({ id: "proj_test", name: "App" });
+  const ROW_DECORATION: ExperimentalResolvedSidebarThreadRowDecoration = {
+    icon: { name: "GitPullRequest", tone: "accent" },
+    label: "CORE-123",
+    description: null,
+    trailing: null,
+  };
+  const secondLine = (container: HTMLElement) =>
+    container.querySelector("[data-sidebar-thread-second-line]")
+      ?.textContent ?? null;
+
+  it("reads project, plugin label, and pull request on a flat row's second line", async () => {
+    const slot = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projects: [APP_PROJECT],
+      providers: [testProvider()],
+      projectDecoration: { leading: "🚀", title: "App" },
+      rowDecoration: ROW_DECORATION,
+      pullRequest: makeSidebarPullRequest({ number: 12, state: "draft" }),
+    });
+    await waitFor(() =>
+      expect(secondLine(slot.container)).toBe("🚀App·CORE-123·#12"),
+    );
+    expect(
+      slot.container
+        .querySelector("[data-sidebar-thread-second-line-pull-request]")
+        ?.getAttribute("data-sidebar-thread-second-line-pull-request"),
+    ).toBe("draft");
+    expect(
+      slot.container.querySelector('[data-sidebar-plugin-row-icon="accent"]'),
+    ).not.toBeNull();
+    expect(
+      slot.container.querySelector("[data-sidebar-thread-provider]"),
+    ).toBeNull();
+    expect(
+      slot.container.querySelector("[data-sidebar-thread-project-leading]"),
+    ).toBeNull();
+  });
+
+  it("falls back to the branch and leaves out missing pieces", () => {
+    const slot = renderThreadRow({ thread: BRANCHED_THREAD });
+    expect(secondLine(slot.container)).toBe("feature/rows");
+    cleanup();
+
+    const bare = renderThreadRow();
+    expect(secondLine(bare.container)).toBeNull();
+  });
+
+  it("shows only the branch or pull request under the row's own project header", async () => {
+    const slot = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      headerProjectId: "proj_test",
+      projects: [APP_PROJECT],
+      providers: [testProvider()],
+      projectDecoration: { leading: "🚀", title: "App" },
+      rowDecoration: ROW_DECORATION,
+      pullRequest: makeSidebarPullRequest({ number: 12 }),
+    });
+    await waitFor(() => expect(secondLine(slot.container)).toBe("#12"));
+    expect(
+      slot.container.querySelector("[data-sidebar-plugin-row-icon]"),
+    ).toBeNull();
+    expect(
+      slot.container.querySelector("[data-sidebar-thread-provider]"),
+    ).not.toBeNull();
+    cleanup();
+
+    const unbranched = renderThreadRow({
+      headerProjectId: "proj_test",
+      projects: [APP_PROJECT],
+    });
+    expect(secondLine(unbranched.container)).toBeNull();
+  });
+
+  it("keeps one line with the project leading when two-line rows are off", () => {
+    getDefaultStore().set(preferenceValueAtom("twoLineRows"), false);
+    const slot = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projects: [APP_PROJECT],
+      projectDecoration: { leading: "🚀", title: "App" },
+      rowDecoration: ROW_DECORATION,
+    });
+    expect(secondLine(slot.container)).toBeNull();
+    expect(
+      slot.container.querySelector("[data-sidebar-thread-project-leading]")
+        ?.textContent,
+    ).toBe("🚀");
+    expect(
+      slot.container.querySelector('[data-sidebar-plugin-row-icon="accent"]'),
+    ).not.toBeNull();
+  });
+
+  it("appends other plugins' metadata to the second line instead of a third", () => {
+    getDefaultStore().set(sidebarShowRowMetadataAtom, true);
+    const slot = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      experiments: ["threadRowMetadata"],
+    });
+    const metadata = slot.container.querySelectorAll(
+      "[data-thread-row-metadata]",
+    );
+    expect(metadata).toHaveLength(1);
+    expect(
+      metadata[0]?.closest("[data-sidebar-thread-second-line]"),
+    ).not.toBeNull();
+    cleanup();
+
+    getDefaultStore().set(preferenceValueAtom("twoLineRows"), false);
+    const oneLine = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      experiments: ["threadRowMetadata"],
+    });
+    expect(secondLine(oneLine.container)).toBeNull();
+    expect(
+      oneLine.container.querySelector("[data-thread-row-metadata]"),
+    ).not.toBeNull();
+  });
+
   it("shows the registered provider icon by default and keeps it visible during inline rename", async () => {
-    const provider: PluginProvidersState["providers"][number] = {
-      id: "provider-test",
-      pluginId: "provider-test",
-      displayName: "Test Provider",
-      logoUrl: "/provider-test.svg",
-      available: true,
-      maintenance: { health: false, usage: false, installation: false },
-      capabilities: {
-        supportsThreadArchive: true,
-        supportsThreadRename: true,
-        supportsServiceTier: false,
-        supportsNativeUserQuestion: false,
-        supportsFork: true,
-        supportsSessionRewind: false,
-        modelCatalogScope: "workspace",
-        permissionModes: ["accept-edits", "auto", "full"],
-      },
-      composerActions: [],
-      completedTurnDisplay: "collapse",
-    };
-    const slot = renderThreadRow({ providers: [provider] });
+    const slot = renderThreadRow({ providers: [testProvider()] });
     expect(screen.getByRole("img", { name: "Test Provider" })).toBeTruthy();
     expect(
       slot.container.querySelector('[data-provider-logo="/provider-test.svg"]'),
