@@ -2378,26 +2378,38 @@ export interface ExperimentalSidebarProjectDecorationRegistration {
 }
 
 /**
- * What a plugin shows on a sidebar thread row for the row's project when the
- * row is not nested under that project's header, such as in Custom or By
- * machine mode or the Pinned section.
+ * What a plugin shows for a project on sidebar thread rows that are not
+ * nested under that project's header, such as in Custom or By machine mode or
+ * the Pinned section.
  */
 export interface ExperimentalSidebarThreadDecoration {
-  /** Emoji or short text rendered before the thread title. */
+  /**
+   * Emoji or short text for the project. Thread rows do not draw it; plugin
+   * group headers shown outside the project's header draw it before the
+   * project name.
+   */
   leading?: string;
-  /** Tooltip and accessible label for `leading`, such as the project name. */
+  /** Project name shown on the row's second line, such as a display name. */
   title?: string;
+  /**
+   * OKLCH hue, 0–360, for the project. Rows draw it as an edge and tint the
+   * project name on their second line. Other numbers are ignored.
+   */
+  hue?: number;
 }
 
 /**
  * A project's thread-row decoration as
  * `experimental_useSidebarThreadDecoration()` reports it: the first plugin,
- * in plugin id order, that returns a non-blank `leading`.
+ * in plugin id order, that returns a non-blank `leading` or a valid `hue`.
  */
 export interface ExperimentalResolvedSidebarThreadDecoration {
-  leading: string;
+  /** `null` when that plugin supplies no `leading`. */
+  leading: string | null;
   /** `null` when that plugin supplies no title. */
   title: string | null;
+  /** `null` when that plugin supplies no valid hue. */
+  hue: number | null;
 }
 
 /**
