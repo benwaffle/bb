@@ -656,6 +656,7 @@ void _assertAllSidebarProjectDecorationFieldsListed;
 const SIDEBAR_THREAD_DECORATION_FIELDS = [
   "leading",
   "title",
+  "hue",
 ] as const satisfies readonly (keyof ExperimentalSidebarThreadDecoration)[];
 
 type MissingSidebarThreadDecorationField = Exclude<
