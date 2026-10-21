@@ -48,6 +48,7 @@ export const {
   experimental_THREAD_ACTION_GROUPS,
   experimental_useSidebarThreadGroups,
   experimental_useSidebarProjectDecoration,
+  experimental_useSidebarThreadDecoration,
   experimental_useSidebarThreadSplit,
   experimental_useExperiment,
   experimental_useThreadContextKind,
