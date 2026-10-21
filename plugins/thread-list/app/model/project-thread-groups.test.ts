@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildFlatThreadGroups,
   buildSectionThreadList,
   buildProjectThreadGroups,
   compareByCreatedAtDescending,
@@ -686,6 +687,7 @@ function pluginGroup(
 ): PluginThreadGroupDefinition {
   return {
     id,
+    projectId: "proj_1",
     label: id,
     threadIds,
     rows: rowIds.map((rowId) => ({
@@ -770,6 +772,7 @@ describe("plugin thread groups", () => {
       [
         {
           id: "ticket",
+          projectId: "proj_1",
           label: "ticket",
           threadIds: ["base", "top", "loose", "plain"],
           rows: [
@@ -817,6 +820,7 @@ describe("plugin thread groups", () => {
       [
         {
           id: "ticket",
+          projectId: "proj_1",
           label: "ticket",
           threadIds: [],
           rows: [
@@ -885,6 +889,92 @@ describe("plugin thread groups", () => {
         collapsedEnvironmentIds: new Set(["ticket"]),
       }),
     ).toBe(1);
+  });
+});
+
+describe("plugin thread groups in flat lists", () => {
+  const crossProjectThreads = [
+    createThread({ id: "a", createdAt: 10, latestAttentionAt: 10 }),
+    createThread({
+      id: "b",
+      projectId: "proj_2",
+      createdAt: 20,
+      latestAttentionAt: 20,
+    }),
+    createThread({ id: "c", createdAt: 30, latestAttentionAt: 30 }),
+    createThread({
+      id: "d",
+      projectId: "proj_2",
+      createdAt: 40,
+      latestAttentionAt: 40,
+    }),
+  ];
+
+  it("places a group at its newest member and removes members from their flat positions", () => {
+    const items = buildSectionThreadList(
+      crossProjectThreads,
+      compareStandardThreads,
+      [],
+      false,
+      [pluginGroup("ticket", ["a", "c"], ["pr-9"])],
+    );
+
+    expect(summarizeItems(items)).toEqual([
+      "d",
+      { group: "ticket", threads: ["c", "a"], rows: ["pr-9"] },
+      "b",
+    ]);
+  });
+
+  it("drops groups that have no member thread in the list", () => {
+    const items = buildFlatThreadGroups(
+      crossProjectThreads,
+      compareStandardThreads,
+      true,
+      [
+        pluginGroup("ghost-only", [], ["pr-1"]),
+        pluginGroup("ticket", ["b"], ["pr-2"]),
+      ],
+    );
+
+    expect(summarizeItems(items)).toEqual([
+      "d",
+      "c",
+      { group: "ticket", threads: ["b"], rows: ["pr-2"] },
+      "a",
+    ]);
+  });
+
+  it("keeps the provider's stack order for nested members", () => {
+    const items = buildSectionThreadList(
+      crossProjectThreads,
+      compareStandardThreads,
+      [],
+      false,
+      [
+        {
+          ...pluginGroup("stack", []),
+          rows: [
+            { threadId: "a" },
+            { threadId: "c", depth: 1, description: "stacked on #1" },
+          ],
+          keepOrder: true,
+        },
+      ],
+    );
+
+    expect(summarizeItems(items)).toEqual([
+      "d",
+      { group: "stack", threads: ["c", "a"], rows: [] },
+      "b",
+    ]);
+    const group = items[1];
+    expect(
+      group?.kind === "plugin-group" &&
+        group.group.entries.map((entry) =>
+          entry.kind === "thread" ? entry.node.thread.id : entry.row.id,
+        ),
+    ).toEqual(["a", "c"]);
   });
 });
 
