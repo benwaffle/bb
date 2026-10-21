@@ -84,6 +84,8 @@ import {
   PluginRowIcon,
   PluginRowTrailing,
   PluginThreadDepthRail,
+  PluginThreadProjectLeading,
+  SidebarHeaderProjectContext,
   usePluginThreadDecoration,
 } from "./pluginThreadDecoration.js";
 import { SidebarRowControls } from "./SidebarRowControls.js";
@@ -454,6 +456,8 @@ function ThreadRowComponent({
   );
   const labelTitle = thread.displayTitle;
   const decoration = usePluginThreadDecoration(thread.id);
+  const showsProjectLeading =
+    useContext(SidebarHeaderProjectContext) !== thread.projectId;
   const description = decoration?.description ?? null;
   const crossProjectName = useSidebarProjectName(crossProjectId);
   const crossProjectLabel =
@@ -760,6 +764,12 @@ function ThreadRowComponent({
             </Tooltip>
           ) : null}
           <PluginThreadDepthRail depth={decoration?.depth ?? 0} />
+          {showsProjectLeading ? (
+            <PluginThreadProjectLeading
+              projectId={thread.projectId}
+              onActivate={() => rowLinkRef.current?.click()}
+            />
+          ) : null}
           {decoration?.icon == null ? null : (
             <span className="mr-1.5 flex shrink-0">
               <PluginRowIcon icon={decoration.icon} />

@@ -53,6 +53,9 @@ Read the installed SDK declarations for the exact current signatures.
   groups, for thread-list providers
 - `experimental_useSidebarProjectDecoration` — every plugin's merged
   decoration for one sidebar project header, for thread-list providers
+- `experimental_useSidebarThreadDecoration` — the plugin-provided leading
+  emoji or text for one project's thread rows shown outside its header, for
+  thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `experimental_useSidebarNavigation` — the sidebar navigation items in the
   user's saved order, the active item, Home state, and host actions to
@@ -232,6 +235,9 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalSidebarProjectDecorationRegistration`
 - `ExperimentalSidebarProjectDecoration`
 - `ExperimentalResolvedSidebarProjectDecoration`
+- `ExperimentalSidebarThreadDecorationRegistration`
+- `ExperimentalSidebarThreadDecoration`
+- `ExperimentalResolvedSidebarThreadDecoration`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`

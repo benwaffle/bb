@@ -2520,6 +2520,32 @@ pressed. The thread drop-target overlay still paints above the row.
    Confirm the cost with many projects, or batch them into one hook taking
    every requested project id.
 
+## `app.slots.experimental_sidebarThreadDecoration` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-20).** Consumer: the project-emoji plugin
+(benwaffle/bb-plugins), which shows each thread's project emoji in flat
+sidebar lists. Core caller: the bundled Thread list's `ThreadRow` calls
+`experimental_useSidebarThreadDecoration(thread.projectId)` whenever the row
+is not inside a `ProjectThreadTree` for the same project, which covers Custom
+and By machine modes, the Pinned section, and cross-project rows.
+
+**What it does.** A plugin registers `{ id, title, useDecoration }`. The
+request, hidden per-plugin mount, and hook lifetime match
+`experimental_sidebarProjectDecoration`. The hook returns
+`{ leading?, title? }` or `null`; blank strings are dropped and a decoration
+without `leading` is ignored. The first plugin by id with a `leading` wins.
+The Thread list renders `leading` before the title, with `title` as its
+tooltip and accessible label; clicking it opens the thread.
+
+**Audit before stabilizing.**
+
+1. **Merging.** Only one plugin's marker shows. Decide whether several should
+   stack, as project header `leading` nodes do.
+2. **Content.** `leading` is a plain string. Decide whether a node or an icon
+   name is needed, and whether the host should cap its length.
+3. **Overlap.** Decide whether this should merge with
+   `experimental_sidebarProjectDecoration` into one per-project slot.
+
 ## `app.slots.experimental_threadHeaderAction` (`@get-bb/plugin-sdk/app`)
 
 **Kept experimental (2026-08-22).** There are no consumers, and item 1 (merging

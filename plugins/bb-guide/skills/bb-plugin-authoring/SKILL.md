@@ -74,7 +74,7 @@ the same change.
 - Read references/frontend-core-slots.md for trusted content scripts, homepage,
   settings, navigation, thread panels, environment and machine provider
   inputs, interactions, sidebar actions, file openers, sidebar thread groups,
-  and sidebar project headers.
+  and sidebar project headers and thread rows.
 - Read references/frontend-renderer-slots.md for source, diff, message,
   timeline, palette, and provider-icon renderers or actions.
 - Read references/frontend-components.md for ThreadChat, provider controls,
