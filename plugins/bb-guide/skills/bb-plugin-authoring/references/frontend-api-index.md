@@ -56,6 +56,9 @@ Read the installed SDK declarations for the exact current signatures.
 - `experimental_useSidebarThreadDecoration` — the plugin-provided leading
   emoji or text for one project's thread rows shown outside its header, for
   thread-list providers
+- `experimental_useSidebarThreadRowDecoration` — the plugin-provided icon,
+  label, description, and trailing state for one thread row shown outside
+  its project's header, for thread-list providers
 - `experimental_useSidebarThreadSplit`
 - `experimental_useSidebarNavigation` — the sidebar navigation items in the
   user's saved order, the active item, Home state, and host actions to
@@ -238,6 +241,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalSidebarThreadDecorationRegistration`
 - `ExperimentalSidebarThreadDecoration`
 - `ExperimentalResolvedSidebarThreadDecoration`
+- `ExperimentalSidebarThreadRowDecoration`
+- `ExperimentalResolvedSidebarThreadRowDecoration`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`

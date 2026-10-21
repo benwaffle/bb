@@ -222,6 +222,9 @@ export const experimental_useSidebarProjectDecoration = runtimeFunction(
 export const experimental_useSidebarThreadDecoration = runtimeFunction(
   "experimental_useSidebarThreadDecoration",
 );
+export const experimental_useSidebarThreadRowDecoration = runtimeFunction(
+  "experimental_useSidebarThreadRowDecoration",
+);
 export const experimental_useSidebarThreadSplit = runtimeFunction(
   "experimental_useSidebarThreadSplit",
 );

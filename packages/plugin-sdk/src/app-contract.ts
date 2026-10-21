@@ -2401,17 +2401,53 @@ export interface ExperimentalResolvedSidebarThreadDecoration {
 }
 
 /**
- * Decorate sidebar thread rows by project. `useDecoration` is a React hook
- * the host calls inside the plugin's context, once per project whose threads
- * the thread list shows outside that project's header, for as long as such a
- * row is mounted. Return the same object while nothing changed.
+ * What a plugin shows on one sidebar thread row outside its project's
+ * header. `icon`, `description`, and `trailing` match a thread placed in an
+ * `experimental_sidebarThreadGroups` group (see
+ * {@link ExperimentalSidebarThreadGroupThreadRow}), so a plugin can reuse its
+ * group row model; `label` adds short text to the row's second line.
+ */
+export interface ExperimentalSidebarThreadRowDecoration {
+  /** Icon drawn in place of the row's provider icon. Absent → none. */
+  icon?: ExperimentalSidebarThreadGroupRowIcon;
+  /** Short text on the row's second line, such as a ticket key. */
+  label?: string;
+  /** Muted text shown after the thread title. */
+  description?: string;
+  /** Trailing state drawn after the title. Absent → nothing. */
+  trailing?: ExperimentalSidebarThreadGroupRowTrailing;
+}
+
+/**
+ * One thread row's decoration as
+ * `experimental_useSidebarThreadRowDecoration()` reports it: the first
+ * plugin, in plugin id order, that returns at least one valid field.
+ */
+export interface ExperimentalResolvedSidebarThreadRowDecoration {
+  icon: ExperimentalSidebarThreadGroupRowIcon | null;
+  label: string | null;
+  description: string | null;
+  trailing: ExperimentalSidebarThreadGroupRowTrailing | null;
+}
+
+/**
+ * Decorate sidebar thread rows shown outside their project's header.
+ * `useDecoration` and `useThreadDecoration` are React hooks the host calls
+ * inside the plugin's context: `useDecoration` once per project whose threads
+ * such rows show, `useThreadDecoration` once per such row, for as long as the
+ * row is mounted. Return the same object while nothing changed. Register at
+ * least one of the two.
  */
 export interface ExperimentalSidebarThreadDecorationRegistration {
   /** Unique within the plugin; letters, digits, `-`, `_`. */
   id: string;
   /** Label shown in capability details. */
   title: string;
-  useDecoration(projectId: string): ExperimentalSidebarThreadDecoration | null;
+  useDecoration?(projectId: string): ExperimentalSidebarThreadDecoration | null;
+  useThreadDecoration?(
+    threadId: string,
+    projectId: string,
+  ): ExperimentalSidebarThreadRowDecoration | null;
 }
 
 /**
@@ -4610,6 +4646,16 @@ export interface PluginSdkApp {
   experimental_useSidebarThreadDecoration(
     projectId: string,
   ): ExperimentalResolvedSidebarThreadDecoration | null;
+  /**
+   * The `experimental_sidebarThreadDecoration` `useThreadDecoration` output
+   * for one thread row, or `null` when no plugin decorates it. Calling it is
+   * what makes the host run the plugins' hooks for that thread. For
+   * thread-list providers. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useSidebarThreadRowDecoration(
+    threadId: string,
+    projectId: string,
+  ): ExperimentalResolvedSidebarThreadRowDecoration | null;
   /**
    * Per-row drag-to-split support (see {@link PluginSidebarThreadSplit}).
    * Call it once per rendered row, like the built-in sidebar does.
