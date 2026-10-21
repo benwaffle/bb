@@ -929,13 +929,25 @@ export function collectPluginAppRegistrations(
         const kind = "slots.experimental_sidebarThreadDecoration";
         const id = requireSlotId(kind, registration?.id);
         requireUniqueId(kind, seenIds.sidebarThreadDecorations, id);
-        if (typeof registration.useDecoration !== "function") {
-          throw new Error(`${kind}: "useDecoration" must be a function`);
+        const { useDecoration, useThreadDecoration } = registration;
+        for (const [field, hook] of [
+          ["useDecoration", useDecoration],
+          ["useThreadDecoration", useThreadDecoration],
+        ] as const) {
+          if (hook !== undefined && typeof hook !== "function") {
+            throw new Error(`${kind}: "${field}" must be a function`);
+          }
+        }
+        if (useDecoration === undefined && useThreadDecoration === undefined) {
+          throw new Error(
+            `${kind}: register "useDecoration", "useThreadDecoration", or both`,
+          );
         }
         collected.sidebarThreadDecorations.push({
           id,
           title: requireNonEmptyString(kind, "title", registration.title),
-          useDecoration: registration.useDecoration,
+          ...(useDecoration === undefined ? {} : { useDecoration }),
+          ...(useThreadDecoration === undefined ? {} : { useThreadDecoration }),
         });
       },
       experimental_threadHeaderAction(registration) {
