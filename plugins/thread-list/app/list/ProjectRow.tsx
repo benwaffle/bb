@@ -27,6 +27,7 @@ import {
   Fragment,
   memo,
   useCallback,
+  useContext,
   useMemo,
   useState,
   type CSSProperties,
@@ -47,6 +48,8 @@ import {
   experimental_Icon as RegisteredIcon,
   experimental_useArchiveEnvironmentThreads,
   experimental_useSidebarProjectDecoration,
+  experimental_useSidebarThreadDecoration,
+  experimental_useSidebarThreadGroups,
   useBbNavigate,
   useEnvironmentProviders,
   useSdk,
@@ -58,7 +61,10 @@ import {
   resolveEnvironmentDisplayName,
   UNNAMED_ENVIRONMENT_LABEL,
 } from "../ui/environment-workspace-display.js";
-import type { SidebarProject } from "../model/use-sidebar-data.js";
+import {
+  useSidebarProjectName,
+  type SidebarProject,
+} from "../model/use-sidebar-data.js";
 import {
   ConfirmDeleteDialog,
   ConfirmDeleteDialogContent,
@@ -1139,12 +1145,34 @@ interface PluginThreadGroupRowProps {
   onToggleEnvironmentCollapsed: (groupId: string) => void;
 }
 
+function PluginThreadGroupProjectTag({ projectId }: { projectId: string }) {
+  const decoration = experimental_useSidebarThreadDecoration(projectId);
+  const projectName = useSidebarProjectName(projectId);
+  const leading = decoration?.leading ?? null;
+  const title = decoration?.title ?? projectName ?? null;
+  if (leading === null && title === null) return null;
+  return (
+    <span
+      data-sidebar-plugin-thread-group-project={projectId}
+      className="flex min-w-0 shrink items-center gap-1 text-subtle-foreground"
+    >
+      {leading === null ? null : (
+        <span className="max-w-8 shrink-0 truncate">{leading}</span>
+      )}
+      {title === null ? null : (
+        <span className="min-w-0 truncate">{title}</span>
+      )}
+    </span>
+  );
+}
+
 function PluginThreadGroupHeader({
   dragBindings,
   group,
   rowDepth,
   stickyLevel,
   isCollapsed,
+  isOutsideProjectHeader,
   onToggleCollapsed,
 }: {
   dragBindings?: SidebarSortableDragBindings;
@@ -1152,6 +1180,7 @@ function PluginThreadGroupHeader({
   rowDepth: number;
   stickyLevel?: number;
   isCollapsed: boolean;
+  isOutsideProjectHeader: boolean;
   onToggleCollapsed: (groupId: string) => void;
 }) {
   const childActivity = group.stats.childActivity;
@@ -1215,6 +1244,9 @@ function PluginThreadGroupHeader({
           </span>
         )}
         <span className="min-w-0 truncate">{group.label}</span>
+        {isOutsideProjectHeader ? (
+          <PluginThreadGroupProjectTag projectId={group.projectId} />
+        ) : null}
         <SidebarChildToggleChevron
           isCollapsed={isCollapsed}
           expandLabel={`Expand ${group.label}`}
@@ -1485,6 +1517,8 @@ const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
     () => buildPluginThreadGroupSegments(group),
     [group],
   );
+  const isOutsideProjectHeader =
+    useContext(SidebarHeaderProjectContext) !== group.projectId;
 
   return (
     <SidebarStickyGroup
@@ -1507,38 +1541,41 @@ const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
             : undefined
         }
         isCollapsed={isCollapsed}
+        isOutsideProjectHeader={isOutsideProjectHeader}
         onToggleCollapsed={onToggleEnvironmentCollapsed}
       />
       {!isCollapsed ? (
-        <PluginThreadDecorationsContext.Provider value={group.decorations}>
-          <div className="relative space-y-px">
-            <ThreadTreeGroupLine parentRowDepth={rowDepth} />
-            {segments.map((segment) =>
-              segment.kind === "row" ? (
-                <PluginThreadGroupPlaceholderRow
-                  key={segment.key}
-                  row={segment.row}
-                  rowDepth={rowDepth + 1}
-                  onProjectSelect={onProjectSelect}
-                />
-              ) : (
-                <PluginThreadGroupThreadRun
-                  key={segment.key}
-                  items={segment.items}
-                  projectId={projectId}
-                  sectionDnd={sectionDnd}
-                  depthOffset={depthOffset}
-                  selectedThreadId={selectedThreadId}
-                  collapsedThreadIds={collapsedThreadIds}
-                  collapsedEnvironmentIds={collapsedEnvironmentIds}
-                  onProjectSelect={onProjectSelect}
-                  onToggleThreadCollapsed={onToggleThreadCollapsed}
-                  onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
-                />
-              ),
-            )}
-          </div>
-        </PluginThreadDecorationsContext.Provider>
+        <SidebarHeaderProjectContext.Provider value={group.projectId}>
+          <PluginThreadDecorationsContext.Provider value={group.decorations}>
+            <div className="relative space-y-px">
+              <ThreadTreeGroupLine parentRowDepth={rowDepth} />
+              {segments.map((segment) =>
+                segment.kind === "row" ? (
+                  <PluginThreadGroupPlaceholderRow
+                    key={segment.key}
+                    row={segment.row}
+                    rowDepth={rowDepth + 1}
+                    onProjectSelect={onProjectSelect}
+                  />
+                ) : (
+                  <PluginThreadGroupThreadRun
+                    key={segment.key}
+                    items={segment.items}
+                    projectId={projectId}
+                    sectionDnd={sectionDnd}
+                    depthOffset={depthOffset}
+                    selectedThreadId={selectedThreadId}
+                    collapsedThreadIds={collapsedThreadIds}
+                    collapsedEnvironmentIds={collapsedEnvironmentIds}
+                    onProjectSelect={onProjectSelect}
+                    onToggleThreadCollapsed={onToggleThreadCollapsed}
+                    onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+                  />
+                ),
+              )}
+            </div>
+          </PluginThreadDecorationsContext.Provider>
+        </SidebarHeaderProjectContext.Provider>
       ) : null}
     </SidebarStickyGroup>
   );
@@ -2388,6 +2425,7 @@ export const ChronologicalSectionThreadSections = memo(
     const groupThreadsByEnvironment = useAtomValue(
       sidebarGroupThreadsByEnvironmentAtom,
     );
+    const pluginThreadGroups = experimental_useSidebarThreadGroups();
     const rootItems = useMemo(
       () =>
         buildSectionThreadList(
@@ -2395,8 +2433,15 @@ export const ChronologicalSectionThreadSections = memo(
           compareThreads,
           sections,
           groupThreadsByEnvironment,
+          pluginThreadGroups,
         ),
-      [threads, compareThreads, sections, groupThreadsByEnvironment],
+      [
+        threads,
+        compareThreads,
+        sections,
+        groupThreadsByEnvironment,
+        pluginThreadGroups,
+      ],
     );
     const sectionDnd = useSectionThreadDnd({
       containerId: CHRONOLOGICAL_CONTAINER_ID,

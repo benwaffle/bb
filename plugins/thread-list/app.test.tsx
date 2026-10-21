@@ -897,6 +897,127 @@ describe("thread-list plugin", () => {
     expect(archived).toEqual(["thr_review"]);
   });
 
+  it("renders plugin thread groups inside the flat Custom list", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const run = vi.fn();
+    const groupId = "pr-review/tickets:CORE-21";
+    const reviewThread = makeSidebarThread({
+      id: "thr_review",
+      projectId: "proj_app",
+      title: "Review thread",
+      createdAt: 4,
+      updatedAt: 4,
+      latestAttentionAt: 4,
+    });
+    const options: RenderSlotOptions = {
+      sidebarThreads: {
+        projects: PROJECTS,
+        sections: SECTIONS,
+        threads: [...THREADS, reviewThread],
+      },
+      sidebarThreadDecorations: { proj_app: { leading: "🚀", title: "App" } },
+      sidebarThreadGroups: [
+        {
+          id: groupId,
+          pluginId: "pr-review",
+          projectId: "proj_app",
+          key: "CORE-21",
+          keyLabel: "CORE-21",
+          label: "Speed up the importer",
+          threadIds: ["thr_review", "thr_parent"],
+          keepOrder: false,
+          style: "minimal",
+          rows: [
+            {
+              id: "pr-600",
+              title: "#600 Batch the importer",
+              variant: "ghost",
+              onSelect: () => undefined,
+              action: { label: "+", run },
+            },
+          ],
+        },
+      ],
+    };
+    const secondLine = (threadId: string) =>
+      document
+        .querySelector(`[data-sidebar-thread-id="${threadId}"]`)
+        ?.closest("[data-sidebar-rename-row]")
+        ?.querySelector("[data-sidebar-thread-second-line]")?.textContent ??
+      null;
+
+    renderList({ organizationMode: "chronological" }, options);
+    const ticketGroup = (await screen.findByText("CORE-21")).closest(
+      "[data-sidebar-sticky-group]",
+    ) as HTMLElement;
+    expect(threadIds()).toEqual([
+      "thr_pinned",
+      "thr_later",
+      "thr_parent",
+      "thr_child",
+      "thr_review",
+      "thr_personal",
+    ]);
+    expect(
+      Array.from(
+        ticketGroup.querySelectorAll("[data-sidebar-thread-id]"),
+        (element) => element.getAttribute("data-sidebar-thread-id"),
+      ),
+    ).toEqual(["thr_parent", "thr_child", "thr_review"]);
+    expect(
+      ticketGroup
+        .querySelector("[data-sidebar-plugin-thread-group]")
+        ?.querySelector("[data-sidebar-plugin-thread-group-project]")
+        ?.textContent,
+    ).toBe("🚀App");
+    expect(secondLine("thr_review")).toBeNull();
+    expect(secondLine("thr_personal")).toBe("Personal");
+    fireEvent.click(
+      within(
+        ticketGroup.querySelector(
+          '[data-sidebar-plugin-thread-group-row="pr-600"]',
+        ) as HTMLElement,
+      ).getByRole("button", { name: "+" }),
+    );
+    expect(run).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Collapse Speed up the importer" }),
+    );
+    await waitFor(() => expect(screen.queryByText("Review thread")).toBeNull());
+    cleanup();
+
+    renderList(
+      { organizationMode: "project", collapsedEnvironments: [groupId] },
+      options,
+    );
+    await waitFor(() =>
+      expect(
+        screen
+          .getByTitle("App")
+          .closest("[data-sidebar-sticky-group]")
+          ?.querySelector(`[data-sidebar-plugin-thread-group="${groupId}"]`),
+      ).not.toBeNull(),
+    );
+    expect(
+      document.querySelector("[data-sidebar-plugin-thread-group-project]"),
+    ).toBeNull();
+    expect(screen.queryByText("Review thread")).toBeNull();
+    cleanup();
+
+    renderList(
+      { organizationMode: "chronological", collapsedEnvironments: [groupId] },
+      options,
+    );
+    await waitFor(() =>
+      expect(
+        document.querySelector("[data-sidebar-plugin-thread-group-project]"),
+      ).not.toBeNull(),
+    );
+    expect(screen.queryByText("Review thread")).toBeNull();
+    expect(threadIds()).toEqual(["thr_pinned", "thr_later", "thr_personal"]);
+  });
+
   it("keys its slot and preferences mirror by its own plugin id", async () => {
     window.localStorage.clear();
     expect(registration.id).toBe("thread-list");
