@@ -187,6 +187,42 @@ describe("thread-list plugin", () => {
     ).not.toBeNull();
   });
 
+  it("shows a plugin's project decoration on thread rows only outside their project header", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const sidebarThreadDecorations = {
+      proj_app: { leading: "🚀", title: "App" },
+      proj_web: { leading: "🌐", title: null },
+    };
+    const threadRow = (threadId: string) =>
+      document.querySelector(`[data-sidebar-thread-id="${threadId}"]`)
+        ?.parentElement ?? null;
+    const leadingText = (threadId: string) =>
+      threadRow(threadId)?.querySelector(
+        "[data-sidebar-thread-project-leading]",
+      )?.textContent ?? null;
+
+    renderList(
+      { organizationMode: "chronological" },
+      { sidebarThreadDecorations },
+    );
+    await screen.findByText("Parent thread");
+    expect(leadingText("thr_parent")).toBe("🚀");
+    expect(leadingText("thr_later")).toBe("🌐");
+    expect(leadingText("thr_personal")).toBeNull();
+    expect(
+      within(threadRow("thr_parent") as HTMLElement).getByRole("img", {
+        name: "App",
+      }),
+    ).not.toBeNull();
+    cleanup();
+
+    renderList({ organizationMode: "project" }, { sidebarThreadDecorations });
+    await screen.findByText("Parent thread");
+    expect(leadingText("thr_pinned")).toBe("🚀");
+    expect(leadingText("thr_parent")).toBeNull();
+    expect(leadingText("thr_later")).toBeNull();
+  });
+
   it("groups pinned worktree roots when environment grouping is enabled", async () => {
     setPreferencesMirrorStorageForTest(null);
     const environment = {

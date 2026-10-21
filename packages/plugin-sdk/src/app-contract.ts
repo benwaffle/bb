@@ -2653,6 +2653,43 @@ export interface ExperimentalSidebarProjectDecorationRegistration {
 }
 
 /**
+ * What a plugin shows on a sidebar thread row for the row's project when the
+ * row is not nested under that project's header, such as in Custom or By
+ * machine mode or the Pinned section.
+ */
+export interface ExperimentalSidebarThreadDecoration {
+  /** Emoji or short text rendered before the thread title. */
+  leading?: string;
+  /** Tooltip and accessible label for `leading`, such as the project name. */
+  title?: string;
+}
+
+/**
+ * A project's thread-row decoration as
+ * `experimental_useSidebarThreadDecoration()` reports it: the first plugin,
+ * in plugin id order, that returns a non-blank `leading`.
+ */
+export interface ExperimentalResolvedSidebarThreadDecoration {
+  leading: string;
+  /** `null` when that plugin supplies no title. */
+  title: string | null;
+}
+
+/**
+ * Decorate sidebar thread rows by project. `useDecoration` is a React hook
+ * the host calls inside the plugin's context, once per project whose threads
+ * the thread list shows outside that project's header, for as long as such a
+ * row is mounted. Return the same object while nothing changed.
+ */
+export interface ExperimentalSidebarThreadDecorationRegistration {
+  /** Unique within the plugin; letters, digits, `-`, `_`. */
+  id: string;
+  /** Label shown in capability details. */
+  title: string;
+  useDecoration(projectId: string): ExperimentalSidebarThreadDecoration | null;
+}
+
+/**
  * Register this plugin as a viewer/editor for file extensions. By default,
  * matching files render the first applicable opener in deterministic slot
  * order. The user can pin BB's preview or a specific opener per extension
@@ -3861,6 +3898,14 @@ export interface PluginAppSlots {
    */
   experimental_sidebarProjectDecoration(
     registration: ExperimentalSidebarProjectDecorationRegistration,
+  ): void;
+  /**
+   * Decorate sidebar thread rows shown outside their project's header (see
+   * {@link ExperimentalSidebarThreadDecorationRegistration}). Experimental:
+   * see docs/api_to_audit.md.
+   */
+  experimental_sidebarThreadDecoration(
+    registration: ExperimentalSidebarThreadDecorationRegistration,
   ): void;
   /**
    * Add context beside an existing thread's composer (see
@@ -5711,6 +5756,15 @@ export interface PluginSdkApp {
   experimental_useSidebarProjectDecoration(
     projectId: string,
   ): ExperimentalResolvedSidebarProjectDecoration | null;
+  /**
+   * The `experimental_sidebarThreadDecoration` output for one project's
+   * thread rows, or `null` when no plugin decorates them. Calling it is what
+   * makes the host run the plugins' hooks for that project. For thread-list
+   * providers. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useSidebarThreadDecoration(
+    projectId: string,
+  ): ExperimentalResolvedSidebarThreadDecoration | null;
   /**
    * Per-row drag-to-split support (see {@link PluginSidebarThreadSplit}).
    * Call it once per rendered row, like the built-in sidebar does.

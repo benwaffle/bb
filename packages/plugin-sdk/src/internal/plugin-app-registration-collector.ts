@@ -32,6 +32,7 @@ import type {
   PluginSidebarFooterActionRegistration,
   ExperimentalSidebarThreadGroupsRegistration,
   ExperimentalSidebarProjectDecorationRegistration,
+  ExperimentalSidebarThreadDecorationRegistration,
   PluginSourceCodeRendererRegistration,
   ExperimentalThreadContextSegmentRegistration,
   ExperimentalThreadInfoRowRegistration,
@@ -319,6 +320,7 @@ export interface CollectedPluginAppRegistrations {
   experimentalSidebarNavigations: CollectedSidebarNavigationRegistration[];
   sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   sidebarProjectDecorations: ExperimentalSidebarProjectDecorationRegistration[];
+  sidebarThreadDecorations: ExperimentalSidebarThreadDecorationRegistration[];
   threadHeaderActions: LegacyThreadHeaderActionRegistration[];
   threadContextSegments: ExperimentalThreadContextSegmentRegistration[];
   threadInfoRows: ExperimentalThreadInfoRowRegistration[];
@@ -462,6 +464,7 @@ export function collectPluginAppRegistrations(
     experimentalSidebarNavigations: [],
     sidebarThreadGroups: [],
     sidebarProjectDecorations: [],
+    sidebarThreadDecorations: [],
     threadHeaderActions: [],
     threadContextSegments: [],
     threadInfoRows: [],
@@ -502,6 +505,7 @@ export function collectPluginAppRegistrations(
     sidebarHeader: new Set<string>(),
     sidebarThreadGroups: new Set<string>(),
     sidebarProjectDecorations: new Set<string>(),
+    sidebarThreadDecorations: new Set<string>(),
     threadHeaderAction: new Set<string>(),
     threadContextSegment: new Set<string>(),
     threadInfoRow: new Set<string>(),
@@ -946,6 +950,19 @@ export function collectPluginAppRegistrations(
           throw new Error(`${kind}: "useDecoration" must be a function`);
         }
         collected.sidebarProjectDecorations.push({
+          id,
+          title: requireNonEmptyString(kind, "title", registration.title),
+          useDecoration: registration.useDecoration,
+        });
+      },
+      experimental_sidebarThreadDecoration(registration) {
+        const kind = "slots.experimental_sidebarThreadDecoration";
+        const id = requireSlotId(kind, registration?.id);
+        requireUniqueId(kind, seenIds.sidebarThreadDecorations, id);
+        if (typeof registration.useDecoration !== "function") {
+          throw new Error(`${kind}: "useDecoration" must be a function`);
+        }
+        collected.sidebarThreadDecorations.push({
           id,
           title: requireNonEmptyString(kind, "title", registration.title),
           useDecoration: registration.useDecoration,
