@@ -1,10 +1,16 @@
 import { createContext, useContext } from "react";
 import {
   experimental_Icon as RegisteredIcon,
+  experimental_useSidebarThreadDecoration,
   type ExperimentalSidebarThreadGroupRowIcon,
   type ExperimentalSidebarThreadGroupRowTrailing,
   type ExperimentalSidebarThreadGroupTone,
 } from "@get-bb/plugin-sdk/app";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { PluginThreadDecoration } from "../model/project-thread-groups.js";
 
@@ -32,6 +38,42 @@ const TONE_FILL_CLASS: Record<ExperimentalSidebarThreadGroupTone, string> = {
   accent: "bg-pr-merged",
   danger: "bg-destructive",
 };
+
+export const SidebarHeaderProjectContext = createContext<string | null>(null);
+
+export function PluginThreadProjectLeading({
+  projectId,
+  onActivate,
+}: {
+  projectId: string;
+  onActivate: () => void;
+}) {
+  const decoration = experimental_useSidebarThreadDecoration(projectId);
+  if (decoration === null) return null;
+  const leading = (
+    <span
+      data-sidebar-thread-project-leading=""
+      role={decoration.title === null ? undefined : "img"}
+      aria-label={decoration.title ?? undefined}
+      aria-hidden={decoration.title === null ? true : undefined}
+      className="pointer-events-auto relative z-[31] mr-1.5 max-w-8 shrink-0 truncate"
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onActivate();
+      }}
+    >
+      {decoration.leading}
+    </span>
+  );
+  if (decoration.title === null) return leading;
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>{leading}</TooltipTrigger>
+      <TooltipContent side="top">{decoration.title}</TooltipContent>
+    </Tooltip>
+  );
+}
 
 export function PluginRowIcon({
   icon,
