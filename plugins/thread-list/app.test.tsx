@@ -159,6 +159,21 @@ afterEach(() => {
   setPreferencesMirrorStorageForTest(undefined);
 });
 
+function verticalInsetClasses(element: HTMLElement | null): {
+  top: string | null;
+  bottom: string | null;
+} {
+  const classes = Array.from(element?.classList ?? []);
+  const valueAfter = (prefix: string) =>
+    classes.find((name) => name.startsWith(prefix))?.slice(prefix.length) ??
+    null;
+  const both = valueAfter("inset-y-");
+  return {
+    top: both ?? valueAfter("top-"),
+    bottom: both ?? valueAfter("bottom-"),
+  };
+}
+
 describe("thread-list plugin", () => {
   it("shows the navigation skeleton until preferences load", () => {
     setPreferencesMirrorStorageForTest(null);
@@ -199,17 +214,17 @@ describe("thread-list plugin", () => {
   it("shows a plugin's project decoration on thread rows only outside their project header", async () => {
     setPreferencesMirrorStorageForTest(null);
     const sidebarThreadDecorations = {
-      proj_app: { leading: "🚀", title: "App" },
-      proj_web: { leading: "🌐", title: null },
+      proj_app: { leading: "🚀", title: "App", hue: 230 },
+      proj_web: { leading: "🌐", title: null, hue: null },
     };
     const threadRow = (threadId: string) =>
       document
         .querySelector(`[data-sidebar-thread-id="${threadId}"]`)
         ?.closest("[data-sidebar-rename-row]") ?? null;
-    const leadingText = (threadId: string) =>
-      threadRow(threadId)?.querySelector(
-        "[data-sidebar-thread-project-leading]",
-      )?.textContent ?? null;
+    const hueEdge = (threadId: string) =>
+      threadRow(threadId)
+        ?.querySelector("[data-sidebar-project-hue-edge]")
+        ?.getAttribute("data-sidebar-project-hue-edge") ?? null;
     const secondLine = (threadId: string) =>
       threadRow(threadId)?.querySelector("[data-sidebar-thread-second-line]")
         ?.textContent ?? null;
@@ -219,10 +234,13 @@ describe("thread-list plugin", () => {
       { sidebarThreadDecorations },
     );
     await screen.findByText("Parent thread");
-    expect(secondLine("thr_parent")).toBe("🚀App");
-    expect(secondLine("thr_later")).toBe("🌐Web·main");
+    expect(secondLine("thr_parent")).toBe("App");
+    expect(secondLine("thr_child")).toBeNull();
+    expect(secondLine("thr_later")).toBe("Web·main");
     expect(secondLine("thr_personal")).toBe("Personal");
-    expect(leadingText("thr_parent")).toBeNull();
+    expect(hueEdge("thr_parent")).toBe("230");
+    expect(hueEdge("thr_later")).toBeNull();
+    expect(document.body.textContent).not.toContain("🚀");
     cleanup();
 
     renderList(
@@ -230,23 +248,49 @@ describe("thread-list plugin", () => {
       { sidebarThreadDecorations },
     );
     await screen.findByText("Parent thread");
-    expect(leadingText("thr_parent")).toBe("🚀");
-    expect(leadingText("thr_later")).toBe("🌐");
-    expect(leadingText("thr_personal")).toBeNull();
     expect(secondLine("thr_later")).toBeNull();
-    expect(
-      within(threadRow("thr_parent") as HTMLElement).getByRole("img", {
-        name: "App",
-      }),
-    ).not.toBeNull();
+    expect(hueEdge("thr_parent")).toBe("230");
+    expect(document.body.textContent).not.toContain("🚀");
     cleanup();
 
     renderList({ organizationMode: "project" }, { sidebarThreadDecorations });
     await screen.findByText("Parent thread");
-    expect(secondLine("thr_pinned")).toBe("🚀App");
+    expect(secondLine("thr_pinned")).toBe("App");
     expect(secondLine("thr_parent")).toBeNull();
-    expect(leadingText("thr_parent")).toBeNull();
+    expect(hueEdge("thr_parent")).toBeNull();
+    expect(hueEdge("thr_pinned")).toBeNull();
     expect(secondLine("thr_later")).toBe("main");
+  });
+
+  it("labels flat sections by day and turns the labels off with the preference", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const dayLabels = () =>
+      Array.from(
+        document.querySelectorAll("[data-sidebar-day-label]"),
+        (label) => label.textContent,
+      );
+
+    renderList({ organizationMode: "chronological" });
+    await screen.findByText("Parent thread");
+    expect(dayLabels()).toEqual(["Earlier", "Earlier"]);
+    cleanup();
+
+    renderList({ organizationMode: "chronological", dayLabels: false });
+    await screen.findByText("Parent thread");
+    expect(dayLabels()).toEqual([]);
+    cleanup();
+
+    renderList({
+      organizationMode: "chronological",
+      chronologicalSort: "alpha",
+    });
+    await screen.findByText("Parent thread");
+    expect(dayLabels()).toEqual([]);
+    cleanup();
+
+    renderList({ organizationMode: "project" });
+    await screen.findByText("Parent thread");
+    expect(dayLabels()).toEqual([]);
   });
 
   it("decorates flat thread rows from a plugin's per-thread hook", async () => {
@@ -915,7 +959,9 @@ describe("thread-list plugin", () => {
         sections: SECTIONS,
         threads: [...THREADS, reviewThread],
       },
-      sidebarThreadDecorations: { proj_app: { leading: "🚀", title: "App" } },
+      sidebarThreadDecorations: {
+        proj_app: { leading: "🚀", title: "App", hue: 230 },
+      },
       sidebarThreadGroups: [
         {
           id: groupId,
@@ -970,6 +1016,36 @@ describe("thread-list plugin", () => {
         ?.querySelector("[data-sidebar-plugin-thread-group-project]")
         ?.textContent,
     ).toBe("🚀App");
+    const ticketEdges = ticketGroup.querySelectorAll(
+      "[data-sidebar-project-hue-edge]",
+    );
+    expect(
+      Array.from(ticketEdges, (edge) =>
+        edge.getAttribute("data-sidebar-project-hue-edge"),
+      ),
+    ).toEqual(["230"]);
+    expect(
+      ticketGroup
+        .querySelector("[data-sidebar-plugin-thread-group]")
+        ?.contains(ticketEdges[0] ?? null),
+    ).toBe(true);
+    const guideLine = ticketGroup.querySelector<HTMLElement>(
+      '[data-sidebar-thread-group-line="230"]',
+    );
+    expect(guideLine).not.toBeNull();
+    const guideInsets = verticalInsetClasses(guideLine);
+    expect(guideInsets.top).not.toBeNull();
+    expect(guideInsets.bottom).toBe(guideInsets.top);
+    expect(
+      ticketGroup
+        .querySelector('[data-sidebar-plugin-thread-group-key="pill"]')
+        ?.getAttribute("style"),
+    ).toContain("var(--project-hue-text-c) 230");
+    expect(
+      ticketGroup.querySelectorAll(
+        "[data-sidebar-rename-row] > [data-sidebar-project-hue-edge]",
+      ),
+    ).toHaveLength(0);
     expect(secondLine("thr_review")).toBeNull();
     expect(secondLine("thr_personal")).toBe("Personal");
     fireEvent.click(
