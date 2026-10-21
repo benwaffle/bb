@@ -46,6 +46,8 @@ import {
   type ExperimentalSidebarThreadGroupsRegistration,
   type ExperimentalResolvedSidebarProjectDecoration,
   type ExperimentalSidebarProjectDecorationRegistration,
+  type ExperimentalResolvedSidebarThreadDecoration,
+  type ExperimentalSidebarThreadDecorationRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
   type PluginAppSetup,
@@ -318,6 +320,10 @@ interface SlotEnv {
   sidebarProjectDecorations: ReadonlyMap<
     string,
     ExperimentalResolvedSidebarProjectDecoration
+  >;
+  sidebarThreadDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarThreadDecoration
   >;
   sidebarDraftThreadIds: ReadonlySet<string>;
   sidebarRowStatuses: ReadonlyMap<string, PluginSidebarThreadRowStatus>;
@@ -1536,6 +1542,15 @@ const testPluginSdkApp = {
       ).sidebarProjectDecorations.get(projectId) ?? null
     );
   },
+  experimental_useSidebarThreadDecoration(
+    projectId,
+  ): ExperimentalResolvedSidebarThreadDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarThreadDecoration",
+      ).sidebarThreadDecorations.get(projectId) ?? null
+    );
+  },
   experimental_useSidebarThreadPullRequest(
     threadId,
   ): PluginSidebarThreadPullRequestState {
@@ -1611,6 +1626,7 @@ export interface CapturedPluginApp {
   experimentalSidebarNavigations: ExperimentalSidebarNavigationRegistration[];
   sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration[];
   sidebarProjectDecorations: ExperimentalSidebarProjectDecorationRegistration[];
+  sidebarThreadDecorations: ExperimentalSidebarThreadDecorationRegistration[];
   threadHeaderActions: PluginThreadHeaderActionRegistration[];
   threadActions: PluginThreadActionRegistration<unknown>[];
   browserToolbarActions: ExperimentalPluginBrowserToolbarActionRegistration[];
@@ -1899,6 +1915,14 @@ export interface RenderSlotOptions<
   sidebarProjectDecorations?: Record<
     string,
     ExperimentalResolvedSidebarProjectDecoration
+  >;
+  /**
+   * Decorations `experimental_useSidebarThreadDecoration()` reports, keyed
+   * by project id. Omitted → every project reports none.
+   */
+  sidebarThreadDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarThreadDecoration
   >;
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
@@ -2718,6 +2742,9 @@ export function renderSlot<
     sidebarThreadGroups: options.sidebarThreadGroups ?? [],
     sidebarProjectDecorations: new Map(
       Object.entries(options.sidebarProjectDecorations ?? {}),
+    ),
+    sidebarThreadDecorations: new Map(
+      Object.entries(options.sidebarThreadDecorations ?? {}),
     ),
     sidebarDraftThreadIds,
     sidebarRowStatuses,
