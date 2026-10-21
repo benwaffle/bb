@@ -77,9 +77,9 @@ Read the installed SDK declarations for the exact current signatures.
   groups, for thread-list providers
 - `experimental_useSidebarProjectDecoration` — every plugin's merged
   decoration for one sidebar project header, for thread-list providers
-- `experimental_useSidebarThreadDecoration` — the plugin-provided leading
-  emoji or text for one project's thread rows shown outside its header, for
-  thread-list providers
+- `experimental_useSidebarThreadDecoration` — the plugin-provided hue,
+  title, and leading emoji or text for one project's thread rows shown
+  outside its header, for thread-list providers
 - `experimental_useSidebarThreadRowDecoration` — the plugin-provided icon,
   label, description, and trailing state for one thread row shown outside
   its project's header, for thread-list providers

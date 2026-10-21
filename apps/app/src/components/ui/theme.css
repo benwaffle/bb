@@ -130,12 +130,20 @@
    * never paired with a tier below --subtle-foreground or it fails AA at 10px. */
   --text-2xs: 0.625rem;
   --text-2xs--line-height: 0.875rem;
+  --text-caption: 0.71875rem;
+  --text-caption--line-height: 1rem;
+  --text-eyebrow: 0.65625rem;
+  --text-eyebrow--line-height: 1rem;
 }
 
 @media (max-width: 767px) and (pointer: coarse) {
   :root {
     --text-2xs: 0.6875rem;
     --text-2xs--line-height: 0.9375rem;
+    --text-caption: 0.8125rem;
+    --text-caption--line-height: 1.125rem;
+    --text-eyebrow: 0.71875rem;
+    --text-eyebrow--line-height: 1rem;
     --text-xs: 0.875rem;
     --text-xs--line-height: 1.25rem;
     --text-sm: 0.9375rem;
@@ -564,6 +572,10 @@
   --success-foreground: color-mix(in oklch, var(--success) 45%, var(--ink));
   --diff-added: oklch(0.4 0.13 163);
   --pr-merged: oklch(0.53 0.2 295);
+  --project-hue-edge-l: 0.62;
+  --project-hue-edge-c: 0.14;
+  --project-hue-text-l: 0.45;
+  --project-hue-text-c: 0.096;
   --brand-discord: oklch(0.5774 0.2091 273.85);
   --diff-removed: oklch(0.4 0.17 28);
   --border: color-mix(in oklch, var(--ink) 14%, var(--canvas));
@@ -796,6 +808,10 @@
   --diff-added: oklch(0.77 0.17 163);
   --diff-removed: oklch(0.72 0.19 22);
   --pr-merged: oklch(0.68 0.18 295);
+  --project-hue-edge-l: 0.7;
+  --project-hue-edge-c: 0.13;
+  --project-hue-text-l: 0.78;
+  --project-hue-text-c: 0.088;
   --brand-discord: var(--foreground);
   --border: color-mix(in oklch, var(--ink) 19.4%, var(--canvas));
   --border-hairline: color-mix(in oklch, var(--ink) 21%, var(--canvas));

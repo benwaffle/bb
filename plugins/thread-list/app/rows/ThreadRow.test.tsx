@@ -41,6 +41,11 @@ import {
   makeSidebarThread,
 } from "../model/fixtures.js";
 import { SidebarHeaderProjectContext } from "./pluginThreadDecoration.js";
+import {
+  FlatThreadItemContext,
+  FlatThreadListContext,
+  type FlatThreadItemScope,
+} from "./flatThreadRows.js";
 import { sidebarShowProviderIconsAtom } from "../preferences/atoms.js";
 import { SidebarProjectsContext } from "../model/use-sidebar-data.js";
 import type { ThreadRowOptions } from "./ThreadRow.js";
@@ -65,8 +70,7 @@ const {
   resetSidebarTitleDoubleClickForTest,
   SidebarProvidersContext,
   ThreadRow,
-} =
-  await import("./ThreadRow.js");
+} = await import("./ThreadRow.js");
 
 const DEFAULT_OPTIONS: ThreadRowOptions = {
   kind: "default",
@@ -101,6 +105,7 @@ interface HarnessProps {
   headerProjectId?: string | null;
   crossProjectId?: string | null;
   isActive?: boolean;
+  flat?: Partial<FlatThreadItemScope>;
   options?: ThreadRowOptions;
   onRowEvent?: () => void;
   onCustomizeRowActions?: (threadId: string) => void;
@@ -115,12 +120,13 @@ function ThreadRowHarness({
   headerProjectId = null,
   crossProjectId = null,
   isActive = false,
+  flat,
   options = DEFAULT_OPTIONS,
   onRowEvent,
   onCustomizeRowActions,
   onFinishCustomizingRowActions,
 }: HarnessProps) {
-  const row = (
+  const threadRow = (
     <ThreadRow
       thread={thread}
       crossProjectId={crossProjectId}
@@ -128,42 +134,56 @@ function ThreadRowHarness({
       options={options}
     />
   );
+  const row =
+    flat === undefined ? (
+      threadRow
+    ) : (
+      <FlatThreadListContext.Provider value={{ dayLabels: true }}>
+        <FlatThreadItemContext.Provider
+          value={{ previousRowProjectId: null, inGroup: false, ...flat }}
+        >
+          {threadRow}
+        </FlatThreadItemContext.Provider>
+      </FlatThreadListContext.Provider>
+    );
   const content = (
     <SidebarProjectsContext.Provider value={projects}>
       <SidebarProvidersContext.Provider value={providers}>
-      <TooltipProvider>
-      <SidebarDraftPresenceSync />
-      <ThreadRowNavigationProvider>
-      <ThreadSelectionProvider activeThreadId={null}>
-        <SidebarRenameProvider>
-          <CustomizeRowActionsContext.Provider
-            value={onCustomizeRowActions ?? null}
-          >
-            <ThreadRowActionsCustomizingContext.Provider
-              value={
-                onFinishCustomizingRowActions
-                  ? {
-                      threadId: thread.id,
-                      onDone: onFinishCustomizingRowActions,
+        <TooltipProvider>
+          <SidebarDraftPresenceSync />
+          <ThreadRowNavigationProvider>
+            <ThreadSelectionProvider activeThreadId={null}>
+              <SidebarRenameProvider>
+                <CustomizeRowActionsContext.Provider
+                  value={onCustomizeRowActions ?? null}
+                >
+                  <ThreadRowActionsCustomizingContext.Provider
+                    value={
+                      onFinishCustomizingRowActions
+                        ? {
+                            threadId: thread.id,
+                            onDone: onFinishCustomizingRowActions,
+                          }
+                        : null
                     }
-                  : null
-              }
-            >
-              <div
-                onPointerDown={onRowEvent}
-                onKeyDown={onRowEvent}
-                onClick={onRowEvent}
-              >
-                <SidebarHeaderProjectContext.Provider value={headerProjectId}>
-                  {row}
-                </SidebarHeaderProjectContext.Provider>
-              </div>
-            </ThreadRowActionsCustomizingContext.Provider>
-          </CustomizeRowActionsContext.Provider>
-        </SidebarRenameProvider>
-      </ThreadSelectionProvider>
-      </ThreadRowNavigationProvider>
-      </TooltipProvider>
+                  >
+                    <div
+                      onPointerDown={onRowEvent}
+                      onKeyDown={onRowEvent}
+                      onClick={onRowEvent}
+                    >
+                      <SidebarHeaderProjectContext.Provider
+                        value={headerProjectId}
+                      >
+                        {row}
+                      </SidebarHeaderProjectContext.Provider>
+                    </div>
+                  </ThreadRowActionsCustomizingContext.Provider>
+                </CustomizeRowActionsContext.Provider>
+              </SidebarRenameProvider>
+            </ThreadSelectionProvider>
+          </ThreadRowNavigationProvider>
+        </TooltipProvider>
       </SidebarProvidersContext.Provider>
     </SidebarProjectsContext.Provider>
   );
@@ -422,20 +442,20 @@ describe("ThreadRow", () => {
     trailing: null,
   };
   const secondLine = (container: HTMLElement) =>
-    container.querySelector("[data-sidebar-thread-second-line]")
-      ?.textContent ?? null;
+    container.querySelector("[data-sidebar-thread-second-line]")?.textContent ??
+    null;
 
   it("reads project, plugin label, and pull request on a flat row's second line", async () => {
     const slot = renderThreadRow({
       thread: BRANCHED_THREAD,
       projects: [APP_PROJECT],
       providers: [testProvider()],
-      projectDecoration: { leading: "🚀", title: "App" },
+      projectDecoration: { leading: "🚀", title: "App", hue: null },
       rowDecoration: ROW_DECORATION,
       pullRequest: makeSidebarPullRequest({ number: 12, state: "draft" }),
     });
     await waitFor(() =>
-      expect(secondLine(slot.container)).toBe("🚀App·CORE-123·#12"),
+      expect(secondLine(slot.container)).toBe("App·CORE-123·#12"),
     );
     expect(
       slot.container
@@ -468,7 +488,7 @@ describe("ThreadRow", () => {
       headerProjectId: "proj_test",
       projects: [APP_PROJECT],
       providers: [testProvider()],
-      projectDecoration: { leading: "🚀", title: "App" },
+      projectDecoration: { leading: "🚀", title: "App", hue: 230 },
       rowDecoration: ROW_DECORATION,
       pullRequest: makeSidebarPullRequest({ number: 12 }),
     });
@@ -488,22 +508,145 @@ describe("ThreadRow", () => {
     expect(secondLine(unbranched.container)).toBeNull();
   });
 
-  it("keeps one line with the project leading when two-line rows are off", () => {
+  it("keeps one line without the project leading when two-line rows are off", () => {
     getDefaultStore().set(preferenceValueAtom("twoLineRows"), false);
     const slot = renderThreadRow({
       thread: BRANCHED_THREAD,
       projects: [APP_PROJECT],
-      projectDecoration: { leading: "🚀", title: "App" },
+      projectDecoration: { leading: "🚀", title: "App", hue: null },
       rowDecoration: ROW_DECORATION,
     });
     expect(secondLine(slot.container)).toBeNull();
-    expect(
-      slot.container.querySelector("[data-sidebar-thread-project-leading]")
-        ?.textContent,
-    ).toBe("🚀");
+    expect(slot.container.textContent).not.toContain("🚀");
     expect(
       slot.container.querySelector('[data-sidebar-plugin-row-icon="accent"]'),
     ).not.toBeNull();
+  });
+
+  it("leaves the project off a flat row only when the row directly above has the same project", async () => {
+    const rowArgs = {
+      thread: BRANCHED_THREAD,
+      projects: [APP_PROJECT],
+      projectDecoration: { leading: null, title: "App", hue: 230 },
+      rowDecoration: ROW_DECORATION,
+      pullRequest: makeSidebarPullRequest({ number: 12 }),
+    };
+    const repeated = renderThreadRow({
+      ...rowArgs,
+      flat: { previousRowProjectId: "proj_test" },
+    });
+    await waitFor(() =>
+      expect(secondLine(repeated.container)).toBe("CORE-123·#12"),
+    );
+    cleanup();
+
+    const changed = renderThreadRow({
+      ...rowArgs,
+      flat: { previousRowProjectId: "proj_other" },
+    });
+    await waitFor(() =>
+      expect(secondLine(changed.container)).toBe("App·CORE-123·#12"),
+    );
+    cleanup();
+
+    const afterLabelHeaderOrIndent = renderThreadRow({
+      ...rowArgs,
+      flat: { previousRowProjectId: null },
+    });
+    await waitFor(() =>
+      expect(secondLine(afterLabelHeaderOrIndent.container)).toBe(
+        "App·CORE-123·#12",
+      ),
+    );
+  });
+
+  it("names the project from the thread list when no plugin decorates it", () => {
+    const personal = renderThreadRow({
+      thread: createThread({ projectId: "proj_personal" }),
+      projects: [makePluginProject({ id: "proj_personal", name: "Personal" })],
+      flat: {},
+    });
+    expect(secondLine(personal.container)).toBe("Personal");
+    expect(
+      personal.container
+        .querySelector("[data-sidebar-thread-second-line-project]")
+        ?.hasAttribute("data-sidebar-thread-second-line-project-hue"),
+    ).toBe(false);
+    cleanup();
+
+    const plain = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projects: [APP_PROJECT],
+      flat: {},
+    });
+    expect(secondLine(plain.container)).toBe("App·feature/rows");
+  });
+
+  it("draws the project hue edge on flat rows, also when selected, and tints the project name", () => {
+    const decoration = { leading: null, title: "App", hue: 230 };
+    const edge = (container: HTMLElement) =>
+      container.querySelector("[data-sidebar-project-hue-edge]");
+    const selected = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projects: [APP_PROJECT],
+      projectDecoration: decoration,
+      isActive: true,
+      flat: {},
+    });
+    expect(edge(selected.container)?.getAttribute("style")).toContain(
+      "var(--project-hue-edge-c) 230",
+    );
+    expect(
+      selected.container
+        .querySelector("[data-sidebar-thread-second-line-project]")
+        ?.getAttribute("style"),
+    ).toContain("var(--project-hue-text-c) 230");
+    cleanup();
+
+    const inGroup = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projectDecoration: decoration,
+      flat: { inGroup: true },
+    });
+    expect(edge(inGroup.container)).toBeNull();
+    cleanup();
+
+    const projectMode = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projectDecoration: decoration,
+    });
+    expect(edge(projectMode.container)).toBeNull();
+    cleanup();
+
+    const noHue = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      projectDecoration: { leading: "🚀", title: "App", hue: null },
+      flat: {},
+    });
+    expect(edge(noHue.container)).toBeNull();
+  });
+
+  it("gives the title width before a plugin description", () => {
+    const slot = renderThreadRow({
+      thread: createThread({ title: "Fix flaky retry test" }),
+      rowDecoration: {
+        ...ROW_DECORATION,
+        description: "Billing export v2: streaming CSV writer and backfill",
+      },
+      flat: {},
+    });
+    const description = slot.container.querySelector(
+      "[data-sidebar-thread-description]",
+    );
+    const title = slot.container.querySelector(".bb-thread-title");
+    expect(description?.className.split(" ")).toEqual(
+      expect.arrayContaining(["min-w-0", "truncate", "shrink-[1000]"]),
+    );
+    expect(description?.className.split(" ")).not.toContain("shrink-0");
+    expect(title?.className.split(" ")).toEqual(
+      expect.arrayContaining(["min-w-0", "truncate"]),
+    );
+    expect(title?.className.split(" ")).not.toContain("shrink-[1000]");
   });
 
   it("shows the registered provider icon by default and keeps it visible during inline rename", async () => {

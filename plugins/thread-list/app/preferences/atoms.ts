@@ -48,3 +48,4 @@ export const sidebarThreadLifecyclesAtom =
 export const sidebarShowProviderIconsAtom =
   createSyncedPreferenceAtom("showProviderIcons");
 export const sidebarTwoLineRowsAtom = createSyncedPreferenceAtom("twoLineRows");
+export const sidebarDayLabelsAtom = createSyncedPreferenceAtom("dayLabels");
