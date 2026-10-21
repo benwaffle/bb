@@ -40,6 +40,8 @@ import {
   type ExperimentalSidebarThreadGroupsRegistration,
   type ExperimentalSidebarProjectDecoration,
   type ExperimentalSidebarProjectDecorationRegistration,
+  type ExperimentalSidebarThreadDecoration,
+  type ExperimentalSidebarThreadDecorationRegistration,
   type PluginSourceCodeRendererProps,
   type PluginThreadHeaderActionProps,
   type ExperimentalThreadContextSegmentProps,
@@ -286,6 +288,7 @@ type SlotPropsByName = {
   sidebarFooterAction: PluginSidebarFooterActionProps;
   experimental_sidebarThreadGroups: ExperimentalSidebarThreadGroupsRegistration;
   experimental_sidebarProjectDecoration: ExperimentalSidebarProjectDecorationRegistration;
+  experimental_sidebarThreadDecoration: ExperimentalSidebarThreadDecorationRegistration;
   experimental_threadList: PluginThreadListProps;
   experimental_sidebarNavigation: ExperimentalSidebarNavigationProps;
   experimental_threadHeaderAction: PluginThreadHeaderActionProps;
@@ -373,6 +376,7 @@ const FRONTEND_SLOT_PROP_FIELDS = {
   sidebarFooterAction: [],
   experimental_sidebarThreadGroups: ["id", "title", "useGroups"],
   experimental_sidebarProjectDecoration: ["id", "title", "useDecoration"],
+  experimental_sidebarThreadDecoration: ["id", "title", "useDecoration"],
   experimental_threadList: [
     "activeThreadId",
     "activeProjectId",
@@ -636,6 +640,20 @@ const _assertAllSidebarProjectDecorationFieldsListed: MissingSidebarProjectDecor
   ? true
   : never = true;
 void _assertAllSidebarProjectDecorationFieldsListed;
+
+const SIDEBAR_THREAD_DECORATION_FIELDS = [
+  "leading",
+  "title",
+] as const satisfies readonly (keyof ExperimentalSidebarThreadDecoration)[];
+
+type MissingSidebarThreadDecorationField = Exclude<
+  keyof ExperimentalSidebarThreadDecoration,
+  (typeof SIDEBAR_THREAD_DECORATION_FIELDS)[number]
+>;
+const _assertAllSidebarThreadDecorationFieldsListed: MissingSidebarThreadDecorationField extends never
+  ? true
+  : never = true;
+void _assertAllSidebarThreadDecorationFieldsListed;
 
 const MESSAGE_ACTION_REGISTRATION_FIELDS = [
   "id",
@@ -914,6 +932,16 @@ describe("bb-plugin-authoring skill", () => {
       expect(
         skill,
         `sidebar project decoration field "${field}" is not documented in the skill`,
+      ).toContain(field);
+    }
+  });
+
+  it("documents every sidebar thread decoration field", () => {
+    expect(skill).toContain("experimental_useSidebarThreadDecoration");
+    for (const field of SIDEBAR_THREAD_DECORATION_FIELDS) {
+      expect(
+        skill,
+        `sidebar thread decoration field "${field}" is not documented in the skill`,
       ).toContain(field);
     }
   });
