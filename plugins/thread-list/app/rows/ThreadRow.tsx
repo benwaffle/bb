@@ -89,11 +89,18 @@ import {
   PluginRowIcon,
   PluginRowTrailing,
   PluginThreadDepthRail,
-  PluginThreadProjectLeading,
   SidebarHeaderProjectContext,
   usePluginThreadDecoration,
 } from "./pluginThreadDecoration.js";
 import { SidebarRowControls } from "./SidebarRowControls.js";
+import {
+  getFlatGroupGuideLeft,
+  getFlatRowPaddingLeft,
+  ProjectHueEdge,
+  shouldShowRowProject,
+  useFlatThreadItemScope,
+  useFlatThreadList,
+} from "./flatThreadRows.js";
 import {
   ThreadRowSecondLine,
   useThreadRowSecondLine,
@@ -232,9 +239,15 @@ function getHoverActionsInsetStyle(actionCount: number): CSSProperties {
   } as CSSProperties;
 }
 
-function getThreadRowStyle(depth: number, isTwoLine: boolean): CSSProperties {
+function getThreadRowStyle(
+  depth: number,
+  isTwoLine: boolean,
+  isFlat: boolean,
+): CSSProperties {
   return {
-    paddingLeft: getSidebarThreadRowPaddingLeft(depth),
+    paddingLeft: isFlat
+      ? getFlatRowPaddingLeft(depth)
+      : getSidebarThreadRowPaddingLeft(depth),
     ...(isTwoLine
       ? ({ "--bb-sidebar-sticky-tier-height": "auto" } as CSSProperties)
       : {}),
@@ -484,18 +497,27 @@ function ThreadRowBody({
     groupDecoration?.trailing ?? rowDecoration?.trailing ?? null;
   const description =
     groupDecoration?.description ?? rowDecoration?.description ?? null;
+  const flatList = useFlatThreadList();
+  const flatItemScope = useFlatThreadItemScope();
+  const isFlat = flatList !== null;
   const secondLine = useThreadRowSecondLine({
     thread,
     isOutsideProjectHeader,
+    showProject: shouldShowRowProject(flatItemScope, thread),
     projectDecoration,
     label: rowDecoration?.label ?? null,
     pullRequest,
   });
   const showsSecondLine = twoLineRows && secondLine !== null;
-  const showsProjectLeading = isOutsideProjectHeader && !showsSecondLine;
-  const lineOneHeightClass = options.isCompact
-    ? COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS
-    : COARSE_POINTER_ROW_HEIGHT_CLASS;
+  const hueEdge =
+    isFlat && flatItemScope?.inGroup !== true
+      ? (projectDecoration?.hue ?? null)
+      : null;
+  const lineOneHeightClass = isFlat
+    ? "h-5"
+    : options.isCompact
+      ? COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS
+      : COARSE_POINTER_ROW_HEIGHT_CLASS;
   const crossProjectName = useSidebarProjectName(crossProjectId);
   const crossProjectLabel =
     crossProjectId === null
@@ -642,7 +664,11 @@ function ThreadRowBody({
     SIDEBAR_ROW_BASE_CLASS,
     LIST_HOVER_TRANSITION,
     parentOptions?.stickyLevel === undefined && "relative",
-    showsSecondLine ? "h-auto items-start pb-1" : lineOneHeightClass,
+    isFlat
+      ? "h-auto items-start py-1.5"
+      : showsSecondLine
+        ? "h-auto items-start pb-1"
+        : lineOneHeightClass,
     showActive
       ? SIDEBAR_ROW_SELECTED_STATE_CLASS
       : SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
@@ -654,9 +680,13 @@ function ThreadRowBody({
     reorderPlacement && REORDER_PLACEMENT_CLASS[reorderPlacement],
     isCustomizingActions && "bg-sidebar-accent",
   );
-  const rowStyle = getThreadRowStyle(options.depth, showsSecondLine);
+  const rowStyle = getThreadRowStyle(options.depth, showsSecondLine, isFlat);
   const parentGuideLeft =
-    options.depth > 0 ? getSidebarThreadGroupLineLeft(options.depth - 1) : null;
+    options.depth > 0
+      ? isFlat
+        ? getFlatGroupGuideLeft(options.depth - 1)
+        : getSidebarThreadGroupLineLeft(options.depth - 1)
+      : null;
   const handleRowClickCapture = useCallback<ThreadRowClickCaptureHandler>(
     (event) => {
       if (!options.consumeClickSuppression?.()) {
@@ -732,13 +762,10 @@ function ThreadRowBody({
             <TooltipContent side="top">{provider.displayName}</TooltipContent>
           </Tooltip>
         ) : null}
-        <PluginThreadDepthRail depth={groupDecoration?.depth ?? 0} />
-        {showsProjectLeading ? (
-          <PluginThreadProjectLeading
-            projectId={thread.projectId}
-            onActivate={() => rowLinkRef.current?.click()}
-          />
-        ) : null}
+        <PluginThreadDepthRail
+          depth={groupDecoration?.depth ?? 0}
+          lines={!isFlat}
+        />
         {rowIcon === null ? null : (
           <span className="mr-1.5 flex shrink-0">
             <PluginRowIcon icon={rowIcon} />
@@ -752,6 +779,7 @@ function ThreadRowBody({
           <span
             className={cn(
               "bb-thread-title",
+              isFlat && "font-medium leading-5",
               (crossProjectLabel !== null ||
                 description !== null ||
                 rowTrailing !== null) &&
@@ -766,7 +794,7 @@ function ThreadRowBody({
         {description === null || isEditing ? null : (
           <span
             data-sidebar-thread-description=""
-            className="ml-2 shrink-0 truncate text-subtle-foreground"
+            className="ml-2 min-w-0 shrink-[1000] truncate text-subtle-foreground"
           >
             {description}
           </span>
@@ -811,6 +839,7 @@ function ThreadRowBody({
 
   const rowContent = (
     <>
+      {hueEdge === null ? null : <ProjectHueEdge hue={hueEdge} />}
       {parentOptions?.stickyLevel !== undefined && parentGuideLeft !== null ? (
         <span
           aria-hidden="true"
@@ -875,7 +904,7 @@ function ThreadRowBody({
             >
               {lineOne}
             </span>
-            <ThreadRowSecondLine line={secondLine} />
+            <ThreadRowSecondLine line={secondLine} flat={isFlat} />
           </span>
         ) : (
           lineOne
@@ -892,7 +921,7 @@ function ThreadRowBody({
         data-sidebar-thread-trailing=""
         className={cn(
           "flex shrink-0 items-center gap-0.5",
-          showsSecondLine && lineOneHeightClass,
+          (showsSecondLine || isFlat) && lineOneHeightClass,
           !isActionsOpen &&
             "group-data-[sidebar-touch-armed=true]/thread-row:hidden",
           (isEditing || isCustomizingActions) && "hidden",
