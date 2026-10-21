@@ -2,6 +2,10 @@ import type {
   PluginSidebarProject,
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
+import {
+  githubPrStatusContract,
+  type ThreadRowPullRequest,
+} from "../rows/githubPrStatus.js";
 import type { SidebarProject } from "./use-sidebar-data.js";
 
 export type SidebarThreadEnvironment = NonNullable<
@@ -95,6 +99,33 @@ export function makeSidebarThread(
       goals: 0,
       ...overrides.activity,
     },
+  };
+}
+
+export function makeSidebarPullRequest(
+  overrides: Partial<ThreadRowPullRequest> = {},
+): ThreadRowPullRequest {
+  return { number: 1, state: "open", ...overrides };
+}
+
+export function pullRequestsRpc(
+  pullRequestsByEnvironmentId: Readonly<Record<string, ThreadRowPullRequest>>,
+) {
+  return {
+    pullRequests: (input: unknown) =>
+      Object.fromEntries(
+        githubPrStatusContract.pullRequests.input
+          .parse(input)
+          .keys.map((key) => {
+            const pullRequest = pullRequestsByEnvironmentId[key];
+            return [
+              key,
+              pullRequest
+                ? { outcome: "available", pullRequest }
+                : { outcome: "absent" },
+            ];
+          }),
+      ),
   };
 }
 

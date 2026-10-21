@@ -6,7 +6,7 @@ description: "Inspect or change the sidebar thread list's layout preferences: or
 # Thread list preferences
 
 The Thread list plugin owns the sidebar's layout state. Read it with
-`bb thread-list prefs list --json`; keys are `showProviderIcons`, `showRowMetadata`, `threadLifecycles`, `organizationMode`,
+`bb thread-list prefs list --json`; keys are `showProviderIcons`, `twoLineRows`, `showRowMetadata`, `threadLifecycles`, `organizationMode`,
 `environmentGrouping`, `groupByReadStatus`, `chronologicalSort`, `sortDirection`, `sectionOrder`,
 `manualSectionOrder`, `machineSectionOrder`, `hiddenGroups` (including the
 built-in `threads` group), `rowActions`,
@@ -86,6 +86,15 @@ Organize → Rows → Provider icons toggles the icon before each thread title.
 `bb thread-list prefs set showProviderIcons false` to hide them. Unknown
 provider ids have no icon.
 
+Organize → Rows → Two-line rows gives each thread row a second muted line.
+Outside a project's header (Custom and By machine modes, Pinned, and
+cross-project rows) it reads the project's emoji and name, a plugin label
+such as a ticket key, and the pull request number with its state icon or
+else the branch. Inside a project's header it shows only the pull request or
+branch, and rows with nothing to show keep one line. `twoLineRows` defaults
+to `true`; use `bb thread-list prefs set twoLineRows false` for one-line
+rows.
+
 Organize → Rows → Metadata adds a line under each thread's title where plugins
 draw metadata, such as GitHub PR Status's pull request number. Rows grow to
 two lines only when a plugin shows something for them. The option appears only
@@ -93,6 +102,8 @@ while the `threadRowMetadata` experiment is on
 (`bb settings experiment threadRowMetadata true`); while it is off the sidebar
 ignores `showRowMetadata`. `showRowMetadata` defaults to `false`; use
 `bb thread-list prefs set showRowMetadata true` to turn it on.
+While both are on, the metadata items join the end of the second line
+instead of adding a third.
 
 Organize → Groups → By read status lists threads that show the unread dot above
 the rest, keeping the selected sort within each group. `groupByReadStatus`
