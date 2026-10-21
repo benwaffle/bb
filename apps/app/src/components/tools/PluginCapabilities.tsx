@@ -252,7 +252,7 @@ function pluginAppSurfaceItems(
       pluginId,
       slots.sidebarThreadDecorations,
       "sidebar-thread-decoration",
-      "Decorates sidebar thread rows by project.",
+      "Decorates sidebar thread rows by project or by thread.",
     ),
     ...namedSlotItems(
       pluginId,

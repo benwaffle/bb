@@ -14,7 +14,11 @@ import {
   renderSlot,
   type RenderSlotOptions,
 } from "@get-bb/plugin-sdk/testing/app";
-import { makePluginProject, makeSidebarThread } from "./app/model/fixtures.js";
+import {
+  makePluginProject,
+  makeSidebarPullRequest,
+  makeSidebarThread,
+} from "./app/model/fixtures.js";
 import {
   resetPreferencesSyncForTest,
   setPreferencesMirrorStorageForTest,
@@ -194,21 +198,37 @@ describe("thread-list plugin", () => {
       proj_web: { leading: "🌐", title: null },
     };
     const threadRow = (threadId: string) =>
-      document.querySelector(`[data-sidebar-thread-id="${threadId}"]`)
-        ?.parentElement ?? null;
+      document
+        .querySelector(`[data-sidebar-thread-id="${threadId}"]`)
+        ?.closest("[data-sidebar-rename-row]") ?? null;
     const leadingText = (threadId: string) =>
       threadRow(threadId)?.querySelector(
         "[data-sidebar-thread-project-leading]",
       )?.textContent ?? null;
+    const secondLine = (threadId: string) =>
+      threadRow(threadId)?.querySelector("[data-sidebar-thread-second-line]")
+        ?.textContent ?? null;
 
     renderList(
       { organizationMode: "chronological" },
       { sidebarThreadDecorations },
     );
     await screen.findByText("Parent thread");
+    expect(secondLine("thr_parent")).toBe("🚀App");
+    expect(secondLine("thr_later")).toBe("🌐Web·main");
+    expect(secondLine("thr_personal")).toBe("Personal");
+    expect(leadingText("thr_parent")).toBeNull();
+    cleanup();
+
+    renderList(
+      { organizationMode: "chronological", twoLineRows: false },
+      { sidebarThreadDecorations },
+    );
+    await screen.findByText("Parent thread");
     expect(leadingText("thr_parent")).toBe("🚀");
     expect(leadingText("thr_later")).toBe("🌐");
     expect(leadingText("thr_personal")).toBeNull();
+    expect(secondLine("thr_later")).toBeNull();
     expect(
       within(threadRow("thr_parent") as HTMLElement).getByRole("img", {
         name: "App",
@@ -218,9 +238,66 @@ describe("thread-list plugin", () => {
 
     renderList({ organizationMode: "project" }, { sidebarThreadDecorations });
     await screen.findByText("Parent thread");
-    expect(leadingText("thr_pinned")).toBe("🚀");
+    expect(secondLine("thr_pinned")).toBe("🚀App");
+    expect(secondLine("thr_parent")).toBeNull();
     expect(leadingText("thr_parent")).toBeNull();
-    expect(leadingText("thr_later")).toBeNull();
+    expect(secondLine("thr_later")).toBe("main");
+  });
+
+  it("decorates flat thread rows from a plugin's per-thread hook", async () => {
+    setPreferencesMirrorStorageForTest(null);
+    const threadRow = (threadId: string) =>
+      document
+        .querySelector(`[data-sidebar-thread-id="${threadId}"]`)
+        ?.closest("[data-sidebar-rename-row]") ?? null;
+    const sidebarThreadRowDecorations = {
+      thr_later: {
+        icon: { name: "GitPullRequest", tone: "success" },
+        label: "CORE-123",
+        description: null,
+        trailing: { kind: "text", text: "2/3" },
+      },
+    } as const;
+
+    renderList(
+      { organizationMode: "chronological" },
+      {
+        sidebarThreadRowDecorations,
+        sidebarPullRequests: {
+          thr_later: makeSidebarPullRequest({ number: 42, state: "merged" }),
+        },
+      },
+    );
+    await screen.findByText("Later thread");
+    const later = threadRow("thr_later") as HTMLElement;
+    expect(
+      later.querySelector("[data-sidebar-thread-second-line]")?.textContent,
+    ).toBe("Web·CORE-123·#42");
+    expect(
+      later
+        .querySelector("[data-sidebar-thread-second-line-pull-request]")
+        ?.getAttribute("data-sidebar-thread-second-line-pull-request"),
+    ).toBe("merged");
+    expect(
+      later.querySelector('[data-sidebar-plugin-row-icon="success"]'),
+    ).not.toBeNull();
+    expect(later.querySelector("[data-sidebar-thread-provider]")).toBeNull();
+    expect(
+      later.querySelector('[data-sidebar-plugin-row-trailing="text"]')
+        ?.textContent,
+    ).toBe("2/3");
+    cleanup();
+
+    renderList(
+      { organizationMode: "project" },
+      { sidebarThreadRowDecorations },
+    );
+    await screen.findByText("Later thread");
+    const nested = threadRow("thr_later") as HTMLElement;
+    expect(
+      nested.querySelector("[data-sidebar-thread-second-line]")?.textContent,
+    ).toBe("main");
+    expect(nested.querySelector("[data-sidebar-plugin-row-icon]")).toBeNull();
   });
 
   it("groups pinned worktree roots when environment grouping is enabled", async () => {

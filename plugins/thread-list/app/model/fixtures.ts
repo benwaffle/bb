@@ -1,5 +1,6 @@
 import type {
   PluginSidebarProject,
+  PluginSidebarPullRequest,
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 import type { SidebarProject } from "./use-sidebar-data.js";
@@ -94,6 +95,24 @@ export function makeSidebarThread(
       goals: 0,
       ...overrides.activity,
     },
+  };
+}
+
+export function makeSidebarPullRequest(
+  overrides: Partial<PluginSidebarPullRequest> = {},
+): PluginSidebarPullRequest {
+  return {
+    experimental_autoMerge: false,
+    experimental_inMergeQueue: null,
+    experimental_checks: { state: "passing" },
+    experimental_review: { state: "none" },
+    experimental_mergeability: { state: "mergeable" },
+    number: 1,
+    title: "Pull request",
+    url: "https://github.test/pulls/1",
+    state: "open",
+    attention: "none",
+    ...overrides,
   };
 }
 

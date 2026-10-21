@@ -48,6 +48,7 @@ import {
   type ExperimentalResolvedSidebarProjectDecoration,
   type ExperimentalSidebarProjectDecorationRegistration,
   type ExperimentalResolvedSidebarThreadDecoration,
+  type ExperimentalResolvedSidebarThreadRowDecoration,
   type ExperimentalSidebarThreadDecorationRegistration,
   type ExperimentalQuestionFormHost,
   type PluginAppDefinition,
@@ -325,6 +326,10 @@ interface SlotEnv {
   sidebarThreadDecorations: ReadonlyMap<
     string,
     ExperimentalResolvedSidebarThreadDecoration
+  >;
+  sidebarThreadRowDecorations: ReadonlyMap<
+    string,
+    ExperimentalResolvedSidebarThreadRowDecoration
   >;
   sidebarDraftThreadIds: ReadonlySet<string>;
   sidebarRowStatuses: ReadonlyMap<string, PluginSidebarThreadRowStatus>;
@@ -1458,9 +1463,8 @@ const testPluginSdkApp = {
     _options,
   ): ExperimentalSidebarNavigationSplit {
     const env = useSlotEnv("experimental_useSidebarNavigationSplit");
-    const kind = env.sidebarNavigation.items.find(
-      (item) => item.id === itemId,
-    )?.action.kind;
+    const kind = env.sidebarNavigation.items.find((item) => item.id === itemId)
+      ?.action.kind;
     const isAvailable = kind === "new-thread" || kind === "open-plugin-panel";
     return useMemo(
       () => ({
@@ -1551,6 +1555,15 @@ const testPluginSdkApp = {
       useSlotEnv(
         "experimental_useSidebarThreadDecoration",
       ).sidebarThreadDecorations.get(projectId) ?? null
+    );
+  },
+  experimental_useSidebarThreadRowDecoration(
+    threadId,
+  ): ExperimentalResolvedSidebarThreadRowDecoration | null {
+    return (
+      useSlotEnv(
+        "experimental_useSidebarThreadRowDecoration",
+      ).sidebarThreadRowDecorations.get(threadId) ?? null
     );
   },
   experimental_useSidebarThreadPullRequest(
@@ -1925,6 +1938,14 @@ export interface RenderSlotOptions<
   sidebarThreadDecorations?: Record<
     string,
     ExperimentalResolvedSidebarThreadDecoration
+  >;
+  /**
+   * Decorations `experimental_useSidebarThreadRowDecoration()` reports,
+   * keyed by thread id. Omitted → every thread reports none.
+   */
+  sidebarThreadRowDecorations?: Record<
+    string,
+    ExperimentalResolvedSidebarThreadRowDecoration
   >;
   /**
    * Thread ids `useSidebarThreadDraft()` and `useSidebarThreadDraftIds()`
@@ -2747,6 +2768,9 @@ export function renderSlot<
     ),
     sidebarThreadDecorations: new Map(
       Object.entries(options.sidebarThreadDecorations ?? {}),
+    ),
+    sidebarThreadRowDecorations: new Map(
+      Object.entries(options.sidebarThreadRowDecorations ?? {}),
     ),
     sidebarDraftThreadIds,
     sidebarRowStatuses,
