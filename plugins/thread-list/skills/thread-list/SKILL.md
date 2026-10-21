@@ -6,7 +6,7 @@ description: "Inspect or change the sidebar thread list's layout preferences: or
 # Thread list preferences
 
 The Thread list plugin owns the sidebar's layout state. Read it with
-`bb thread-list prefs list --json`; keys are `showProviderIcons`, `twoLineRows`, `threadLifecycles`, `organizationMode`,
+`bb thread-list prefs list --json`; keys are `showProviderIcons`, `twoLineRows`, `dayLabels`, `threadLifecycles`, `organizationMode`,
 `environmentGrouping`, `groupByReadStatus`, `chronologicalSort`, `sortDirection`, `sectionOrder`,
 `manualSectionOrder`, `machineSectionOrder`, `hiddenGroups` (including the
 built-in `threads` group), `rowActions`,
@@ -79,12 +79,21 @@ provider ids have no icon.
 
 Organize → Rows → Two-line rows gives each thread row a second muted line.
 Outside a project's header (Custom and By machine modes, Pinned, and
-cross-project rows) it reads the project's emoji and name, a plugin label
-such as a ticket key, and the pull request number with its state icon or
-else the branch. Inside a project's header it shows only the pull request or
-branch, and rows with nothing to show keep one line. `twoLineRows` defaults
-to `true`; use `bb thread-list prefs set twoLineRows false` for one-line
-rows.
+cross-project rows) it reads the project's name, tinted with the project's
+hue when a plugin supplies one, a plugin label such as a ticket key, and the
+pull request number with its state icon or else the branch. In Custom and By
+machine modes the project is left out when the row above it in the same day
+section has the same project. Inside a project's header it shows only the
+pull request or branch, and rows with nothing to show keep one line.
+`twoLineRows` defaults to `true`; use
+`bb thread-list prefs set twoLineRows false` for one-line rows.
+
+Organize → Rows → Day labels splits each Custom and By machine section into
+Today, Yesterday, This week, and Earlier by each thread's last update in
+local time. Labels show only while the list is sorted by Updated at, newest
+first, and never in Pinned. A plugin group sits in the day of its newest
+thread. `dayLabels` defaults to `true`; use
+`bb thread-list prefs set dayLabels false` to hide them.
 
 Organize → Groups → By read status lists threads that show the unread dot above
 the rest, keeping the selected sort within each group. `groupByReadStatus`

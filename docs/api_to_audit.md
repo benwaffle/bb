@@ -2792,10 +2792,10 @@ and By machine modes, the Pinned section, and cross-project rows.
 **What it does.** A plugin registers `{ id, title, useDecoration }`. The
 request, hidden per-plugin mount, and hook lifetime match
 `experimental_sidebarProjectDecoration`. The hook returns
-`{ leading?, title? }` or `null`; blank strings are dropped and a decoration
-without `leading` is ignored. The first plugin by id with a `leading` wins.
-The Thread list renders `leading` before the title, with `title` as its
-tooltip and accessible label; clicking it opens the thread.
+`{ leading?, title?, hue? }` or `null`; blank strings are dropped and a
+decoration without `leading` or a valid `hue` is ignored. The first plugin by
+id with either wins. The Thread list shows `title` as the project name on the
+row's second line; see the project hue entry below for `hue` and `leading`.
 
 **Audit before stabilizing.**
 
@@ -2826,6 +2826,23 @@ of the provider icon, `description` and `trailing` as for group rows, and
 5. **Merging with groups.** Group thread rows render only under a project
    header, where this hook does not run, so a plugin describes the same
    thread twice. Decide whether one hook should serve both.
+
+**Project hue (added 2026-10-21).** `useDecoration` may return `hue`, an
+OKLCH hue from 0 to 360; other values are dropped, and a decoration needs a
+non-blank `leading` or a valid `hue`. The resolved decoration is
+`{ leading, title, hue }` with absent fields `null`. Consumer: the
+project-emoji plugin, which returns `{ title, hue }`. Core caller: the bundled
+Thread list's flat rows (Custom and By machine modes and their Pinned
+section), which draw `hue` as a row edge and a tint on the project name, and
+its plugin group headers outside a project's header, which draw a hue edge,
+key pill outline, and guide line. Rows no longer draw `leading`; only those
+group headers do.
+
+6. **Color model.** The host fixes lightness and chroma per theme
+   (`--project-hue-*` tokens) so contrast holds. Decide whether plugins need
+   a full color, and how a full color would keep AA in both themes.
+7. **`leading` on rows.** Rows stopped drawing `leading`. Decide whether to
+   remove it from this slot or keep it for group headers only.
 
 ## `app.slots.experimental_threadHeaderAction` (`@get-bb/plugin-sdk/app`)
 
