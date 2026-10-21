@@ -1291,6 +1291,7 @@ row's Customize actions, or `bb thread-list prefs get|set|reset <key>`
 | `showProviderIcons`   | `false`                           | Shows the provider icon before each thread title                                                                                            |
 | `showRowMetadata`     | `false`                           | Shows plugins' metadata on a line under each thread title; needs the `threadRowMetadata` experiment                                         |
 | `twoLineRows`         | `true`                            | Adds a muted second line with the project, plugin label, and pull request or branch; under a project header only the pull request or branch |
+| `dayLabels`           | `true`                            | Splits Custom and By machine sections into Today, Yesterday, This week, and Earlier while sorted by update time, newest first               |
 | `collapsed*`          | `[]`                              | Collapsed sections, projects, threads, environments, custom sections, and machines                                                          |
 
 `rowActions` keys are `bb--core/<id>` (`split`, `newThreadInEnvironment`,

@@ -122,14 +122,26 @@ function nonBlank(value: unknown): string | null {
     : null;
 }
 
-function parseSidebarThreadDecoration(
+export function parseSidebarThreadDecoration(
   value: unknown,
 ): ExperimentalResolvedSidebarThreadDecoration | null {
   if (typeof value !== "object" || value === null) return null;
-  const decoration = value as Partial<ExperimentalSidebarThreadDecoration>;
+  const decoration = value as Partial<
+    Record<keyof ExperimentalSidebarThreadDecoration, unknown>
+  >;
   const leading = nonBlank(decoration.leading);
-  if (leading === null) return null;
-  return { leading, title: nonBlank(decoration.title) };
+  const hue = parseHue(decoration.hue);
+  if (leading === null && hue === null) return null;
+  return { leading, title: nonBlank(decoration.title), hue };
+}
+
+function parseHue(value: unknown): number | null {
+  return typeof value === "number" &&
+    Number.isFinite(value) &&
+    value >= 0 &&
+    value <= 360
+    ? value
+    : null;
 }
 
 function parseSidebarThreadRowDecoration(
