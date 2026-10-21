@@ -439,10 +439,10 @@ fields come from the first plugin that sets a color or classes.
 
 ### Decorating sidebar thread rows by project
 
-`app.slots.experimental_sidebarThreadDecoration` puts a short marker for a
-thread's project before the thread title wherever the row is not nested
-under that project's header: Custom and By machine modes, and the Pinned
-section. `useDecoration(projectId)` is a React hook the host calls inside
+`app.slots.experimental_sidebarThreadDecoration` describes a thread's project
+wherever the row is not nested under that project's header: Custom and By
+machine modes, and the Pinned section. `useDecoration(projectId)` is a React
+hook the host calls inside
 your plugin's context, once per such project. Return the same object while
 nothing changed, or `null` for no decoration.
 
@@ -454,24 +454,30 @@ app.slots.experimental_sidebarThreadDecoration({
     const project = useProjectStyle(projectId);
     return useMemo(
       () =>
-        project === null
-          ? null
-          : { leading: project.emoji, title: project.name },
+        project === null ? null : { title: project.name, hue: project.hue },
       [project],
     );
   },
 });
 ```
 
-An `ExperimentalSidebarThreadDecoration` has two optional string fields.
-`leading` is an emoji or short text; a blank value means no decoration.
-`title` is the tooltip and accessible label for `leading`.
+An `ExperimentalSidebarThreadDecoration` has three optional fields:
 
-A replacement thread list reads it with
+- `hue` — an OKLCH hue, 0–360. In flat lists the Thread list draws it as a
+  3px edge on each row and tints the project name on line 2; a ticket group
+  outside its project's header gets a hue edge, a hue-outlined key pill, and a
+  hue-tinted guide line. Numbers outside 0–360 are ignored.
+- `title` — the project name on line 2, in place of bb's project name.
+- `leading` — an emoji or short text. Thread rows do not draw it; a plugin
+  group header outside its project's header draws it before the project name.
+
+A decoration needs a non-blank `leading` or a valid `hue`; otherwise it counts
+as `null`. A replacement thread list reads it with
 `experimental_useSidebarThreadDecoration(projectId)`, which is also what makes
 bb run the plugins' hooks for that project. It returns `null` or an
-`ExperimentalResolvedSidebarThreadDecoration` from the first plugin, in
-plugin id order, with a non-blank `leading`.
+`ExperimentalResolvedSidebarThreadDecoration` (every field set, absent ones
+`null`) from the first plugin, in plugin id order, with a non-blank `leading`
+or a valid `hue`.
 
 #### Decorating one thread row
 
@@ -522,8 +528,9 @@ also what makes bb run the hooks for that row. It returns `null` or an
 ones `null`) from the first plugin, in plugin id order, with a valid field.
 
 The bundled Thread list shows each row on two lines unless the user turns
-off Organize → Rows → Two-line rows. Line 2 reads: the project's `leading`
-and `title` (else the project name), then the row's `label`, then the pull
-request number with its state icon, else the branch, with missing pieces
-left out. Inside a project's header line 2 shows only the pull request or
-branch.
+off Organize → Rows → Two-line rows. Line 2 reads: the project's `title`
+(else the project name), tinted with its `hue`, then the row's `label`, then
+the pull request number with its state icon, else the branch, with missing
+pieces left out. In Custom and By machine modes the project is left out when
+the row above it in the same day section has the same project. Inside a
+project's header line 2 shows only the pull request or branch.
