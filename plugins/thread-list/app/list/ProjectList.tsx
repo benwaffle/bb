@@ -36,6 +36,7 @@ import { useDialogState } from "@/components/ui/use-dialog-state";
 import { ThreadRowNavigationProvider } from "../rows/threadRowNavigation.js";
 import { SidebarProvidersContext } from "../rows/ThreadRow.js";
 import {
+  buildFlatThreadGroups,
   buildProjectThreadGroups,
   getProjectThreadItemDescendants,
   type ProjectThreadNode,
@@ -427,16 +428,8 @@ function buildGroupSectionItem(
   key: SidebarSectionId,
   name: string,
   threads: readonly SidebarThread[],
-  compareThreads: ThreadComparator,
-  groupThreadsByEnvironment: boolean,
-  pluginGroups: readonly ExperimentalResolvedSidebarThreadGroup[],
+  items: ProjectThreadItem[],
 ): Extract<ProjectThreadItem, { kind: "section" }> {
-  const items = buildProjectThreadGroups(
-    threads,
-    compareThreads,
-    groupThreadsByEnvironment,
-    pluginGroups,
-  );
   return {
     kind: "section",
     group: {
@@ -524,6 +517,12 @@ interface ProjectModeSectionsProps
 
 const NO_PLUGIN_THREAD_GROUPS: readonly ExperimentalResolvedSidebarThreadGroup[] =
   [];
+
+function projectThreads(row: ProjectListRowModel): readonly SidebarThread[] {
+  return row.threadListState.status === "ready"
+    ? row.threadListState.threads
+    : EMPTY_THREAD_LIST;
+}
 
 function groupPluginThreadGroupsByProject(
   groups: readonly ExperimentalResolvedSidebarThreadGroup[],
@@ -674,13 +673,14 @@ function ProjectModeSections({
           row.project.id,
           buildSidebarEntitySectionId("project", row.project.id),
           row.project.name,
-          row.threadListState.status === "ready"
-            ? row.threadListState.threads
-            : EMPTY_THREAD_LIST,
-          compareThreads,
-          groupThreadsByEnvironment,
-          pluginThreadGroupsByProjectId.get(row.project.id) ??
-            NO_PLUGIN_THREAD_GROUPS,
+          projectThreads(row),
+          buildProjectThreadGroups(
+            projectThreads(row),
+            compareThreads,
+            groupThreadsByEnvironment,
+            pluginThreadGroupsByProjectId.get(row.project.id) ??
+              NO_PLUGIN_THREAD_GROUPS,
+          ),
         ),
       ),
     [
@@ -1070,6 +1070,7 @@ export function MachineModeSections({
   );
   const { hostsById } = useSidebarData();
   const hosts = useSidebarMachineHosts(hostsById);
+  const pluginThreadGroups = experimental_useSidebarThreadGroups();
   const [collapsedMachineKeyList, setCollapsedMachineKeyList] = useAtom(
     sidebarCollapsedMachinesAtom,
   );
@@ -1138,10 +1139,11 @@ export function MachineModeSections({
   const allThreadItems = useMemo(
     () =>
       machineSections.length === 0
-        ? buildProjectThreadGroups(
+        ? buildFlatThreadGroups(
             nonPinnedThreads,
             compareThreads,
             groupThreadsByEnvironment,
+            pluginThreadGroups,
           )
         : [],
     [
@@ -1149,6 +1151,7 @@ export function MachineModeSections({
       groupThreadsByEnvironment,
       machineSections.length,
       nonPinnedThreads,
+      pluginThreadGroups,
     ],
   );
   const machineGroups = useMemo(
@@ -1159,12 +1162,20 @@ export function MachineModeSections({
           buildSidebarEntitySectionId("machine", section.key),
           section.label,
           section.threadListState.threads,
-          compareThreads,
-          groupThreadsByEnvironment,
-          NO_PLUGIN_THREAD_GROUPS,
+          buildFlatThreadGroups(
+            section.threadListState.threads,
+            compareThreads,
+            groupThreadsByEnvironment,
+            pluginThreadGroups,
+          ),
         ),
       ),
-    [compareThreads, groupThreadsByEnvironment, machineSections],
+    [
+      compareThreads,
+      groupThreadsByEnvironment,
+      machineSections,
+      pluginThreadGroups,
+    ],
   );
   const machineItemsBySectionId = useMemo(
     () =>
