@@ -27,6 +27,7 @@ import {
   sidebarShowRowMetadataAtom,
   sidebarShowEmptyProjectsAtom,
   THREAD_ROW_METADATA_EXPERIMENT,
+  sidebarTwoLineRowsAtom,
 } from "../preferences/atoms.js";
 
 const SIDEBAR_ORGANIZE_OPTIONS = [
@@ -159,6 +160,7 @@ function SidebarViewItems({ page }: { page: SidebarViewPage }) {
   const [showEmptyProjects, setShowEmptyProjects] = useAtom(
     sidebarShowEmptyProjectsAtom,
   );
+  const [twoLineRows, setTwoLineRows] = useAtom(sidebarTwoLineRowsAtom);
   const selectedSort = sort === "none" ? "updated" : sort;
   if (page === "filter") {
     return (
@@ -293,6 +295,19 @@ function SidebarViewItems({ page }: { page: SidebarViewPage }) {
               </span>
             </DropdownMenuItem>
           ) : null}
+          <DropdownMenuItem
+            role="menuitemcheckbox"
+            aria-checked={twoLineRows}
+            onSelect={(event) => {
+              event.preventDefault();
+              setTwoLineRows(!twoLineRows);
+            }}
+          >
+            Two-line rows
+            <span className="ml-auto inline-flex size-4 shrink-0 items-center justify-center">
+              {twoLineRows && <Icon name="Check" className="size-4" />}
+            </span>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
       </>
     );

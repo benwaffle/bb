@@ -163,3 +163,58 @@ A replacement thread list reads it with
 bb run the plugins' hooks for that project. It returns `null` or an
 `ExperimentalResolvedSidebarThreadDecoration` from the first plugin, in
 plugin id order, with a non-blank `leading`.
+
+#### Decorating one thread row
+
+The same registration takes an optional
+`useThreadDecoration(threadId, projectId)` hook for single rows shown
+outside their project's header. The host calls it once per such row while
+the row is mounted. Register `useDecoration`, `useThreadDecoration`, or
+both. Return the same object while nothing changed, or `null`.
+
+```tsx
+app.slots.experimental_sidebarThreadDecoration({
+  id: "review",
+  title: "Review tickets",
+  useThreadDecoration: (threadId) => {
+    const review = useReviewForThread(threadId);
+    return useMemo(
+      () =>
+        review === null
+          ? null
+          : {
+              icon: { name: "GitPullRequestArrow", tone: "success" },
+              label: review.ticketKey,
+            },
+      [review],
+    );
+  },
+});
+```
+
+An `ExperimentalSidebarThreadRowDecoration` has four optional fields. `icon`,
+`description`, and `trailing` have the same shapes as a thread placed in an
+`experimental_sidebarThreadGroups` group, so a plugin can reuse its group
+row model:
+
+- `icon` — an `ExperimentalSidebarThreadGroupRowIcon` (`{ name, tone }`).
+  The Thread list draws it in place of the row's provider icon.
+- `label` — short text, such as a ticket key, on the row's second line
+  between the project and the pull request or branch.
+- `description` — muted text after the thread title.
+- `trailing` — an `ExperimentalSidebarThreadGroupRowTrailing`, a dot or
+  short text after the title.
+
+Invalid fields are dropped, and a decoration with no valid field counts as
+`null`. A replacement thread list reads it with
+`experimental_useSidebarThreadRowDecoration(threadId, projectId)`, which is
+also what makes bb run the hooks for that row. It returns `null` or an
+`ExperimentalResolvedSidebarThreadRowDecoration` (every field set, absent
+ones `null`) from the first plugin, in plugin id order, with a valid field.
+
+The bundled Thread list shows each row on two lines unless the user turns
+off Organize → Rows → Two-line rows. Line 2 reads: the project's `leading`
+and `title` (else the project name), then the row's `label`, then the pull
+request number with its state icon, else the branch, with missing pieces
+left out. Inside a project's header line 2 shows only the pull request or
+branch.
