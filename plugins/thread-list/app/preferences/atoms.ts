@@ -53,3 +53,4 @@ export const THREAD_ROW_METADATA_EXPERIMENT = "threadRowMetadata";
 export const sidebarShowEmptyProjectsAtom =
   createSyncedPreferenceAtom("showEmptyProjects");
 export const sidebarTwoLineRowsAtom = createSyncedPreferenceAtom("twoLineRows");
+export const sidebarDayLabelsAtom = createSyncedPreferenceAtom("dayLabels");
