@@ -7,7 +7,7 @@ The sidebar thread list, as a plugin.
 - Nested child threads, worktree grouping, drag to reorder, pin, nest, and move between sections.
 - Project header decorations from other plugins (`experimental_sidebarProjectDecoration`): a leading node before the name, a bold accent-colored name, and a tinted header row.
 - Thread row decorations from other plugins (`experimental_sidebarThreadDecoration`): the row's project emoji or short text wherever the row is not under its project's header, plus a per-thread icon, label, description, and trailing state.
-- Groups from other plugins (`experimental_sidebarThreadGroups`) in By project mode, such as threads nested under a ticket, with placeholder rows for work that has no thread yet.
+- Groups from other plugins (`experimental_sidebarThreadGroups`) in every mode, such as threads nested under a ticket, with placeholder rows for work that has no thread yet.
 - Inline rename, keyboard jump shortcuts, and the same status glyphs bb draws elsewhere.
 - Agent provider icons before thread titles, controlled by Organize → Rows → Provider icons.
 - A metadata line under thread titles where plugins show details such as the pull request number, controlled by Organize → Rows → Metadata while the Thread row metadata experiment is on.
