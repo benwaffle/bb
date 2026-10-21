@@ -86,8 +86,8 @@ the same change.
   settings, navigation, thread panels, environment and machine provider
   inputs, interactions, sidebar actions, file openers, the provider directory,
   and tab API migration.
-- Read references/sidebar-slots.md for sidebar thread groups and project
-  headers.
+- Read references/sidebar-slots.md for sidebar thread groups, project headers,
+  and thread rows.
 - Read references/frontend-renderer-slots.md for source, diff, message,
   timeline, palette, and provider-icon renderers or actions.
 - Read references/frontend-components.md for ThreadChat, provider controls,

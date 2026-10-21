@@ -250,6 +250,12 @@ function pluginAppSurfaceItems(
     ),
     ...namedSlotItems(
       pluginId,
+      slots.sidebarThreadDecorations,
+      "sidebar-thread-decoration",
+      "Decorates sidebar thread rows by project.",
+    ),
+    ...namedSlotItems(
+      pluginId,
       slots.sourceCodeRenderers,
       "source-code-renderer",
       "Replaces how source code is displayed everywhere in the app.",

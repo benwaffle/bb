@@ -140,6 +140,7 @@ import {
   PluginRowIcon,
   PluginRowTrailing,
   PluginThreadDecorationsContext,
+  SidebarHeaderProjectContext,
   PluginThreadDepthRail,
 } from "../rows/pluginThreadDecoration.js";
 import { SidebarSectionRow } from "./SidebarSectionRow.js";
@@ -2331,18 +2332,20 @@ export const ProjectThreadTree = memo(function ProjectThreadTree({
   }
 
   return (
-    <SectionThreadTreeItems
-      items={rootItems}
-      sectionDnd={dndParentKey !== undefined ? sectionDnd : null}
-      projectId={projectId}
-      sortableParentKey={projectId}
-      selectedThreadId={selectedThreadId}
-      collapsedThreadIds={collapsedThreadIds}
-      collapsedEnvironmentIds={collapsedEnvironmentIds}
-      onProjectSelect={onProjectSelect}
-      onToggleThreadCollapsed={onToggleThreadCollapsed}
-      onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
-    />
+    <SidebarHeaderProjectContext.Provider value={projectId ?? null}>
+      <SectionThreadTreeItems
+        items={rootItems}
+        sectionDnd={dndParentKey !== undefined ? sectionDnd : null}
+        projectId={projectId}
+        sortableParentKey={projectId}
+        selectedThreadId={selectedThreadId}
+        collapsedThreadIds={collapsedThreadIds}
+        collapsedEnvironmentIds={collapsedEnvironmentIds}
+        onProjectSelect={onProjectSelect}
+        onToggleThreadCollapsed={onToggleThreadCollapsed}
+        onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+      />
+    </SidebarHeaderProjectContext.Provider>
   );
 });
 
