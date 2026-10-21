@@ -8,10 +8,11 @@ import {
 import { cn } from "@/lib/utils";
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import { useSidebarProjectName } from "../model/use-sidebar-data.js";
+import { projectHueTextColor } from "./flatThreadRows.js";
 import { TONE_TEXT_CLASS } from "./pluginThreadDecoration.js";
 
 export interface ThreadRowSecondLineModel {
-  project: { leading: string | null; title: string | null } | null;
+  project: { title: string; hue: number | null } | null;
   label: string | null;
   git:
     | {
@@ -41,22 +42,23 @@ const BRANCH_ICON: ExperimentalSidebarThreadGroupRowIcon = {
 export function useThreadRowSecondLine({
   thread,
   isOutsideProjectHeader,
+  showProject,
   projectDecoration,
   label,
   pullRequest,
 }: {
   thread: SidebarThread;
   isOutsideProjectHeader: boolean;
+  showProject: boolean;
   projectDecoration: ExperimentalResolvedSidebarThreadDecoration | null;
   label: string | null;
   pullRequest: PluginSidebarPullRequest | null;
 }): ThreadRowSecondLineModel | null {
   const projectName = useSidebarProjectName(thread.projectId);
-  const leading = projectDecoration?.leading ?? null;
   const title = projectDecoration?.title ?? projectName ?? null;
   const project =
-    isOutsideProjectHeader && (leading !== null || title !== null)
-      ? { leading, title }
+    isOutsideProjectHeader && showProject && title !== null
+      ? { title, hue: projectDecoration?.hue ?? null }
       : null;
   const branchName = thread.environment?.branchName ?? null;
   const git: ThreadRowSecondLineModel["git"] =
@@ -76,13 +78,19 @@ export function useThreadRowSecondLine({
 
 function SecondLineIcon({
   icon,
+  flat,
 }: {
   icon: ExperimentalSidebarThreadGroupRowIcon;
+  flat: boolean;
 }) {
   return (
     <span
       aria-hidden="true"
-      className={cn("flex shrink-0", TONE_TEXT_CLASS[icon.tone])}
+      className={cn(
+        flat ? "mr-0.5 inline-flex align-[-2px]" : "flex",
+        "shrink-0",
+        TONE_TEXT_CLASS[icon.tone],
+      )}
     >
       <RegisteredIcon name={icon.name} fallback="Circle" className="size-3" />
     </span>
@@ -91,8 +99,10 @@ function SecondLineIcon({
 
 export function ThreadRowSecondLine({
   line,
+  flat,
 }: {
   line: ThreadRowSecondLineModel;
+  flat: boolean;
 }) {
   const parts: { key: string; node: ReactNode }[] = [];
   if (line.project !== null) {
@@ -101,16 +111,20 @@ export function ThreadRowSecondLine({
       node: (
         <span
           data-sidebar-thread-second-line-project=""
-          className="flex min-w-0 shrink items-center gap-1"
+          data-sidebar-thread-second-line-project-hue={
+            line.project.hue ?? undefined
+          }
+          className={cn(
+            "min-w-0 shrink truncate",
+            line.project.hue !== null && "font-medium",
+          )}
+          style={
+            line.project.hue === null
+              ? undefined
+              : { color: projectHueTextColor(line.project.hue) }
+          }
         >
-          {line.project.leading === null ? null : (
-            <span className="max-w-8 shrink-0 truncate">
-              {line.project.leading}
-            </span>
-          )}
-          {line.project.title === null ? null : (
-            <span className="min-w-0 truncate">{line.project.title}</span>
-          )}
+          {line.project.title}
         </span>
       ),
     });
@@ -121,7 +135,10 @@ export function ThreadRowSecondLine({
       node: (
         <span
           data-sidebar-thread-second-line-label=""
-          className="max-w-24 shrink-0 truncate font-mono"
+          className={cn(
+            "max-w-24 shrink-0 truncate font-mono",
+            flat && "text-eyebrow",
+          )}
         >
           {line.label}
         </span>
@@ -134,9 +151,15 @@ export function ThreadRowSecondLine({
       node: (
         <span
           data-sidebar-thread-second-line-pull-request={line.git.state}
-          className="flex shrink-0 items-center gap-0.5"
+          className={cn(
+            "shrink-0",
+            flat ? "whitespace-nowrap" : "flex items-center gap-0.5",
+          )}
         >
-          <SecondLineIcon icon={PULL_REQUEST_STATE_ICON[line.git.state]} />
+          <SecondLineIcon
+            icon={PULL_REQUEST_STATE_ICON[line.git.state]}
+            flat={flat}
+          />
           {`#${line.git.number}`}
         </span>
       ),
@@ -147,11 +170,18 @@ export function ThreadRowSecondLine({
       node: (
         <span
           data-sidebar-thread-second-line-branch=""
-          className="flex min-w-0 items-center gap-0.5"
+          className={cn(
+            "min-w-0",
+            flat ? "truncate" : "flex items-center gap-0.5",
+          )}
           title={line.git.name}
         >
-          <SecondLineIcon icon={BRANCH_ICON} />
-          <span className="min-w-0 truncate">{line.git.name}</span>
+          <SecondLineIcon icon={BRANCH_ICON} flat={flat} />
+          {flat ? (
+            line.git.name
+          ) : (
+            <span className="min-w-0 truncate">{line.git.name}</span>
+          )}
         </span>
       ),
     });
@@ -159,12 +189,20 @@ export function ThreadRowSecondLine({
   return (
     <span
       data-sidebar-thread-second-line=""
-      className="pointer-events-none -mt-1 flex min-w-0 items-center gap-1 text-xs text-subtle-foreground"
+      className={cn(
+        "pointer-events-none flex min-w-0 gap-1 text-subtle-foreground",
+        flat
+          ? "items-baseline whitespace-nowrap text-caption group-[.bb-sidebar-selected-row]/thread-row:text-muted-foreground"
+          : "-mt-1 items-center text-xs",
+      )}
     >
       {parts.map((part, index) => (
         <Fragment key={part.key}>
           {index === 0 ? null : (
-            <span aria-hidden="true" className="shrink-0">
+            <span
+              aria-hidden="true"
+              className={cn("shrink-0", flat && "text-subtle-foreground/55")}
+            >
               ·
             </span>
           )}

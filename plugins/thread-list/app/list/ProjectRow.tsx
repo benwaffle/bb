@@ -148,6 +148,18 @@ import {
   SidebarHeaderProjectContext,
   PluginThreadDepthRail,
 } from "../rows/pluginThreadDecoration.js";
+import {
+  FlatThreadGroupScope,
+  FlatThreadItemFrame,
+  getFlatGroupGuideLeft,
+  getFlatRowPaddingLeft,
+  ProjectHueEdge,
+  projectHueEdgeColor,
+  projectHueTextColor,
+  useFlatThreadItemAnnotations,
+  useFlatThreadItemScope,
+  useFlatThreadList,
+} from "../rows/flatThreadRows.js";
 import { SidebarSectionRow } from "./SidebarSectionRow.js";
 import { TopLevelSidebarSection } from "./TopLevelSidebarSection.js";
 import {
@@ -384,6 +396,7 @@ interface EnvironmentThreadGroupRowProps {
 
 interface ThreadTreeGroupLineProps {
   parentRowDepth: number;
+  hue?: number | null;
 }
 
 interface ThreadTreeLineContinuationProps {
@@ -505,11 +518,33 @@ function getThreadNodeStickyLevel({
   return level < SIDEBAR_STICKY_PARENT_DEPTH_CAP ? level : undefined;
 }
 
-function ThreadTreeGroupLine({ parentRowDepth }: ThreadTreeGroupLineProps) {
+function useThreadTreeLineLeft(parentRowDepth: number): number {
+  return useFlatThreadList() === null
+    ? getSidebarThreadGroupLineLeft(parentRowDepth)
+    : getFlatGroupGuideLeft(parentRowDepth);
+}
+
+function ThreadTreeGroupLine({
+  parentRowDepth,
+  hue = null,
+}: ThreadTreeGroupLineProps) {
+  const left = useThreadTreeLineLeft(parentRowDepth);
   return (
     <span
-      className="pointer-events-none absolute bottom-0 top-0 z-30 w-px bg-border-hairline opacity-70"
-      style={{ left: getSidebarThreadGroupLineLeft(parentRowDepth) }}
+      data-sidebar-thread-group-line={hue ?? undefined}
+      className={cn(
+        "pointer-events-none absolute z-30 w-px",
+        hue === null
+          ? "bottom-0 top-0 bg-border-hairline opacity-70"
+          : "bottom-2.5 top-0.5",
+      )}
+      style={{
+        left,
+        backgroundColor:
+          hue === null
+            ? undefined
+            : `color-mix(in oklab, ${projectHueEdgeColor(hue)} 38%, transparent)`,
+      }}
       aria-hidden="true"
     />
   );
@@ -518,10 +553,11 @@ function ThreadTreeGroupLine({ parentRowDepth }: ThreadTreeGroupLineProps) {
 function ThreadTreeLineContinuation({
   parentRowDepth,
 }: ThreadTreeLineContinuationProps) {
+  const left = useThreadTreeLineLeft(parentRowDepth);
   return (
     <span
       className="pointer-events-none absolute -bottom-0.5 top-0 z-[1] w-px bg-border-hairline opacity-70"
-      style={{ left: getSidebarThreadGroupLineLeft(parentRowDepth) }}
+      style={{ left }}
       aria-hidden="true"
     />
   );
@@ -821,8 +857,11 @@ function EnvironmentThreadGroupHeader({
     SIDEBAR_ROW_BASE_CLASS,
     COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
   );
+  const isFlat = useFlatThreadList() !== null;
   const style = {
-    paddingLeft: getSidebarThreadRowPaddingLeft(rowDepth),
+    paddingLeft: isFlat
+      ? getFlatRowPaddingLeft(rowDepth)
+      : getSidebarThreadRowPaddingLeft(rowDepth),
   };
   const content = (
     <>
@@ -1140,7 +1179,13 @@ interface PluginThreadGroupRowProps {
   onToggleEnvironmentCollapsed: (groupId: string) => void;
 }
 
-function PluginThreadGroupProjectTag({ projectId }: { projectId: string }) {
+function PluginThreadGroupProjectTag({
+  projectId,
+  hue,
+}: {
+  projectId: string;
+  hue: number | null;
+}) {
   const decoration = experimental_useSidebarThreadDecoration(projectId);
   const projectName = useSidebarProjectName(projectId);
   const leading = decoration?.leading ?? null;
@@ -1149,7 +1194,11 @@ function PluginThreadGroupProjectTag({ projectId }: { projectId: string }) {
   return (
     <span
       data-sidebar-plugin-thread-group-project={projectId}
-      className="flex min-w-0 shrink items-center gap-1 text-subtle-foreground"
+      className={cn(
+        "flex min-w-0 shrink items-center gap-1 text-subtle-foreground",
+        hue !== null && "text-caption font-medium",
+      )}
+      style={hue === null ? undefined : { color: projectHueTextColor(hue) }}
     >
       {leading === null ? null : (
         <span className="max-w-8 shrink-0 truncate">{leading}</span>
@@ -1168,6 +1217,7 @@ function PluginThreadGroupHeader({
   stickyLevel,
   isCollapsed,
   isOutsideProjectHeader,
+  hue,
   onToggleCollapsed,
 }: {
   dragBindings?: SidebarSortableDragBindings;
@@ -1176,8 +1226,14 @@ function PluginThreadGroupHeader({
   stickyLevel?: number;
   isCollapsed: boolean;
   isOutsideProjectHeader: boolean;
+  hue: number | null;
   onToggleCollapsed: (groupId: string) => void;
 }) {
+  const isFlat = useFlatThreadList() !== null;
+  const flatItemScope = useFlatThreadItemScope();
+  const showProjectTag =
+    isOutsideProjectHeader &&
+    flatItemScope?.previousProjectId !== group.projectId;
   const childActivity = group.stats.childActivity;
   const hiddenThreadsHaveDraft = useThreadsHaveDraft(
     isCollapsed ? childActivity.threadIds : NO_THREAD_IDS,
@@ -1193,10 +1249,16 @@ function PluginThreadGroupHeader({
     SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
     stickyLevel === undefined && "relative",
     SIDEBAR_ROW_BASE_CLASS,
-    COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
+    isFlat ? "h-8" : COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
   );
-  const style = { paddingLeft: getSidebarThreadRowPaddingLeft(rowDepth) };
-  const showKeyPill = group.style === "minimal" && group.keyLabel !== null;
+  const style = {
+    paddingLeft: isFlat
+      ? getFlatRowPaddingLeft(rowDepth)
+      : getSidebarThreadRowPaddingLeft(rowDepth),
+  };
+  const showKeyPill =
+    (isFlat || group.style === "minimal") && group.keyLabel !== null;
+  const hueKeyPill = showKeyPill && hue !== null;
   const content = (
     <>
       {showKeyPill ? null : (
@@ -1230,17 +1292,34 @@ function PluginThreadGroupHeader({
             }
             className={cn(
               "shrink-0 font-mono",
-              showKeyPill
-                ? "rounded-sm bg-sidebar-accent px-1 text-2xs text-muted-foreground"
-                : "text-subtle-foreground",
+              hueKeyPill
+                ? "rounded-sm px-1 text-eyebrow"
+                : showKeyPill
+                  ? "rounded-sm bg-sidebar-accent px-1 text-2xs text-muted-foreground"
+                  : "text-subtle-foreground",
             )}
+            style={
+              hueKeyPill
+                ? {
+                    color: projectHueTextColor(hue),
+                    boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${projectHueEdgeColor(hue)} 50%, transparent)`,
+                  }
+                : undefined
+            }
           >
             {group.keyLabel}
           </span>
         )}
-        <span className="min-w-0 truncate">{group.label}</span>
-        {isOutsideProjectHeader ? (
-          <PluginThreadGroupProjectTag projectId={group.projectId} />
+        <span
+          className={cn(
+            "min-w-0 truncate",
+            isFlat && "text-xs font-medium text-sidebar-foreground",
+          )}
+        >
+          {group.label}
+        </span>
+        {showProjectTag ? (
+          <PluginThreadGroupProjectTag projectId={group.projectId} hue={hue} />
         ) : null}
         <SidebarChildToggleChevron
           isCollapsed={isCollapsed}
@@ -1314,6 +1393,7 @@ function PluginThreadGroupPlaceholderRow({
 }) {
   const action = row.action;
   const isGhost = row.variant === "ghost";
+  const isFlat = useFlatThreadList() !== null;
   const isCompactAction =
     action !== undefined && Array.from(action.label).length === 1;
   return (
@@ -1323,11 +1403,15 @@ function PluginThreadGroupPlaceholderRow({
       className={cn(
         SIDEBAR_HOVER_ACTIONS_ROW_CLASS,
         SIDEBAR_ROW_BASE_CLASS,
-        COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
+        isFlat ? "h-8" : COARSE_POINTER_COMPACT_ROW_HEIGHT_CLASS,
         SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
         "relative",
       )}
-      style={{ paddingLeft: getSidebarThreadRowPaddingLeft(rowDepth) }}
+      style={{
+        paddingLeft: isFlat
+          ? getFlatRowPaddingLeft(rowDepth)
+          : getSidebarThreadRowPaddingLeft(rowDepth),
+      }}
       title={row.tooltip}
     >
       <button
@@ -1341,13 +1425,22 @@ function PluginThreadGroupPlaceholderRow({
           row.onSelect();
         }}
       >
-        <PluginThreadDepthRail depth={row.depth ?? 0} />
+        <PluginThreadDepthRail depth={row.depth ?? 0} lines={!isFlat} />
         <span
           data-sidebar-plugin-thread-group-row-content=""
           className="flex min-w-0 flex-1 items-center gap-2 self-stretch"
         >
           {row.icon === undefined ? null : <PluginRowIcon icon={row.icon} />}
-          <span className="min-w-0 truncate">{row.title}</span>
+          <span
+            className={cn(
+              "min-w-0 truncate",
+              isFlat &&
+                isGhost &&
+                "underline decoration-subtle-foreground/60 decoration-dashed underline-offset-3",
+            )}
+          >
+            {row.title}
+          </span>
           {row.description === undefined ? null : (
             <span className="shrink-0 truncate text-subtle-foreground">
               {row.description}
@@ -1514,6 +1607,40 @@ const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
   );
   const isOutsideProjectHeader =
     useContext(SidebarHeaderProjectContext) !== group.projectId;
+  const isFlat = useFlatThreadList() !== null;
+  const projectDecoration = experimental_useSidebarThreadDecoration(
+    group.projectId,
+  );
+  const hue = isFlat ? (projectDecoration?.hue ?? null) : null;
+  const children = (
+    <div className="relative space-y-px">
+      <ThreadTreeGroupLine parentRowDepth={rowDepth} hue={hue} />
+      {segments.map((segment) =>
+        segment.kind === "row" ? (
+          <PluginThreadGroupPlaceholderRow
+            key={segment.key}
+            row={segment.row}
+            rowDepth={rowDepth + 1}
+            onProjectSelect={onProjectSelect}
+          />
+        ) : (
+          <PluginThreadGroupThreadRun
+            key={segment.key}
+            items={segment.items}
+            projectId={projectId}
+            sectionDnd={sectionDnd}
+            depthOffset={depthOffset}
+            selectedThreadId={selectedThreadId}
+            collapsedThreadIds={collapsedThreadIds}
+            collapsedEnvironmentIds={collapsedEnvironmentIds}
+            onProjectSelect={onProjectSelect}
+            onToggleThreadCollapsed={onToggleThreadCollapsed}
+            onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+          />
+        ),
+      )}
+    </div>
+  );
 
   return (
     <SidebarStickyGroup
@@ -1522,10 +1649,12 @@ const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
       data-sidebar-plugin-thread-group-style={group.style}
       className={cn(
         "space-y-0.5",
+        isFlat && "relative",
         group.style === "card" &&
           "my-0.5 rounded-md border border-sidebar-border",
       )}
     >
+      {hue === null ? null : <ProjectHueEdge hue={hue} />}
       <PluginThreadGroupHeader
         dragBindings={dragBindings}
         group={group}
@@ -1537,38 +1666,19 @@ const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
         }
         isCollapsed={isCollapsed}
         isOutsideProjectHeader={isOutsideProjectHeader}
+        hue={hue}
         onToggleCollapsed={onToggleEnvironmentCollapsed}
       />
       {!isCollapsed ? (
         <SidebarHeaderProjectContext.Provider value={group.projectId}>
           <PluginThreadDecorationsContext.Provider value={group.decorations}>
-            <div className="relative space-y-px">
-              <ThreadTreeGroupLine parentRowDepth={rowDepth} />
-              {segments.map((segment) =>
-                segment.kind === "row" ? (
-                  <PluginThreadGroupPlaceholderRow
-                    key={segment.key}
-                    row={segment.row}
-                    rowDepth={rowDepth + 1}
-                    onProjectSelect={onProjectSelect}
-                  />
-                ) : (
-                  <PluginThreadGroupThreadRun
-                    key={segment.key}
-                    items={segment.items}
-                    projectId={projectId}
-                    sectionDnd={sectionDnd}
-                    depthOffset={depthOffset}
-                    selectedThreadId={selectedThreadId}
-                    collapsedThreadIds={collapsedThreadIds}
-                    collapsedEnvironmentIds={collapsedEnvironmentIds}
-                    onProjectSelect={onProjectSelect}
-                    onToggleThreadCollapsed={onToggleThreadCollapsed}
-                    onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
-                  />
-                ),
-              )}
-            </div>
+            {isFlat ? (
+              <FlatThreadGroupScope projectId={group.projectId}>
+                {children}
+              </FlatThreadGroupScope>
+            ) : (
+              children
+            )}
           </PluginThreadDecorationsContext.Provider>
         </SidebarHeaderProjectContext.Provider>
       ) : null}
@@ -1801,6 +1911,7 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
       collapsedEnvironmentIds,
       selectedThreadId,
     });
+  const flatAnnotations = useFlatThreadItemAnnotations(section.items);
 
   const childrenArea = showChildren ? (
     <div className="relative space-y-px">
@@ -1821,7 +1932,11 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
               }
               const itemKey = getSidebarItemKey(item);
               return (
-                <Fragment key={itemKey}>
+                <FlatThreadItemFrame
+                  key={itemKey}
+                  annotation={flatAnnotations?.[index]}
+                  first={index === 0}
+                >
                   <SectionDndItemRow
                     projectId={getItemProjectId(item)}
                     item={item}
@@ -1836,7 +1951,7 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
                     onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
                     sectionDnd={sectionDnd}
                   />
-                </Fragment>
+                </FlatThreadItemFrame>
               );
             }}
           />
@@ -2253,6 +2368,7 @@ function SectionThreadTreeItems({
       collapsedEnvironmentIds,
       selectedThreadId,
     });
+  const flatAnnotations = useFlatThreadItemAnnotations(items);
   const rows = (
     <SidebarWindowedItems
       itemKeys={itemKeys}
@@ -2266,7 +2382,11 @@ function SectionThreadTreeItems({
         }
         const itemKey = getSidebarItemKey(item);
         return (
-          <Fragment key={itemKey}>
+          <FlatThreadItemFrame
+            key={itemKey}
+            annotation={flatAnnotations?.[index]}
+            first={index === 0}
+          >
             <SectionDndItemRow
               projectId={projectId ?? getItemProjectId(item)}
               item={item}
@@ -2281,7 +2401,7 @@ function SectionThreadTreeItems({
               onRemoveSection={onRemoveSection}
               sectionDnd={sectionDnd ?? undefined}
             />
-          </Fragment>
+          </FlatThreadItemFrame>
         );
       }}
     />

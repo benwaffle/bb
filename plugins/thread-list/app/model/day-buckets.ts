@@ -1,0 +1,134 @@
+import type { ProjectThreadItem } from "./project-thread-groups.js";
+
+export const SIDEBAR_DAY_BUCKETS = [
+  "today",
+  "yesterday",
+  "thisWeek",
+  "earlier",
+] as const;
+
+export type SidebarDayBucket = (typeof SIDEBAR_DAY_BUCKETS)[number];
+
+export const SIDEBAR_DAY_BUCKET_LABEL: Record<SidebarDayBucket, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  thisWeek: "This week",
+  earlier: "Earlier",
+};
+
+const MS_PER_DAY = 86_400_000;
+
+function localDayNumber(time: number): number {
+  const date = new Date(time);
+  return Math.round(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) / MS_PER_DAY,
+  );
+}
+
+export function getSidebarDayBucket(
+  time: number,
+  now: number,
+): SidebarDayBucket {
+  const daysAgo = localDayNumber(now) - localDayNumber(time);
+  if (daysAgo <= 0) return "today";
+  if (daysAgo === 1) return "yesterday";
+  if (daysAgo < 7) return "thisWeek";
+  return "earlier";
+}
+
+export function getNextLocalMidnight(now: number): number {
+  const next = new Date(now);
+  next.setHours(24, 0, 0, 0);
+  return next.getTime();
+}
+
+export interface FlatThreadItemAnnotation {
+  dayBucket: SidebarDayBucket | null;
+  leadThreadId: string | null;
+  projectId: string | null;
+  previousProjectId: string | null;
+}
+
+function newestUpdatedAt(item: ProjectThreadItem): number | null {
+  switch (item.kind) {
+    case "thread":
+      return item.node.thread.updatedAt;
+    case "environment":
+    case "plugin-group":
+      return item.group.nodes.reduce<number | null>(
+        (newest, node) =>
+          newest === null || node.thread.updatedAt > newest
+            ? node.thread.updatedAt
+            : newest,
+        null,
+      );
+    case "section":
+      return null;
+  }
+}
+
+function itemProjectId(item: ProjectThreadItem): string | null {
+  switch (item.kind) {
+    case "thread":
+      return item.node.thread.projectId;
+    case "environment":
+      return item.group.nodes[0].thread.projectId;
+    case "plugin-group":
+      return item.group.projectId;
+    case "section":
+      return null;
+  }
+}
+
+function leadThreadId(item: ProjectThreadItem): string | null {
+  switch (item.kind) {
+    case "thread":
+      return item.node.thread.id;
+    case "environment":
+      return item.group.nodes[0].thread.id;
+    case "plugin-group":
+    case "section":
+      return null;
+  }
+}
+
+export function annotateFlatThreadItems(
+  items: readonly ProjectThreadItem[],
+  { dayLabels, now }: { dayLabels: boolean; now: number },
+): FlatThreadItemAnnotation[] {
+  let bucketIndex = -1;
+  let previousProjectId: string | null = null;
+  return items.map((item) => {
+    if (item.kind === "section") {
+      previousProjectId = null;
+      return {
+        dayBucket: null,
+        leadThreadId: null,
+        projectId: null,
+        previousProjectId: null,
+      };
+    }
+    let dayBucket: SidebarDayBucket | null = null;
+    const updatedAt = newestUpdatedAt(item);
+    if (dayLabels && updatedAt !== null) {
+      const index = Math.max(
+        bucketIndex,
+        SIDEBAR_DAY_BUCKETS.indexOf(getSidebarDayBucket(updatedAt, now)),
+      );
+      if (index !== bucketIndex) {
+        bucketIndex = index;
+        dayBucket = SIDEBAR_DAY_BUCKETS[index] ?? null;
+        previousProjectId = null;
+      }
+    }
+    const projectId = itemProjectId(item);
+    const annotation: FlatThreadItemAnnotation = {
+      dayBucket,
+      leadThreadId: leadThreadId(item),
+      projectId,
+      previousProjectId,
+    };
+    previousProjectId = projectId;
+    return annotation;
+  });
+}
