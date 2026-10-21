@@ -55,7 +55,44 @@ interface SidebarStickyTierProps extends React.ComponentProps<"div"> {
 
 type SidebarStickyParentLevelStyle = React.CSSProperties & {
   "--bb-sidebar-sticky-parent-level": number;
+  "--bb-sidebar-sticky-parent-offset": string;
 };
+
+interface SidebarStickyParentOffset {
+  tierOffsetPx: number;
+  nestedOffsetPx: number;
+  reportTierHeight: ((heightPx: number | null) => void) | null;
+}
+
+const SidebarStickyParentOffsetContext =
+  React.createContext<SidebarStickyParentOffset>({
+    tierOffsetPx: 0,
+    nestedOffsetPx: 0,
+    reportTierHeight: null,
+  });
+
+function useReportStickyParentTierHeight(
+  elementRef: React.RefObject<HTMLDivElement | null>,
+  enabled: boolean,
+  reportTierHeight: SidebarStickyParentOffset["reportTierHeight"],
+) {
+  React.useLayoutEffect(() => {
+    const element = elementRef.current;
+    if (!enabled || !element || !reportTierHeight) {
+      return;
+    }
+    const report = () =>
+      reportTierHeight(element.getBoundingClientRect().height);
+    report();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(report);
+    observer?.observe(element);
+    return () => {
+      observer?.disconnect();
+      reportTierHeight(null);
+    };
+  }, [elementRef, enabled, reportTierHeight]);
+}
 
 export const SidebarStickyStack = React.forwardRef<
   HTMLDivElement,
@@ -77,16 +114,33 @@ export const SidebarStickyTier = React.forwardRef<
   HTMLDivElement,
   SidebarStickyTierProps
 >(({ children, className, tier, level, style, ...props }, ref) => {
-  const tierStyle =
-    tier === "parent" && level !== undefined
-      ? ({
-          ...style,
-          "--bb-sidebar-sticky-parent-level": level,
-        } satisfies SidebarStickyParentLevelStyle)
-      : style;
+  const { tierOffsetPx, reportTierHeight } = React.useContext(
+    SidebarStickyParentOffsetContext,
+  );
+  const elementRef = React.useRef<HTMLDivElement | null>(null);
+  const setRefs = React.useCallback(
+    (element: HTMLDivElement | null) => {
+      elementRef.current = element;
+      if (typeof ref === "function") {
+        ref(element);
+      } else if (ref) {
+        ref.current = element;
+      }
+    },
+    [ref],
+  );
+  const isParentLevel = tier === "parent" && level !== undefined;
+  useReportStickyParentTierHeight(elementRef, isParentLevel, reportTierHeight);
+  const tierStyle = isParentLevel
+    ? ({
+        ...style,
+        "--bb-sidebar-sticky-parent-level": level,
+        "--bb-sidebar-sticky-parent-offset": `${tierOffsetPx}px`,
+      } satisfies SidebarStickyParentLevelStyle)
+    : style;
   return (
     <div
-      ref={ref}
+      ref={setRefs}
       {...props}
       style={tierStyle}
       data-sidebar={tier === "label" ? "group-label" : undefined}
@@ -109,13 +163,25 @@ export const SidebarStickyGroup = React.forwardRef<
   HTMLDivElement,
   SidebarStickyGroupProps
 >(({ className, ...props }, ref) => {
+  const { nestedOffsetPx } = React.useContext(SidebarStickyParentOffsetContext);
+  const [tierHeightPx, setTierHeightPx] = React.useState<number | null>(null);
+  const offset = React.useMemo(
+    () => ({
+      tierOffsetPx: nestedOffsetPx,
+      nestedOffsetPx: nestedOffsetPx + (tierHeightPx ?? 0),
+      reportTierHeight: setTierHeightPx,
+    }),
+    [nestedOffsetPx, tierHeightPx],
+  );
   return (
-    <div
-      ref={ref}
-      data-sidebar-sticky-group=""
-      className={cn(className)}
-      {...props}
-    />
+    <SidebarStickyParentOffsetContext.Provider value={offset}>
+      <div
+        ref={ref}
+        data-sidebar-sticky-group=""
+        className={cn(className)}
+        {...props}
+      />
+    </SidebarStickyParentOffsetContext.Provider>
   );
 });
 SidebarStickyGroup.displayName = "SidebarStickyGroup";
