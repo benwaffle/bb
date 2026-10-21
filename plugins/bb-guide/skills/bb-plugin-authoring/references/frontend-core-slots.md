@@ -433,3 +433,39 @@ makes bb run the plugins' hooks for that project. It returns `null` or an
 `ExperimentalResolvedSidebarProjectDecoration` with every field set:
 `leading` collects every plugin's node in plugin id order, and the style
 fields come from the first plugin that sets a color or classes.
+
+### Decorating sidebar thread rows by project
+
+`app.slots.experimental_sidebarThreadDecoration` puts a short marker for a
+thread's project before the thread title wherever the row is not nested
+under that project's header: Custom and By machine modes, and the Pinned
+section. `useDecoration(projectId)` is a React hook the host calls inside
+your plugin's context, once per such project. Return the same object while
+nothing changed, or `null` for no decoration.
+
+```tsx
+app.slots.experimental_sidebarThreadDecoration({
+  id: "emoji",
+  title: "Project emoji",
+  useDecoration: (projectId) => {
+    const project = useProjectStyle(projectId);
+    return useMemo(
+      () =>
+        project === null
+          ? null
+          : { leading: project.emoji, title: project.name },
+      [project],
+    );
+  },
+});
+```
+
+An `ExperimentalSidebarThreadDecoration` has two optional string fields.
+`leading` is an emoji or short text; a blank value means no decoration.
+`title` is the tooltip and accessible label for `leading`.
+
+A replacement thread list reads it with
+`experimental_useSidebarThreadDecoration(projectId)`, which is also what makes
+bb run the plugins' hooks for that project. It returns `null` or an
+`ExperimentalResolvedSidebarThreadDecoration` from the first plugin, in
+plugin id order, with a non-blank `leading`.
