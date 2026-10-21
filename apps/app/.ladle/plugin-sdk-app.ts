@@ -40,6 +40,7 @@ export const {
   experimental_useSidebarThreadPullRequest,
   experimental_useSidebarThreadGroups,
   experimental_useSidebarProjectDecoration,
+  experimental_useSidebarThreadDecoration,
   experimental_useSidebarThreadSplit,
   useSidebarThreadDraft,
   useSidebarThreadDraftIds,
