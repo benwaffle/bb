@@ -25,7 +25,10 @@ export function usePluginThreadDecoration(
   return useContext(PluginThreadDecorationsContext).get(threadId) ?? null;
 }
 
-const TONE_TEXT_CLASS: Record<ExperimentalSidebarThreadGroupTone, string> = {
+export const TONE_TEXT_CLASS: Record<
+  ExperimentalSidebarThreadGroupTone,
+  string
+> = {
   success: "text-success",
   muted: "text-muted-foreground",
   accent: "text-pr-merged",
