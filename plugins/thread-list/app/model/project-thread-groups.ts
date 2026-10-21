@@ -56,6 +56,7 @@ export interface PluginThreadGroupProgress {
 
 export interface PluginThreadGroup {
   id: string;
+  projectId: string;
   label: string;
   keyLabel: string | null;
   icon: string | null;
@@ -72,6 +73,7 @@ export interface PluginThreadGroup {
 export type PluginThreadGroupDefinition = Pick<
   ExperimentalResolvedSidebarThreadGroup,
   | "id"
+  | "projectId"
   | "label"
   | "keyLabel"
   | "icon"
@@ -321,6 +323,7 @@ function buildPluginThreadGroup(
   }
   return {
     id: definition.id,
+    projectId: definition.projectId,
     label: definition.label,
     keyLabel: definition.keyLabel ?? null,
     icon: definition.icon ?? null,
@@ -620,18 +623,47 @@ function buildThreadTreeItems(
   );
 }
 
+function withoutMemberlessPluginGroups(
+  items: ProjectThreadItem[],
+): ProjectThreadItem[] {
+  return items.filter(
+    (item) => item.kind !== "plugin-group" || item.group.nodes.length > 0,
+  );
+}
+
+export function buildFlatThreadGroups(
+  allThreads: readonly SidebarThread[],
+  compareThreads: ThreadComparator = compareStandardThreads,
+  groupEnvironmentThreads = true,
+  pluginGroups: readonly PluginThreadGroupDefinition[] = [],
+): ProjectThreadItem[] {
+  return withoutMemberlessPluginGroups(
+    buildThreadTreeItems(
+      allThreads,
+      compareThreads,
+      groupEnvironmentThreads,
+      false,
+      pluginGroups,
+    ),
+  );
+}
+
 export function buildSectionThreadList(
   allThreads: readonly SidebarThread[],
   compareThreads: ThreadComparator = compareStandardThreads,
   sections: readonly SidebarSectionDefinition[] = [],
   groupEnvironmentThreads = false,
+  pluginGroups: readonly PluginThreadGroupDefinition[] = [],
 ): ProjectThreadItem[] {
   return bucketIntoSections(
-    buildThreadTreeItems(
-      allThreads,
-      compareThreads,
-      groupEnvironmentThreads,
-      true,
+    withoutMemberlessPluginGroups(
+      buildThreadTreeItems(
+        allThreads,
+        compareThreads,
+        groupEnvironmentThreads,
+        true,
+        pluginGroups,
+      ),
     ),
     CHRONOLOGICAL_CONTAINER_ID,
     compareThreads,

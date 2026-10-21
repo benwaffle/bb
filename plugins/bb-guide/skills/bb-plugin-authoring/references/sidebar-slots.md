@@ -40,9 +40,12 @@ app.slots.experimental_sidebarThreadGroups({
 });
 ```
 
-bb's Thread list shows groups in Organize → By project. A group gets a
+bb's Thread list shows groups in every Organize mode. A group gets a
 collapsible header in its project when it holds at least two of the project's
-root threads, or any placeholder rows; a lone thread stays a plain row. A
+root threads, or any placeholder rows; a lone thread stays a plain row. In the
+flat Custom and By machine lists a group appears only when one of its threads
+is listed: the header sits where its highest-sorting thread would, names the
+project after the label, and nests the group's threads. A
 thread claimed by two groups stays in the first. Placeholder rows are muted
 rows for work that has no thread yet, listed after the group's threads; their
 `action` is a button shown on hover or focus (always on touch): an outlined
