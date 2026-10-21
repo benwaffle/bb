@@ -51,7 +51,7 @@ function isTone(value: unknown): value is ExperimentalSidebarThreadGroupTone {
   return typeof value === "string" && TONES.has(value);
 }
 
-function parseRowIcon(
+export function parseRowIcon(
   value: unknown,
 ): ExperimentalSidebarThreadGroupRowIcon | null {
   if (typeof value !== "object" || value === null) return null;
@@ -60,7 +60,7 @@ function parseRowIcon(
   return { name: icon.name, tone: icon.tone };
 }
 
-function parseRowTrailing(
+export function parseRowTrailing(
   value: unknown,
 ): ExperimentalSidebarThreadGroupRowTrailing | null {
   if (typeof value !== "object" || value === null) return null;

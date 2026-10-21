@@ -108,7 +108,10 @@ import {
 } from "./thread-actions/thread-action-registry";
 import { useSidebarThreadGroups } from "./plugin-sidebar-thread-groups";
 import { useSidebarProjectDecoration } from "./plugin-sidebar-project-decorations";
-import { useSidebarThreadDecoration } from "./plugin-sidebar-thread-decorations";
+import {
+  useSidebarThreadDecoration,
+  useSidebarThreadRowDecoration,
+} from "./plugin-sidebar-thread-decorations";
 import { useCodeTheme } from "./plugin-code-theme";
 import { copyToClipboard } from "./clipboard";
 import { saveFile } from "./save-file";
@@ -212,6 +215,7 @@ export const pluginSdkAppImplementation = {
   experimental_useSidebarThreadGroups: useSidebarThreadGroups,
   experimental_useSidebarProjectDecoration: useSidebarProjectDecoration,
   experimental_useSidebarThreadDecoration: useSidebarThreadDecoration,
+  experimental_useSidebarThreadRowDecoration: useSidebarThreadRowDecoration,
   experimental_useSidebarThreadSplit: useSidebarThreadSplit,
   experimental_useSidebarNavigation: useSidebarNavigation,
   experimental_useSidebarNavigationSplit: useSidebarNavigationSplit,

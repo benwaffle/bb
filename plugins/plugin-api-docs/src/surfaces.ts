@@ -182,9 +182,9 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "Add a leading icon, name color, and row tint to project headers in bb's sidebar. With this, a plugin can:",
         bullets: [
           "Return each project's look from a React hook, so plugin RPC and realtime hooks work inside it",
-          "Show an emoji or button before the project name, and before thread titles in flat lists",
-          "Color the project name and make it bold, or add classes to it",
-          "Wash the header row in the project's color while hover, menu, and drop states still read",
+          "Show an emoji or button before the project name, and the project on thread rows in flat lists",
+          "Give a thread row in flat lists its own icon, label, description, and trailing state",
+          "Color the project name bold or add classes, and tint the header row under hover and drop states",
         ],
         apiSymbols: [
           "ExperimentalSidebarProjectDecorationRegistration",
@@ -195,6 +195,9 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "ExperimentalSidebarThreadDecoration",
           "ExperimentalResolvedSidebarThreadDecoration",
           "experimental_useSidebarThreadDecoration",
+          "ExperimentalSidebarThreadRowDecoration",
+          "ExperimentalResolvedSidebarThreadRowDecoration",
+          "experimental_useSidebarThreadRowDecoration",
         ],
         firstParty: ["Thread list"],
         experimental: true,

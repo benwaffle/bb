@@ -1084,6 +1084,7 @@ row's Customize actions, or `bb thread-list prefs get|set|reset <key>`
 | `threadLifecycles`    | `["active"]`                      | `["active"]`, `["archived"]`, or both; empty and duplicate values are rejected                                                              |
 | `rowActions`          | `["bb--core/archive"]`            | Up to three thread action keys in display order; see below                                                                                  |
 | `showProviderIcons`   | `false`                           | Shows the provider icon before each thread title                                                                                            |
+| `twoLineRows`         | `true`                            | Adds a muted second line with the project, plugin label, and pull request or branch; under a project header only the pull request or branch |
 | `collapsed*`          | `[]`                              | Collapsed sections, projects, threads, environments, custom sections, and machines                                                          |
 
 `rowActions` keys are `bb--core/<id>` (`split`, `newThreadInEnvironment`,

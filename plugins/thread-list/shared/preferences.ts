@@ -96,6 +96,12 @@ export const preferenceDefinitions = {
     "Show each thread's agent provider icon before its title.",
     null,
   ),
+  twoLineRows: definePreference(
+    z.boolean(),
+    true,
+    "Give thread rows a second muted line with the thread's project, plugin label, and pull request or branch. Inside a project's header the line shows only the pull request or branch, and rows with nothing to show keep one line.",
+    null,
+  ),
   threadLifecycles: definePreference(
     z
       .array(z.enum(["active", "archived"]))
