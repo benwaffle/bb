@@ -144,7 +144,6 @@ interface SidebarThreadRevealStepInputs {
 interface SidebarThreadRevealStep {
   state: SidebarThreadRevealState;
   revealIds: ReadonlySet<string>;
-  navigationRevealId: string | undefined;
 }
 
 export function stepSidebarThreadReveal(
@@ -170,7 +169,6 @@ export function stepSidebarThreadReveal(
         previousUnreadIds: state.previousUnreadIds,
       },
       revealIds: new Set(),
-      navigationRevealId: undefined,
     };
   }
   const revealIds = new Set<string>();
@@ -200,7 +198,6 @@ export function stepSidebarThreadReveal(
       previousUnreadIds: unreadIds,
     },
     revealIds,
-    navigationRevealId,
   };
 }
 
@@ -318,10 +315,7 @@ function useSidebarThreadRevealCore({
           pluginGroupIdsByThreadId,
         });
 
-      expandThreadAncestors(
-        threadIdsToExpand,
-        threadId === step.navigationRevealId,
-      );
+      expandThreadAncestors(threadIdsToExpand);
       setCollapsedEnvironmentIdList((current) =>
         removeCollapsedIds(current, environmentIdsToExpand),
       );
