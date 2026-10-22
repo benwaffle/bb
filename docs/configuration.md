@@ -1006,8 +1006,9 @@ scope. Configure it on its autosaving plugin page or with
 ### Keep Awake
 
 The builtin Keep Awake plugin prevents idle system sleep on selected macOS and
-Windows hosts while bb runs; on macOS it runs
-`/usr/bin/caffeinate -i -w <worker-pid>`. Closing the lid or choosing Sleep
+Windows hosts while any thread is starting or active, or a background command
+runs, and releases it 60 seconds after that work stops; on macOS it runs
+`/usr/bin/caffeinate -i -w <worker-pid>` for that time. Closing the lid or choosing Sleep
 still sleeps the machine. Its settings are an enable switch and an
 all-or-selected host list, set on its autosaving plugin page or with
 `bb keep-awake status|enable|disable` and `bb keep-awake hosts all|<host-id>...`
