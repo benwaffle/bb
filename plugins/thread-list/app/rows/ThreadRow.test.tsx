@@ -438,6 +438,7 @@ describe("ThreadRow", () => {
   const ROW_DECORATION: ExperimentalResolvedSidebarThreadRowDecoration = {
     icon: { name: "GitPullRequest", tone: "accent" },
     label: "CORE-123",
+    labelHref: null,
     description: null,
     trailing: null,
     pullRequest: null,
@@ -472,6 +473,28 @@ describe("ThreadRow", () => {
     expect(
       slot.container.querySelector("[data-sidebar-thread-project-leading]"),
     ).toBeNull();
+  });
+
+  it("opens a linked plugin label through the app without opening the row", () => {
+    const slot = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      rowDecoration: {
+        ...ROW_DECORATION,
+        labelHref: "https://jira.example/browse/CORE-123",
+      },
+      flat: { previousRowProjectId: "proj_test" },
+    });
+    const label = screen.getByRole("link", { name: "CORE-123" });
+    expect(label.getAttribute("href")).toBe(
+      "https://jira.example/browse/CORE-123",
+    );
+    expect(label.hasAttribute("data-sidebar-thread-second-line-label")).toBe(
+      true,
+    );
+    expect(fireEvent.click(label)).toBe(false);
+    expect(slot.inspection.navigateCalls).toEqual([
+      { method: "openUrl", url: "https://jira.example/browse/CORE-123" },
+    ]);
   });
 
   it("shows a plugin's pull request with its description in place of the branch and drops the title's #n prefix", () => {

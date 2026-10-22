@@ -2465,6 +2465,12 @@ export interface ExperimentalSidebarThreadGroup {
    * as a ticket key. Absent → the label alone.
    */
   keyLabel?: string;
+  /**
+   * HTTP(S) URL the header's `keyLabel` opens through the app's link
+   * handling, such as the ticket's page. Ignored without `keyLabel` or for
+   * other schemes.
+   */
+  labelHref?: string;
   /** {@link BbIconName} drawn before the header. Absent → the Layers icon. */
   icon?: BbIconName;
   /**
@@ -2639,6 +2645,11 @@ export interface ExperimentalSidebarThreadRowDecoration {
   icon?: ExperimentalSidebarThreadGroupRowIcon;
   /** Short text on the row's second line, such as a ticket key. */
   label?: string;
+  /**
+   * HTTP(S) URL `label` opens through the app's link handling, such as the
+   * ticket's page. Ignored without `label` or for other schemes.
+   */
+  labelHref?: string;
   /** Muted text shown after the thread title. */
   description?: string;
   /** Trailing state drawn after the title. Absent → nothing. */
@@ -2655,6 +2666,8 @@ export interface ExperimentalSidebarThreadRowDecoration {
 export interface ExperimentalResolvedSidebarThreadRowDecoration {
   icon: ExperimentalSidebarThreadGroupRowIcon | null;
   label: string | null;
+  /** `null` when `label` is `null` or the URL is not HTTP(S). */
+  labelHref: string | null;
   description: string | null;
   trailing: ExperimentalSidebarThreadGroupRowTrailing | null;
   pullRequest: ExperimentalSidebarThreadRowPullRequest | null;
