@@ -7,6 +7,7 @@ import type {
   ExperimentalSidebarThreadGroupRowTrailing,
   ExperimentalSidebarThreadGroupThreadRow,
   ExperimentalSidebarThreadGroupTone,
+  ExperimentalSidebarThreadRowPullRequest,
 } from "@get-bb/plugin-sdk";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
 import {
@@ -78,6 +79,27 @@ export function parseRowTrailing(
   return null;
 }
 
+const PULL_REQUEST_STATES: ReadonlySet<string> = new Set<
+  ExperimentalSidebarThreadRowPullRequest["state"]
+>(["draft", "open", "merged", "closed"]);
+
+function isPullRequestState(
+  value: unknown,
+): value is ExperimentalSidebarThreadRowPullRequest["state"] {
+  return typeof value === "string" && PULL_REQUEST_STATES.has(value);
+}
+
+export function parseRowPullRequest(
+  value: unknown,
+): ExperimentalSidebarThreadRowPullRequest | null {
+  if (typeof value !== "object" || value === null) return null;
+  const { number, state } = value as { number?: unknown; state?: unknown };
+  if (typeof number !== "number" || !Number.isInteger(number) || number <= 0) {
+    return null;
+  }
+  return isPullRequestState(state) ? { number, state } : null;
+}
+
 function parseRowAdornments(value: {
   icon?: unknown;
   trailing?: unknown;
@@ -127,6 +149,7 @@ function parseThreadRow(
   if (typeof value !== "object" || value === null) return null;
   const row = value as Partial<ExperimentalSidebarThreadGroupThreadRow>;
   if (!isNonEmptyString(row.threadId)) return null;
+  const pullRequest = parseRowPullRequest(row.pullRequest);
   return {
     threadId: row.threadId,
     ...parseDepth(row.depth),
@@ -134,6 +157,7 @@ function parseThreadRow(
       ? { description: row.description }
       : {}),
     ...parseRowAdornments(row),
+    ...(pullRequest === null ? {} : { pullRequest }),
   };
 }
 
