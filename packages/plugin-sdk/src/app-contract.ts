@@ -1600,6 +1600,11 @@ export type PluginBrowserBbSdk = Omit<BbSdkAreas, "threads"> & {
 export interface PluginThreadTitleProps {
   /** A thread in the sidebar's live view; renders nothing for an unknown id. */
   threadId: string;
+  /**
+   * Text left out when the title starts with it, such as "#12 " on a row that
+   * already shows pull request #12. Absent → the whole title.
+   */
+  experimental_omitPrefix?: string;
 }
 
 /**
@@ -2409,6 +2414,17 @@ export interface ExperimentalSidebarThreadGroupRow {
 }
 
 /**
+ * The pull request a plugin ties to a thread row, such as the PR a review
+ * thread reviews. Thread-list providers draw it as "#number" with a state icon
+ * on the row's second line in place of the branch.
+ */
+export interface ExperimentalSidebarThreadRowPullRequest {
+  /** A positive integer; other values drop the field. */
+  number: number;
+  state: "draft" | "open" | "merged" | "closed";
+}
+
+/**
  * A thread placed in a group's `rows`, such as the review thread of a
  * stacked pull request. The host draws its usual thread row (open, pin,
  * archive, rename, drag) with the decorations added. Hosts that predate
@@ -2427,6 +2443,8 @@ export interface ExperimentalSidebarThreadGroupThreadRow {
   icon?: ExperimentalSidebarThreadGroupRowIcon;
   /** Trailing state drawn after the title. Absent → nothing. */
   trailing?: ExperimentalSidebarThreadGroupRowTrailing;
+  /** The thread's pull request. Absent → the branch's pull request, if any. */
+  pullRequest?: ExperimentalSidebarThreadRowPullRequest;
 }
 
 /**
@@ -2625,6 +2643,8 @@ export interface ExperimentalSidebarThreadRowDecoration {
   description?: string;
   /** Trailing state drawn after the title. Absent → nothing. */
   trailing?: ExperimentalSidebarThreadGroupRowTrailing;
+  /** The thread's pull request. Absent → the branch's pull request, if any. */
+  pullRequest?: ExperimentalSidebarThreadRowPullRequest;
 }
 
 /**
@@ -2637,6 +2657,7 @@ export interface ExperimentalResolvedSidebarThreadRowDecoration {
   label: string | null;
   description: string | null;
   trailing: ExperimentalSidebarThreadGroupRowTrailing | null;
+  pullRequest: ExperimentalSidebarThreadRowPullRequest | null;
 }
 
 /**

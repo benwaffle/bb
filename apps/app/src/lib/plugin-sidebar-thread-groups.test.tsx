@@ -176,6 +176,15 @@ describe("sidebar thread groups", () => {
               threadId: "thr_review",
               icon: { name: "", tone: "muted" },
               trailing: { kind: "text", text: "idle" },
+              pullRequest: { number: 545, state: "open" },
+            },
+            {
+              threadId: "thr_bad_number",
+              pullRequest: { number: 1.5, state: "open" },
+            },
+            {
+              threadId: "thr_bad_state",
+              pullRequest: { number: 7, state: "approved" as never },
             },
           ],
         }),
@@ -198,7 +207,13 @@ describe("sidebar thread groups", () => {
         variant: "ghost",
       }),
       expect.not.objectContaining({ icon: expect.anything() }),
-      { threadId: "thr_review", trailing: { kind: "text", text: "idle" } },
+      {
+        threadId: "thr_review",
+        trailing: { kind: "text", text: "idle" },
+        pullRequest: { number: 545, state: "open" },
+      },
+      { threadId: "thr_bad_number" },
+      { threadId: "thr_bad_state" },
     ]);
     expect(card?.rows[1]).not.toHaveProperty("trailing");
     expect(card?.rows[1]).not.toHaveProperty("variant");

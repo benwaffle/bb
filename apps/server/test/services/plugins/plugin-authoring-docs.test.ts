@@ -620,6 +620,7 @@ const SIDEBAR_THREAD_GROUP_THREAD_ROW_FIELDS = [
   "description",
   "icon",
   "trailing",
+  "pullRequest",
 ] as const satisfies readonly (keyof ExperimentalSidebarThreadGroupThreadRow)[];
 
 type MissingSidebarThreadGroupThreadRowField = Exclude<
@@ -667,6 +668,7 @@ const SIDEBAR_THREAD_ROW_DECORATION_FIELDS = [
   "label",
   "description",
   "trailing",
+  "pullRequest",
 ] as const satisfies readonly (keyof ExperimentalSidebarThreadRowDecoration)[];
 
 type MissingSidebarThreadRowDecorationField = Exclude<
