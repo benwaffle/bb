@@ -70,14 +70,19 @@ optional integer `depth` that indents the row one step per level with a thin
 connector rail, so a stack draws as a tree without glyphs in the title.
 
 `rows` also accepts `ExperimentalSidebarThreadGroupThreadRow` entries,
-`{ threadId, depth?, description?, icon?, trailing? }`, which decorate a real
-thread row: `depth` indents it like a placeholder row's, and `description`
-shows muted text after the title. The row keeps its open, pin, archive, rename, and
+`{ threadId, depth?, description?, icon?, trailing?, pullRequest? }`, which
+decorate a real thread row: `depth` indents it like a placeholder row's,
+`description` shows muted text after the title, and `pullRequest`
+(`{ number, state }`, an `ExperimentalSidebarThreadRowPullRequest`) names the
+pull request the thread works on, such as the PR a review thread reviews. The row keeps its open, pin, archive, rename, and
 drag behaviors. Set `keepOrder: true` to show the group in the order you give:
 threads only `threadIds` lists, then `rows` with threads and placeholders
 interleaved, such as a stacked PR's review thread right after its base PR's
-row. Without it, bb sorts the threads in its own order above the
-placeholders. Older bb builds ignore thread entries and `keepOrder`, so also
+row. bb still moves a started thread above a placeholder that is not its
+stack base: entries regroup into stacks by `depth` (an entry and the deeper
+entries after it), and stacks holding a thread come before stacks of only
+placeholders, at every level. Without it, bb sorts the threads in its own
+order above the placeholders. Older bb builds ignore thread entries and `keepOrder`, so also
 list placed threads in `threadIds`.
 
 A replacement thread list reads every plugin's groups with
@@ -213,6 +218,9 @@ row model:
 - `description` — muted text after the thread title.
 - `trailing` — an `ExperimentalSidebarThreadGroupRowTrailing`, a dot or
   short text after the title.
+- `pullRequest` — an `ExperimentalSidebarThreadRowPullRequest`
+  (`{ number, state }`), the pull request the thread works on, such as the
+  PR a review thread reviews. It wins over the branch's pull request.
 
 Invalid fields are dropped, and a decoration with no valid field counts as
 `null`. A replacement thread list reads it with
@@ -225,6 +233,17 @@ The bundled Thread list shows each row on two lines unless the user turns
 off Organize → Rows → Two-line rows. Line 2 reads: the project's `title`
 (else the project name), tinted with its `hue`, then the row's `label`, then
 the pull request number with its state icon, else the branch, with missing
-pieces left out. In Custom and By machine modes the project is left out when
+pieces left out. The pull request is the group entry's `pullRequest`, else the
+row decoration's, else the branch's. With a pull request on line 2, the row's
+`description` moves after it, and a title that starts with `#<number> ` drops
+that prefix on screen; the title tooltip and rename keep the full title. In Custom and By machine modes the project is left out when
 the row above it in the same day section has the same project. Inside a
 project's header line 2 shows only the pull request or branch.
+
+A replacement thread list hides the same prefix with `<ThreadTitle>`'s
+`experimental_omitPrefix`, which leaves out a leading string the row already
+shows elsewhere:
+
+```tsx
+<ThreadTitle threadId={thread.id} experimental_omitPrefix="#12 " />
+```

@@ -248,6 +248,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "ExperimentalSidebarThreadGroupTone",
           "ExperimentalSidebarThreadGroupRowIcon",
           "ExperimentalSidebarThreadGroupRowTrailing",
+          "ExperimentalSidebarThreadRowPullRequest",
           "ExperimentalResolvedSidebarThreadGroup",
           "experimental_useSidebarThreadGroups",
         ],
