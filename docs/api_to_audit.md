@@ -2547,6 +2547,44 @@ its group.
    provider-supplied, and whether `card` should become the default once
    other providers adopt it.
 
+**Pull requests and flat headers (added 2026-10-21).** A placed thread takes
+an optional `pullRequest: { number, state }`
+(`ExperimentalSidebarThreadRowPullRequest`); the host drops a non-positive or
+fractional number or an unknown state. Consumer: the pr-review plugin, whose
+review threads work on a PR their branch lookup does not find. Core caller:
+the bundled Thread list's `ThreadRow`, which shows it on line 2 as "#number"
+with its state icon in place of the branch, moves the row's `description`
+after it, and hides a leading `#number ` from the displayed title. With
+`keepOrder`, the Thread list regroups entries into stacks by `depth` and
+moves stacks holding a thread above stacks of only placeholders at every
+level, so a ghost row that is not a thread's stack base sorts after the
+started threads. In flat lists a header with a `keyLabel` and a project tag
+shows `<keyLabel> · <project>`, moves the label and the
+`<threads>/<rows>` count into the header tooltip, and otherwise lets the
+label truncate before the project tag.
+
+8. **Pull request source.** Decide whether a plugin-supplied PR should
+   override the branch lookup or only fill in when it finds none, and
+   whether the host should fetch state itself from the number.
+9. **Order override.** The host reorders a `keepOrder` group's stacks.
+   Decide whether providers need a way to opt out.
+
+## `ThreadTitle` prop `experimental_omitPrefix` (`@get-bb/plugin-sdk/app`)
+
+**Added (2026-10-21).** `<ThreadTitle threadId experimental_omitPrefix="#12 " />`
+renders the title without that leading string when the title starts with it
+and is longer than it; otherwise it renders the whole title. Display only: the
+thread's title, `displayTitle`, and rename are unchanged. Consumer and core
+caller: the bundled Thread list's `ThreadRow`, which passes `#<number> ` while
+line 2 shows that pull request.
+
+**Audit before stabilizing.**
+
+1. **Shape.** Decide whether a prefix string is enough or rows need a general
+   display transform, and whether mentions inside the omitted text matter.
+2. **Owner.** Decide whether the host should strip a PR number itself
+   wherever it shows the PR beside the title.
+
 ## `app.slots.experimental_sidebarProjectDecoration` (`@get-bb/plugin-sdk/app`)
 
 **Added (2026-10-09).** Consumer: the project-emoji plugin
@@ -2637,6 +2675,10 @@ render in flat modes. Core caller: the bundled Thread list's `ThreadRow`, for
 the same rows that read the per-project decoration. It draws `icon` in place
 of the provider icon, `description` and `trailing` as for group rows, and
 `label` on the row's second line.
+
+The per-thread decoration also takes `pullRequest`, as a placed thread in
+`experimental_sidebarThreadGroups` does (added 2026-10-21, same consumer and
+core caller); a group entry's `pullRequest` wins over it.
 
 4. **Per-row cost.** The host mounts one hook per plugin per visible flat
    row. Measure with long flat lists, or batch into one hook taking every
