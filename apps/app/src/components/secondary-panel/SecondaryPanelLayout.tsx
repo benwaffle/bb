@@ -37,6 +37,7 @@ import {
   isCompactSidebarDrawerShowing,
   subscribeCompactSidebarDrawerShowing,
 } from "@/components/ui/sidebar-mobile-drawer-visibility";
+import { useIsSidebarFramed } from "@/components/ui/sidebar";
 import { PluginDetailPanelContext } from "@/components/plugin/plugin-detail-navigation";
 import {
   SecondaryPanelMinimumContext,
@@ -44,6 +45,8 @@ import {
 } from "./secondaryPanelSizing";
 
 const FULL_PANEL_SIZE_PERCENT = 100;
+const FRAMED_MAIN_PANEL_FOREIGN_LAYER_CLASS =
+  "[&>:not([data-secondary-panel-layout-main])]:[clip-path:inset(var(--bb-window-title-bar-height)_0_0)]";
 
 function noopToggleMainCollapse(): void {}
 
@@ -129,6 +132,8 @@ export function SecondaryPanelLayout({
     secondaryPanelWidthPercentAtom,
   );
   const isMainCollapsed = open && !renderAsDrawer && collapse?.active === true;
+  const isMainPanelInFrame =
+    useIsSidebarFramed() && paneContext?.isTopRow !== false;
 
   const horizontalPanelGroupRef = useRef<ImperativePanelGroupHandle | null>(
     null,
@@ -316,6 +321,7 @@ export function SecondaryPanelLayout({
 
   const mainContent = (
     <div
+      data-secondary-panel-layout-main=""
       data-split-pane-id={
         secondaryPanelHost === null ? paneContext?.paneId : undefined
       }
@@ -372,6 +378,7 @@ export function SecondaryPanelLayout({
             className={cn(
               "min-w-0 overflow-clip transition-[flex-grow,flex-basis]",
               PANEL_COLLAPSE_TRANSITION_CLASS,
+              isMainPanelInFrame && FRAMED_MAIN_PANEL_FOREIGN_LAYER_CLASS,
             )}
           >
             {mainContent}
