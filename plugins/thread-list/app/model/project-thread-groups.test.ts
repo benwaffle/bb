@@ -805,8 +805,67 @@ describe("plugin thread groups", () => {
       description: "stacked on #2",
       icon: null,
       trailing: null,
+      pullRequest: null,
     });
     expect(item.group.decorations.has("loose")).toBe(false);
+  });
+
+  it("puts started threads before ghost rows with keepOrder, keeping each stack base before its dependents", () => {
+    const placeholder = (id: string, depth?: number) => ({
+      id,
+      title: id,
+      ...(depth === undefined ? {} : { depth }),
+      variant: "ghost" as const,
+      onSelect: () => undefined,
+    });
+    const [item] = buildProjectThreadGroups(
+      [
+        createThread({ id: "review-545", createdAt: 10, latestAttentionAt: 10 }),
+        createThread({ id: "review-dep", createdAt: 20, latestAttentionAt: 20 }),
+      ],
+      compareStandardThreads,
+      true,
+      [
+        {
+          id: "ticket",
+          projectId: "proj_1",
+          label: "ticket",
+          threadIds: ["review-545", "review-dep"],
+          rows: [
+            placeholder("pr-604"),
+            {
+              threadId: "review-545",
+              pullRequest: { number: 545, state: "open" },
+            },
+            placeholder("pr-546", 1),
+            placeholder("pr-base"),
+            { threadId: "review-dep", depth: 1 },
+            placeholder("pr-top", 2),
+          ],
+          keepOrder: true,
+          style: "minimal",
+        },
+      ],
+    );
+
+    expect(item?.kind).toBe("plugin-group");
+    if (item?.kind !== "plugin-group") return;
+    expect(
+      item.group.entries.map((entry) =>
+        entry.kind === "thread" ? entry.node.thread.id : entry.row.id,
+      ),
+    ).toEqual([
+      "review-545",
+      "pr-546",
+      "pr-base",
+      "review-dep",
+      "pr-top",
+      "pr-604",
+    ]);
+    expect(item.group.decorations.get("review-545")?.pullRequest).toEqual({
+      number: 545,
+      state: "open",
+    });
   });
 
   it("sorts placed threads in bb order above rows without keepOrder", () => {
@@ -853,6 +912,7 @@ describe("plugin thread groups", () => {
       description: null,
       icon: { name: "GitMerge", tone: "accent" },
       trailing: { kind: "dot", tone: "success" },
+      pullRequest: null,
     });
     expect(item.group.progress).toEqual({ threads: 2, total: 3 });
   });

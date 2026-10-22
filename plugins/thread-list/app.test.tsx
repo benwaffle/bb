@@ -305,6 +305,7 @@ describe("thread-list plugin", () => {
         label: "CORE-123",
         description: null,
         trailing: { kind: "text", text: "2/3" },
+        pullRequest: null,
       },
     } as const;
 
@@ -948,7 +949,7 @@ describe("thread-list plugin", () => {
     const reviewThread = makeSidebarThread({
       id: "thr_review",
       projectId: "proj_app",
-      title: "Review thread",
+      title: "#545 Review thread",
       createdAt: 4,
       updatedAt: 4,
       latestAttentionAt: 4,
@@ -974,6 +975,11 @@ describe("thread-list plugin", () => {
           keepOrder: false,
           style: "minimal",
           rows: [
+            {
+              threadId: "thr_review",
+              description: "conflicts · 3 failing",
+              pullRequest: { number: 545, state: "open" },
+            },
             {
               id: "pr-600",
               title: "#600 Batch the importer",
@@ -1016,6 +1022,19 @@ describe("thread-list plugin", () => {
         ?.querySelector("[data-sidebar-plugin-thread-group-project]")
         ?.textContent,
     ).toBe("🚀App");
+    const ticketHeader = ticketGroup.querySelector(
+      "[data-sidebar-plugin-thread-group]",
+    ) as HTMLElement;
+    expect(ticketHeader.textContent).toBe("CORE-21·🚀App");
+    expect(
+      ticketHeader.querySelector("[data-sidebar-plugin-thread-group-label]"),
+    ).toBeNull();
+    expect(
+      ticketHeader.querySelector("[data-sidebar-plugin-thread-group-progress]"),
+    ).toBeNull();
+    expect(within(ticketHeader).getByTitle(/Speed up the importer/).title).toBe(
+      "Speed up the importer\n2 of 3 started",
+    );
     const ticketEdges = ticketGroup.querySelectorAll(
       "[data-sidebar-project-hue-edge]",
     );
@@ -1024,11 +1043,7 @@ describe("thread-list plugin", () => {
         edge.getAttribute("data-sidebar-project-hue-edge"),
       ),
     ).toEqual(["230"]);
-    expect(
-      ticketGroup
-        .querySelector("[data-sidebar-plugin-thread-group]")
-        ?.contains(ticketEdges[0] ?? null),
-    ).toBe(true);
+    expect(ticketHeader.contains(ticketEdges[0] ?? null)).toBe(true);
     const guideLine = ticketGroup.querySelector<HTMLElement>(
       '[data-sidebar-thread-group-line="230"]',
     );
@@ -1046,7 +1061,14 @@ describe("thread-list plugin", () => {
         "[data-sidebar-rename-row] > [data-sidebar-project-hue-edge]",
       ),
     ).toHaveLength(0);
-    expect(secondLine("thr_review")).toBeNull();
+    expect(secondLine("thr_parent")).toBeNull();
+    expect(secondLine("thr_review")).toBe("#545·conflicts · 3 failing");
+    expect(
+      document
+        .querySelector('[data-sidebar-thread-id="thr_review"]')
+        ?.closest("[data-sidebar-rename-row]")
+        ?.querySelector(".bb-thread-title")?.textContent,
+    ).toBe("Review thread");
     expect(secondLine("thr_personal")).toBe("Personal");
     fireEvent.click(
       within(
