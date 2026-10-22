@@ -3,6 +3,7 @@ import {
   experimental_Icon as RegisteredIcon,
   type ExperimentalResolvedSidebarThreadDecoration,
   type ExperimentalSidebarThreadGroupRowIcon,
+  type ExperimentalSidebarThreadRowPullRequest,
   type PluginSidebarPullRequest,
 } from "@get-bb/plugin-sdk/app";
 import { cn } from "@/lib/utils";
@@ -22,6 +23,7 @@ export interface ThreadRowSecondLineModel {
       }
     | { kind: "branch"; name: string }
     | null;
+  description: string | null;
 }
 
 const PULL_REQUEST_STATE_ICON: Record<
@@ -46,13 +48,15 @@ export function useThreadRowSecondLine({
   projectDecoration,
   label,
   pullRequest,
+  description,
 }: {
   thread: SidebarThread;
   isOutsideProjectHeader: boolean;
   showProject: boolean;
   projectDecoration: ExperimentalResolvedSidebarThreadDecoration | null;
   label: string | null;
-  pullRequest: PluginSidebarPullRequest | null;
+  pullRequest: ExperimentalSidebarThreadRowPullRequest | null;
+  description: string | null;
 }): ThreadRowSecondLineModel | null {
   const projectName = useSidebarProjectName(thread.projectId);
   const title = projectDecoration?.title ?? projectName ?? null;
@@ -73,7 +77,12 @@ export function useThreadRowSecondLine({
         : null;
   const shownLabel = isOutsideProjectHeader ? label : null;
   if (project === null && shownLabel === null && git === null) return null;
-  return { project, label: shownLabel, git };
+  return {
+    project,
+    label: shownLabel,
+    git,
+    description: git?.kind === "pullRequest" ? description : null,
+  };
 }
 
 function SecondLineIcon({
@@ -182,6 +191,19 @@ export function ThreadRowSecondLine({
           ) : (
             <span className="min-w-0 truncate">{line.git.name}</span>
           )}
+        </span>
+      ),
+    });
+  }
+  if (line.description !== null) {
+    parts.push({
+      key: "description",
+      node: (
+        <span
+          data-sidebar-thread-second-line-description=""
+          className="min-w-0 truncate"
+        >
+          {line.description}
         </span>
       ),
     });

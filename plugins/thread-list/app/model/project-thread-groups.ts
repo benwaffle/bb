@@ -4,6 +4,7 @@ import type {
   ExperimentalSidebarThreadGroupRowIcon,
   ExperimentalSidebarThreadGroupRowTrailing,
   ExperimentalSidebarThreadGroupThreadRow,
+  ExperimentalSidebarThreadRowPullRequest,
 } from "@get-bb/plugin-sdk/app";
 import { compareCodepoint } from "./compare-codepoint.js";
 import { buildSectionKey } from "./section-keys.js";
@@ -43,6 +44,7 @@ export interface PluginThreadDecoration {
   description: string | null;
   icon: ExperimentalSidebarThreadGroupRowIcon | null;
   trailing: ExperimentalSidebarThreadGroupRowTrailing | null;
+  pullRequest: ExperimentalSidebarThreadRowPullRequest | null;
 }
 
 export type PluginThreadGroupEntry =
@@ -267,6 +269,44 @@ function isPlacedThreadRow(
   return "threadId" in row;
 }
 
+function pluginEntryDepth(
+  entry: PluginThreadGroupEntry,
+  decorations: ReadonlyMap<string, PluginThreadDecoration>,
+): number {
+  return entry.kind === "row"
+    ? (entry.row.depth ?? 0)
+    : (decorations.get(entry.node.thread.id)?.depth ?? 0);
+}
+
+export function threadsBeforePlaceholders(
+  entries: readonly PluginThreadGroupEntry[],
+  decorations: ReadonlyMap<string, PluginThreadDecoration>,
+): PluginThreadGroupEntry[] {
+  const subtrees: PluginThreadGroupEntry[][] = [];
+  let rootDepth = 0;
+  for (const entry of entries) {
+    const depth = pluginEntryDepth(entry, decorations);
+    const current = subtrees.at(-1);
+    if (current !== undefined && depth > rootDepth) {
+      current.push(entry);
+      continue;
+    }
+    subtrees.push([entry]);
+    rootDepth = depth;
+  }
+  const ordered = subtrees.map(([root, ...children]) =>
+    root === undefined
+      ? []
+      : [root, ...threadsBeforePlaceholders(children, decorations)],
+  );
+  const hasThread = (subtree: readonly PluginThreadGroupEntry[]) =>
+    subtree.some((entry) => entry.kind === "thread");
+  return [
+    ...ordered.filter(hasThread),
+    ...ordered.filter((subtree) => !hasThread(subtree)),
+  ].flat();
+}
+
 function buildPluginThreadGroup(
   definition: PluginThreadGroupDefinition,
   nodeByThreadId: ReadonlyMap<string, ProjectThreadNode>,
@@ -291,6 +331,7 @@ function buildPluginThreadGroup(
       description: row.description ?? null,
       icon: row.icon ?? null,
       trailing: row.trailing ?? null,
+      pullRequest: row.pullRequest ?? null,
     });
     placedEntries.push({ kind: "thread", node });
   }
@@ -312,7 +353,10 @@ function buildPluginThreadGroup(
     node,
   });
   const entries = definition.keepOrder
-    ? [...listedNodes.map(threadEntry), ...placedEntries]
+    ? threadsBeforePlaceholders(
+        [...listedNodes.map(threadEntry), ...placedEntries],
+        decorations,
+      )
     : [];
   nodes.sort((left, right) => compareThreads(left.thread, right.thread));
   if (!definition.keepOrder) {

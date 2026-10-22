@@ -10,7 +10,11 @@ import {
   usePluginSlots,
   type ExperimentalSidebarThreadDecorationSlot,
 } from "./plugin-slots";
-import { parseRowIcon, parseRowTrailing } from "./plugin-sidebar-thread-groups";
+import {
+  parseRowIcon,
+  parseRowPullRequest,
+  parseRowTrailing,
+} from "./plugin-sidebar-thread-groups";
 
 const SLOT_KIND = "sidebarThreadDecorations";
 
@@ -156,6 +160,7 @@ function parseSidebarThreadRowDecoration(
     label: nonBlank(decoration.label),
     description: nonBlank(decoration.description),
     trailing: parseRowTrailing(decoration.trailing),
+    pullRequest: parseRowPullRequest(decoration.pullRequest),
   };
   return Object.values(parsed).every((field) => field === null) ? null : parsed;
 }
