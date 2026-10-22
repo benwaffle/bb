@@ -10,7 +10,6 @@ import { useAtomValue } from "jotai";
 import { cn } from "@/lib/utils";
 import {
   annotateFlatThreadItems,
-  getFlatPreviousRowProjectIds,
   getNextLocalMidnight,
   SIDEBAR_DAY_BUCKET_LABEL,
   type FlatThreadItemAnnotation,
@@ -28,12 +27,16 @@ export interface FlatThreadList {
 }
 
 export interface FlatThreadItemScope {
-  previousRowProjectId: string | null;
   inGroup: boolean;
+  headerProjectId: string | null;
 }
 
 const NO_DAY_LABELS: FlatThreadList = { dayLabels: false };
 const WITH_DAY_LABELS: FlatThreadList = { dayLabels: true };
+const TOP_LEVEL_ITEM_SCOPE: FlatThreadItemScope = {
+  inGroup: false,
+  headerProjectId: null,
+};
 
 export const FLAT_ROW_PADDING_PX = 12;
 export const FLAT_ROW_DEPTH_STEP_PX = 14;
@@ -110,7 +113,6 @@ function useLocalNow(enabled: boolean): number {
 
 export function useFlatThreadItemAnnotations(
   items: readonly ProjectThreadItem[],
-  collapsedThreadIds: ReadonlySet<string>,
 ): readonly FlatThreadItemAnnotation[] | null {
   const list = useFlatThreadList();
   const now = useLocalNow(list?.dayLabels ?? false);
@@ -118,26 +120,8 @@ export function useFlatThreadItemAnnotations(
     () =>
       list === null
         ? null
-        : annotateFlatThreadItems(items, {
-            dayLabels: list.dayLabels,
-            now,
-            collapsedThreadIds,
-          }),
-    [collapsedThreadIds, items, list, now],
-  );
-}
-
-export function useFlatPreviousRowProjectIds(
-  items: readonly ProjectThreadItem[],
-  collapsedThreadIds: ReadonlySet<string>,
-): readonly (string | null)[] | null {
-  const list = useFlatThreadList();
-  return useMemo(
-    () =>
-      list === null
-        ? null
-        : getFlatPreviousRowProjectIds(items, collapsedThreadIds),
-    [collapsedThreadIds, items, list],
+        : annotateFlatThreadItems(items, { dayLabels: list.dayLabels, now }),
+    [items, list, now],
   );
 }
 
@@ -172,46 +156,30 @@ export function FlatThreadItemFrame({
   first: boolean;
   children: ReactNode;
 }) {
-  const scope = useMemo<FlatThreadItemScope | null>(
-    () =>
-      annotation === undefined
-        ? null
-        : {
-            previousRowProjectId: annotation.previousRowProjectId,
-            inGroup: false,
-          },
-    [annotation],
-  );
   if (annotation === undefined) return <>{children}</>;
   return (
     <>
       {annotation.dayBucket === null ? null : (
         <SidebarDayLabel bucket={annotation.dayBucket} first={first} />
       )}
-      <FlatThreadItemContext.Provider value={scope}>
+      <FlatThreadItemContext.Provider value={TOP_LEVEL_ITEM_SCOPE}>
         {children}
       </FlatThreadItemContext.Provider>
     </>
   );
 }
 
-export function FlatThreadRowScope({
-  previousRowProjectId,
-  inGroup,
+export function FlatThreadGroupScope({
+  headerProjectId,
   children,
 }: {
-  previousRowProjectId: string | null | undefined;
-  inGroup: boolean;
+  headerProjectId: string | null;
   children: ReactNode;
 }) {
-  const scope = useMemo<FlatThreadItemScope | null>(
-    () =>
-      previousRowProjectId === undefined
-        ? null
-        : { previousRowProjectId, inGroup },
-    [inGroup, previousRowProjectId],
+  const scope = useMemo<FlatThreadItemScope>(
+    () => ({ inGroup: true, headerProjectId }),
+    [headerProjectId],
   );
-  if (scope === null) return <>{children}</>;
   return (
     <FlatThreadItemContext.Provider value={scope}>
       {children}
@@ -223,7 +191,7 @@ export function shouldShowRowProject(
   scope: FlatThreadItemScope | null,
   projectId: string,
 ): boolean {
-  return scope === null || projectId !== scope.previousRowProjectId;
+  return scope?.headerProjectId !== projectId;
 }
 
 export function projectHueEdgeColor(hue: number): string {

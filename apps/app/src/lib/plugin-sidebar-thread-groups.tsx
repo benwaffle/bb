@@ -100,6 +100,18 @@ export function parseRowPullRequest(
   return isPullRequestState(state) ? { number, state } : null;
 }
 
+export function parseHttpUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.href
+      : null;
+  } catch {
+    return null;
+  }
+}
+
 function parseRowAdornments(value: {
   icon?: unknown;
   trailing?: unknown;
@@ -199,6 +211,7 @@ function parseGroup(value: unknown): ParsedSidebarThreadGroup | null {
     }
     rows.push(row);
   }
+  const labelHref = parseHttpUrl(group.labelHref);
   const threadIds = [
     ...new Set([
       ...group.threadIds.filter(isNonEmptyString),
@@ -210,6 +223,9 @@ function parseGroup(value: unknown): ParsedSidebarThreadGroup | null {
     key: group.key,
     label: group.label,
     ...(isNonEmptyString(group.keyLabel) ? { keyLabel: group.keyLabel } : {}),
+    ...(isNonEmptyString(group.keyLabel) && labelHref !== null
+      ? { labelHref }
+      : {}),
     ...(isNonEmptyString(group.icon) ? { icon: group.icon } : {}),
     ...(typeof group.tooltip === "string" ? { tooltip: group.tooltip } : {}),
     threadIds,
