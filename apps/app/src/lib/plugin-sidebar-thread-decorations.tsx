@@ -11,6 +11,7 @@ import {
   type ExperimentalSidebarThreadDecorationSlot,
 } from "./plugin-slots";
 import {
+  parseHttpUrl,
   parseRowIcon,
   parseRowPullRequest,
   parseRowTrailing,
@@ -148,16 +149,18 @@ function parseHue(value: unknown): number | null {
     : null;
 }
 
-function parseSidebarThreadRowDecoration(
+export function parseSidebarThreadRowDecoration(
   value: unknown,
 ): ExperimentalResolvedSidebarThreadRowDecoration | null {
   if (typeof value !== "object" || value === null) return null;
   const decoration = value as Partial<
     Record<keyof ExperimentalSidebarThreadRowDecoration, unknown>
   >;
+  const label = nonBlank(decoration.label);
   const parsed: ExperimentalResolvedSidebarThreadRowDecoration = {
     icon: parseRowIcon(decoration.icon),
-    label: nonBlank(decoration.label),
+    label,
+    labelHref: label === null ? null : parseHttpUrl(decoration.labelHref),
     description: nonBlank(decoration.description),
     trailing: parseRowTrailing(decoration.trailing),
     pullRequest: parseRowPullRequest(decoration.pullRequest),

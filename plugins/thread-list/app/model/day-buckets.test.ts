@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   annotateFlatThreadItems,
-  getFlatPreviousRowProjectIds,
   getNextLocalMidnight,
   getSidebarDayBucket,
 } from "./day-buckets.js";
@@ -15,7 +14,6 @@ import {
 import { makeSidebarThread, type SidebarThreadOverrides } from "./fixtures.js";
 
 const originalTimeZone = process.env.TZ;
-const NO_COLLAPSED: ReadonlySet<string> = new Set();
 
 function useTimeZone(timeZone: string): void {
   process.env.TZ = timeZone;
@@ -134,7 +132,6 @@ describe("annotateFlatThreadItems", () => {
     const annotations = annotateFlatThreadItems(items, {
       dayLabels: true,
       now,
-      collapsedThreadIds: NO_COLLAPSED,
     });
     expect(
       items.map((item, index) => [
@@ -163,102 +160,10 @@ describe("annotateFlatThreadItems", () => {
     const annotations = annotateFlatThreadItems(items, {
       dayLabels: true,
       now,
-      collapsedThreadIds: NO_COLLAPSED,
     });
     expect(annotations.map((annotation) => annotation.dayBucket)).toEqual([
       "yesterday",
       null,
-    ]);
-  });
-
-  it("records the project of the row directly above and resets it at each day label", () => {
-    useTimeZone("America/New_York");
-    const now = local(2026, 10, 21, 18);
-    const items = buildFlatThreadGroups(
-      [
-        thread("a1", local(2026, 10, 21, 12), { projectId: "proj_a" }),
-        thread("a2", local(2026, 10, 21, 11), { projectId: "proj_a" }),
-        thread("b1", local(2026, 10, 21, 10), { projectId: "proj_b" }),
-        thread("b2", local(2026, 10, 20, 10), { projectId: "proj_b" }),
-      ],
-      compareStandardThreads,
-      false,
-    );
-    const previousRowProjects = (dayLabels: boolean) =>
-      annotateFlatThreadItems(items, {
-        dayLabels,
-        now,
-        collapsedThreadIds: NO_COLLAPSED,
-      }).map(({ previousRowProjectId }) => previousRowProjectId);
-    expect(previousRowProjects(true)).toEqual([null, "proj_a", "proj_a", null]);
-    expect(previousRowProjects(false)).toEqual([
-      null,
-      "proj_a",
-      "proj_a",
-      "proj_b",
-    ]);
-  });
-
-  it("forgets the project after an expanded parent or a group, since a deeper row sits directly above", () => {
-    useTimeZone("America/New_York");
-    const now = local(2026, 10, 21, 18);
-    const items = buildFlatThreadGroups(
-      [
-        thread("parent", local(2026, 10, 21, 12)),
-        thread("child", local(2026, 10, 21, 11), {
-          parentThreadId: "parent",
-        }),
-        thread("after-parent", local(2026, 10, 21, 10)),
-        thread("member-a", local(2026, 10, 21, 9)),
-        thread("member-b", local(2026, 10, 21, 9)),
-        thread("after-group", local(2026, 10, 21, 8)),
-      ],
-      compareStandardThreads,
-      false,
-      [pluginGroup("ticket", ["member-a", "member-b"], "proj_test")],
-    );
-    const previousRowProjects = (collapsedThreadIds: ReadonlySet<string>) =>
-      annotateFlatThreadItems(items, {
-        dayLabels: false,
-        now,
-        collapsedThreadIds,
-      }).map(({ previousRowProjectId }) => previousRowProjectId);
-    expect(summarizeTree(items)).toEqual([
-      ["parent", ["child"]],
-      "after-parent",
-      "plugin-group",
-      "after-group",
-    ]);
-    expect(previousRowProjects(NO_COLLAPSED)).toEqual([
-      null,
-      null,
-      "proj_test",
-      null,
-    ]);
-    expect(previousRowProjects(new Set(["parent"]))).toEqual([
-      null,
-      "proj_test",
-      "proj_test",
-      null,
-    ]);
-  });
-});
-
-describe("getFlatPreviousRowProjectIds", () => {
-  it("leaves the first sibling under its parent or header without a row above", () => {
-    const items = buildFlatThreadGroups(
-      [
-        thread("first", 300, { projectId: "proj_a" }),
-        thread("second", 200, { projectId: "proj_a" }),
-        thread("third", 100, { projectId: "proj_b" }),
-      ],
-      compareStandardThreads,
-      false,
-    );
-    expect(getFlatPreviousRowProjectIds(items, NO_COLLAPSED)).toEqual([
-      null,
-      "proj_a",
-      "proj_a",
     ]);
   });
 });
@@ -304,14 +209,12 @@ describe("flat thread list nesting", () => {
       "yesterday-b",
     ]);
     expect(
-      annotateFlatThreadItems(items, {
-        dayLabels: true,
-        now,
-        collapsedThreadIds: NO_COLLAPSED,
-      }).map(({ dayBucket }, index) => [
-        summarizeTree(items.slice(index, index + 1))[0],
-        dayBucket,
-      ]),
+      annotateFlatThreadItems(items, { dayLabels: true, now }).map(
+        ({ dayBucket }, index) => [
+          summarizeTree(items.slice(index, index + 1))[0],
+          dayBucket,
+        ],
+      ),
     ).toEqual([
       [["parent", ["child-new", "child-old"]], "today"],
       ["today-a", null],
