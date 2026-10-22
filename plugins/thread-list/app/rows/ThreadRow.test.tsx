@@ -439,6 +439,7 @@ describe("ThreadRow", () => {
     label: "CORE-123",
     description: null,
     trailing: null,
+    pullRequest: null,
   };
   const secondLine = (container: HTMLElement) =>
     container.querySelector("[data-sidebar-thread-second-line]")?.textContent ??
@@ -470,6 +471,91 @@ describe("ThreadRow", () => {
     expect(
       slot.container.querySelector("[data-sidebar-thread-project-leading]"),
     ).toBeNull();
+  });
+
+  it("shows a plugin's pull request with its description in place of the branch and drops the title's #n prefix", () => {
+    const slot = renderThreadRow({
+      thread: createThread({
+        title: "#545 Dial every DiSC route",
+        environment: makeSidebarEnvironment({ branchName: "review/545" }),
+      }),
+      rowDecoration: {
+        ...ROW_DECORATION,
+        description: "conflicts · 3 failing",
+        pullRequest: { number: 545, state: "open" },
+      },
+      pullRequest: makeSidebarPullRequest({ number: 12 }),
+      flat: { previousProjectId: "proj_test" },
+    });
+    expect(secondLine(slot.container)).toBe(
+      "CORE-123·#545·conflicts · 3 failing",
+    );
+    expect(
+      slot.container
+        .querySelector("[data-sidebar-thread-second-line-pull-request]")
+        ?.getAttribute("data-sidebar-thread-second-line-pull-request"),
+    ).toBe("open");
+    expect(
+      slot.container.querySelector("[data-sidebar-thread-second-line-branch]"),
+    ).toBeNull();
+    expect(
+      slot.container.querySelector("[data-sidebar-thread-description]"),
+    ).toBeNull();
+    const title = slot.container.querySelector(".bb-thread-title");
+    expect(title?.textContent).toBe("Dial every DiSC route");
+    expect(title?.getAttribute("title")).toBe("#545 Dial every DiSC route");
+  });
+
+  it("keeps the title's #n prefix and the description on line one without a pull request on line two", () => {
+    const thread = createThread({
+      title: "#545 Dial every DiSC route",
+      environment: makeSidebarEnvironment({ branchName: "review/545" }),
+    });
+    const branchOnly = renderThreadRow({
+      thread,
+      rowDecoration: { ...ROW_DECORATION, description: "conflicts" },
+      flat: { previousProjectId: "proj_test" },
+    });
+    expect(secondLine(branchOnly.container)).toBe("CORE-123·review/545");
+    expect(
+      branchOnly.container.querySelector(".bb-thread-title")?.textContent,
+    ).toBe("#545 Dial every DiSC route");
+    expect(
+      branchOnly.container.querySelector("[data-sidebar-thread-description]")
+        ?.textContent,
+    ).toBe("conflicts");
+    cleanup();
+
+    const otherNumber = renderThreadRow({
+      thread,
+      rowDecoration: {
+        ...ROW_DECORATION,
+        pullRequest: { number: 54, state: "open" },
+      },
+      flat: { previousProjectId: "proj_test" },
+    });
+    expect(
+      otherNumber.container.querySelector(".bb-thread-title")?.textContent,
+    ).toBe("#545 Dial every DiSC route");
+    cleanup();
+
+    getDefaultStore().set(preferenceValueAtom("twoLineRows"), false);
+    const oneLine = renderThreadRow({
+      thread,
+      rowDecoration: {
+        ...ROW_DECORATION,
+        description: "conflicts",
+        pullRequest: { number: 545, state: "open" },
+      },
+      flat: {},
+    });
+    expect(
+      oneLine.container.querySelector(".bb-thread-title")?.textContent,
+    ).toBe("#545 Dial every DiSC route");
+    expect(
+      oneLine.container.querySelector("[data-sidebar-thread-description]")
+        ?.textContent,
+    ).toBe("conflicts");
   });
 
   it("falls back to the branch and leaves out missing pieces", () => {
