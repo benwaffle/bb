@@ -280,6 +280,7 @@ Read the installed SDK declarations for the exact current signatures.
 - `ExperimentalResolvedSidebarThreadDecoration`
 - `ExperimentalSidebarThreadRowDecoration`
 - `ExperimentalResolvedSidebarThreadRowDecoration`
+- `ExperimentalSidebarThreadRowPullRequest`
 - `PluginFileOpenerRegistration`
 - `PluginSourceCodeRendererRegistration`
 - `PluginDiffRendererRegistration`
