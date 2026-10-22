@@ -1,4 +1,4 @@
-import { watch as watchDirectory } from "node:fs";
+import { unwatchFile, watchFile, type Stats } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { readBbAppRuntimeFile } from "@bb/config/app-runtime-file";
@@ -97,12 +97,12 @@ type EnsureServerMovedRuntimeResult = "external" | "kept" | "started";
 
 interface ServerMovedWatcherHandle {
   close(): void;
-  on(event: "error", listener: (error: Error) => void): unknown;
 }
 
-type WatchServerMovedDirectory = (
-  dataDir: string,
-  listener: (eventType: string, filename: string | null) => void,
+type WatchServerMovedFile = (
+  filePath: string,
+  intervalMs: number,
+  listener: () => void,
 ) => ServerMovedWatcherHandle;
 
 type ScheduleServerMovedCheck = (
@@ -121,7 +121,7 @@ interface CreateServerMovedWatcherArgs {
   onMove(move: DesktopServerMove): void;
   pollIntervalMs: number;
   schedule?: ScheduleServerMovedCheck;
-  watch?: WatchServerMovedDirectory;
+  watch?: WatchServerMovedFile;
 }
 
 export interface ServerMovedWatcher {
@@ -392,16 +392,36 @@ export async function ensureServerMovedRuntime(
   return "started";
 }
 
+function watchServerMovedFile(
+  filePath: string,
+  intervalMs: number,
+  listener: () => void,
+): ServerMovedWatcherHandle {
+  const onStat = (current: Stats, previous: Stats): void => {
+    if (
+      current.ino !== previous.ino ||
+      current.mtimeMs !== previous.mtimeMs ||
+      current.size !== previous.size
+    ) {
+      listener();
+    }
+  };
+  watchFile(filePath, { interval: intervalMs, persistent: false }, onStat);
+  return {
+    close() {
+      unwatchFile(filePath, onStat);
+    },
+  };
+}
+
 export function createServerMovedWatcher(
   args: CreateServerMovedWatcherArgs,
 ): ServerMovedWatcher {
-  const watch: WatchServerMovedDirectory =
-    args.watch ?? ((dataDir, listener) => watchDirectory(dataDir, listener));
+  const watch = args.watch ?? watchServerMovedFile;
   const schedule = args.schedule ?? scheduleWithTimer;
   let active = false;
   let watcher: ServerMovedWatcherHandle | null = null;
   let cancelDebouncedCheck: (() => void) | null = null;
-  let cancelPoll: (() => void) | null = null;
   let generation = 0;
   let checking = false;
   let recheckRequested = false;
@@ -466,50 +486,12 @@ export function createServerMovedWatcher(
     }, args.debounceMs);
   }
 
-  function schedulePoll(): void {
-    const pollGeneration = generation;
-    cancelPoll = schedule(() => {
-      cancelPoll = null;
-      void checkLock().then(() => {
-        if (pollGeneration === generation) {
-          schedulePoll();
-        }
-      });
-    }, args.pollIntervalMs);
-  }
-
-  function fallBackToPolling(reason: string): void {
-    closeWatcher();
-    cancelPoll?.();
-    args.logWarning(
-      `[desktop] ${reason}; checking ${join(args.dataDir, SERVER_MOVED_FILE_NAME)} every ${args.pollIntervalMs}ms instead`,
-    );
-    schedulePoll();
-  }
-
   function startWatching(): void {
-    const startGeneration = generation;
-    try {
-      watcher = watch(args.dataDir, (_eventType, filename) => {
-        if (filename !== null && filename !== SERVER_MOVED_FILE_NAME) {
-          return;
-        }
-        scheduleCheck();
-      });
-    } catch (error) {
-      fallBackToPolling(
-        `could not watch ${args.dataDir} for a server move: ${errorMessage(error)}`,
-      );
-      return;
-    }
-    watcher.on("error", (error) => {
-      if (startGeneration !== generation) {
-        return;
-      }
-      fallBackToPolling(
-        `stopped watching ${args.dataDir} for a server move: ${errorMessage(error)}`,
-      );
-    });
+    watcher = watch(
+      join(args.dataDir, SERVER_MOVED_FILE_NAME),
+      args.pollIntervalMs,
+      scheduleCheck,
+    );
   }
 
   return {
@@ -527,8 +509,6 @@ export function createServerMovedWatcher(
       generation += 1;
       cancelDebouncedCheck?.();
       cancelDebouncedCheck = null;
-      cancelPoll?.();
-      cancelPoll = null;
       closeWatcher();
     },
   };
