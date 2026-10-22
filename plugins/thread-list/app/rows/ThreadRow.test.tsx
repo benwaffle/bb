@@ -140,7 +140,7 @@ function ThreadRowHarness({
     ) : (
       <FlatThreadListContext.Provider value={{ dayLabels: true }}>
         <FlatThreadItemContext.Provider
-          value={{ previousRowProjectId: null, inGroup: false, ...flat }}
+          value={{ inGroup: false, headerProjectId: null, ...flat }}
         >
           {threadRow}
         </FlatThreadItemContext.Provider>
@@ -438,6 +438,7 @@ describe("ThreadRow", () => {
   const ROW_DECORATION: ExperimentalResolvedSidebarThreadRowDecoration = {
     icon: { name: "GitPullRequest", tone: "accent" },
     label: "CORE-123",
+    labelHref: null,
     description: null,
     trailing: null,
     pullRequest: null,
@@ -474,6 +475,28 @@ describe("ThreadRow", () => {
     ).toBeNull();
   });
 
+  it("opens a linked plugin label through the app without opening the row", () => {
+    const slot = renderThreadRow({
+      thread: BRANCHED_THREAD,
+      rowDecoration: {
+        ...ROW_DECORATION,
+        labelHref: "https://jira.example/browse/CORE-123",
+      },
+      flat: { inGroup: true, headerProjectId: "proj_test" },
+    });
+    const label = screen.getByRole("link", { name: "CORE-123" });
+    expect(label.getAttribute("href")).toBe(
+      "https://jira.example/browse/CORE-123",
+    );
+    expect(label.hasAttribute("data-sidebar-thread-second-line-label")).toBe(
+      true,
+    );
+    expect(fireEvent.click(label)).toBe(false);
+    expect(slot.inspection.navigateCalls).toEqual([
+      { method: "openUrl", url: "https://jira.example/browse/CORE-123" },
+    ]);
+  });
+
   it("shows a plugin's pull request with its description in place of the branch and drops the title's #n prefix", () => {
     const slot = renderThreadRow({
       thread: createThread({
@@ -486,7 +509,7 @@ describe("ThreadRow", () => {
         pullRequest: { number: 545, state: "open" },
       },
       pullRequest: makeSidebarPullRequest({ number: 12 }),
-      flat: { previousRowProjectId: "proj_test" },
+      flat: { inGroup: true, headerProjectId: "proj_test" },
     });
     expect(secondLine(slot.container)).toBe(
       "CORE-123·#545·conflicts · 3 failing",
@@ -515,7 +538,7 @@ describe("ThreadRow", () => {
     const branchOnly = renderThreadRow({
       thread,
       rowDecoration: { ...ROW_DECORATION, description: "conflicts" },
-      flat: { previousRowProjectId: "proj_test" },
+      flat: { inGroup: true, headerProjectId: "proj_test" },
     });
     expect(secondLine(branchOnly.container)).toBe("CORE-123·review/545");
     expect(
@@ -533,7 +556,7 @@ describe("ThreadRow", () => {
         ...ROW_DECORATION,
         pullRequest: { number: 54, state: "open" },
       },
-      flat: { previousRowProjectId: "proj_test" },
+      flat: { inGroup: true, headerProjectId: "proj_test" },
     });
     expect(
       otherNumber.container.querySelector(".bb-thread-title")?.textContent,
@@ -609,7 +632,7 @@ describe("ThreadRow", () => {
     ).not.toBeNull();
   });
 
-  it("leaves the project off a flat row only when the row directly above has the same project", async () => {
+  it("shows the project on every flat row except a ticket group row under a header naming it", async () => {
     const rowArgs = {
       thread: BRANCHED_THREAD,
       projects: [APP_PROJECT],
@@ -617,32 +640,24 @@ describe("ThreadRow", () => {
       rowDecoration: ROW_DECORATION,
       pullRequest: makeSidebarPullRequest({ number: 12 }),
     };
-    const repeated = renderThreadRow({
-      ...rowArgs,
-      flat: { previousRowProjectId: "proj_test" },
-    });
-    await waitFor(() =>
-      expect(secondLine(repeated.container)).toBe("CORE-123·#12"),
-    );
-    cleanup();
+    for (const flat of [
+      {},
+      { inGroup: true, headerProjectId: null },
+      { inGroup: true, headerProjectId: "proj_other" },
+    ]) {
+      const shown = renderThreadRow({ ...rowArgs, flat });
+      await waitFor(() =>
+        expect(secondLine(shown.container)).toBe("App·CORE-123·#12"),
+      );
+      cleanup();
+    }
 
-    const changed = renderThreadRow({
+    const underHeader = renderThreadRow({
       ...rowArgs,
-      flat: { previousRowProjectId: "proj_other" },
+      flat: { inGroup: true, headerProjectId: "proj_test" },
     });
     await waitFor(() =>
-      expect(secondLine(changed.container)).toBe("App·CORE-123·#12"),
-    );
-    cleanup();
-
-    const afterLabelHeaderOrIndent = renderThreadRow({
-      ...rowArgs,
-      flat: { previousRowProjectId: null },
-    });
-    await waitFor(() =>
-      expect(secondLine(afterLabelHeaderOrIndent.container)).toBe(
-        "App·CORE-123·#12",
-      ),
+      expect(secondLine(underHeader.container)).toBe("CORE-123·#12"),
     );
   });
 
