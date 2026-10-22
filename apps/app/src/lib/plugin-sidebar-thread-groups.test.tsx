@@ -153,6 +153,7 @@ describe("sidebar thread groups", () => {
       publishSidebarThreadGroups("pr-review", "tickets", [
         group("CORE-6", {
           keyLabel: "CORE-6",
+          labelHref: "https://jira.example/browse/CORE-6",
           icon: "GitPullRequest",
           style: "card",
           rows: [
@@ -188,14 +189,23 @@ describe("sidebar thread groups", () => {
             },
           ],
         }),
-        group("CORE-7", { keyLabel: "", style: "fancy" as never }),
-        group("CORE-8", { keyLabel: "CORE-8", style: "minimal" }),
+        group("CORE-7", {
+          keyLabel: "",
+          labelHref: "https://jira.example/browse/CORE-7",
+          style: "fancy" as never,
+        }),
+        group("CORE-8", {
+          keyLabel: "CORE-8",
+          labelHref: "javascript:alert(1)",
+          style: "minimal",
+        }),
       ]);
     });
 
     const [card, flat, minimal] = result.current;
     expect(card).toMatchObject({
       keyLabel: "CORE-6",
+      labelHref: "https://jira.example/browse/CORE-6",
       icon: "GitPullRequest",
       style: "card",
     });
@@ -220,6 +230,8 @@ describe("sidebar thread groups", () => {
     expect(flat?.style).toBe("flat");
     expect(minimal).toMatchObject({ keyLabel: "CORE-8", style: "minimal" });
     expect(flat).not.toHaveProperty("keyLabel");
+    expect(flat).not.toHaveProperty("labelHref");
+    expect(minimal).not.toHaveProperty("labelHref");
   });
 
   it("runs a provider's hook in the plugin and withdraws its groups on unregister", () => {

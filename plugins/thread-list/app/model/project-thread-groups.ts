@@ -61,6 +61,7 @@ export interface PluginThreadGroup {
   projectId: string;
   label: string;
   keyLabel: string | null;
+  labelHref: string | null;
   icon: string | null;
   style: ExperimentalResolvedSidebarThreadGroup["style"];
   progress: PluginThreadGroupProgress | null;
@@ -78,6 +79,7 @@ export type PluginThreadGroupDefinition = Pick<
   | "projectId"
   | "label"
   | "keyLabel"
+  | "labelHref"
   | "icon"
   | "style"
   | "tooltip"
@@ -370,6 +372,7 @@ function buildPluginThreadGroup(
     projectId: definition.projectId,
     label: definition.label,
     keyLabel: definition.keyLabel ?? null,
+    labelHref: definition.labelHref ?? null,
     icon: definition.icon ?? null,
     style: definition.style,
     progress:
