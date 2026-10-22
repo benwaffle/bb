@@ -392,35 +392,19 @@ describe("ensureServerMovedRuntime", () => {
 
 describe("createServerMovedWatcher", () => {
   function createFakeWatch() {
-    const listeners: Array<
-      (eventType: string, filename: string | null) => void
-    > = [];
-    const errorListeners: Array<(error: Error) => void> = [];
+    const listeners: Array<() => void> = [];
     const close = vi.fn();
     const watch = vi.fn(
-      (
-        _dataDir: string,
-        listener: (eventType: string, filename: string | null) => void,
-      ) => {
+      (_filePath: string, _intervalMs: number, listener: () => void) => {
         listeners.push(listener);
-        return {
-          close,
-          on(_event: "error", errorListener: (error: Error) => void) {
-            errorListeners.push(errorListener);
-          },
-        };
+        return { close };
       },
     );
     return {
       close,
-      emit(filename: string | null) {
+      emit() {
         for (const listener of listeners) {
-          listener("rename", filename);
-        }
-      },
-      emitError(error: Error) {
-        for (const listener of errorListeners) {
-          listener(error);
+          listener();
         }
       },
       watch,
@@ -513,12 +497,14 @@ describe("createServerMovedWatcher", () => {
       harness.watcher.start();
       harness.timers.flush();
 
-      harness.fakeWatch.emit("bb.db-wal");
-      expect(harness.timers.pendingCount()).toBe(0);
+      expect(harness.fakeWatch.watch).toHaveBeenCalledExactlyOnceWith(
+        join(harness.dataDir, SERVER_MOVED_FILE_NAME),
+        2_000,
+        expect.any(Function),
+      );
       await writeServerMovedFile(harness.dataDir, movedFile());
-      harness.fakeWatch.emit(`${SERVER_MOVED_FILE_NAME}.abc123.tmp`);
-      harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
-      harness.fakeWatch.emit(null);
+      harness.fakeWatch.emit();
+      harness.fakeWatch.emit();
       expect(harness.timers.pendingCount()).toBe(1);
       harness.timers.flush();
 
@@ -530,9 +516,9 @@ describe("createServerMovedWatcher", () => {
         expect(harness.onMove).toHaveBeenCalledExactlyOnceWith(CONNECT_MOVE);
       });
 
-      harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
+      harness.fakeWatch.emit();
       harness.timers.flush();
-      harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
+      harness.fakeWatch.emit();
       harness.timers.flush();
       await vi.waitFor(() => {
         expect(harness.timers.pendingCount()).toBe(1);
@@ -556,7 +542,7 @@ describe("createServerMovedWatcher", () => {
       expect(harness.onMove).not.toHaveBeenCalled();
 
       harness.confirmMove.mockImplementation(async () => true);
-      harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
+      harness.fakeWatch.emit();
       harness.timers.flush();
       await vi.waitFor(() => {
         expect(harness.onMove).toHaveBeenCalledExactlyOnceWith(CONNECT_MOVE);
@@ -581,7 +567,7 @@ describe("createServerMovedWatcher", () => {
         harness.dataDir,
         movedFile({ moveId: "move-3" }),
       );
-      harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
+      harness.fakeWatch.emit();
       harness.timers.flush();
       expect(harness.confirmMove).toHaveBeenCalledOnce();
 
@@ -619,7 +605,7 @@ describe("createServerMovedWatcher", () => {
       expect(harness.onMove).not.toHaveBeenCalled();
 
       await writeServerMovedFile(harness.dataDir, movedFile());
-      harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
+      harness.fakeWatch.emit();
       harness.timers.flush();
       await vi.waitFor(() => {
         expect(harness.onMove).toHaveBeenCalledExactlyOnceWith(CONNECT_MOVE);
@@ -634,7 +620,7 @@ describe("createServerMovedWatcher", () => {
     await writeServerMovedFile(harness.dataDir, movedFile());
     harness.watcher.start();
 
-    harness.fakeWatch.emit(SERVER_MOVED_FILE_NAME);
+    harness.fakeWatch.emit();
     harness.watcher.stop();
     harness.timers.flush();
 
@@ -668,55 +654,6 @@ describe("createServerMovedWatcher", () => {
     await new Promise<void>((resolve) => setImmediate(resolve));
 
     expect(harness.onMove).not.toHaveBeenCalled();
-  });
-
-  it("polls when the data dir cannot be watched", async () => {
-    const harness = await createHarness({
-      watch() {
-        throw new Error(
-          "ENOSPC: System limit for number of file watchers reached",
-        );
-      },
-    });
-
-    try {
-      expect(() => harness.watcher.start()).not.toThrow();
-      expect(harness.logWarning.mock.calls[0]?.[0]).toContain("ENOSPC");
-      harness.timers.flush();
-      await vi.waitFor(() => {
-        expect(harness.timers.pendingCount()).toBe(2);
-      });
-      expect(harness.onMove).not.toHaveBeenCalled();
-
-      await writeServerMovedFile(harness.dataDir, movedFile());
-      harness.timers.flush();
-      await vi.waitFor(() => {
-        expect(harness.onMove).toHaveBeenCalledExactlyOnceWith(CONNECT_MOVE);
-      });
-    } finally {
-      harness.watcher.stop();
-    }
-    expect(harness.timers.pendingCount()).toBe(0);
-  });
-
-  it("closes the watcher and polls after a watch error", async () => {
-    const harness = await createHarness();
-    try {
-      harness.watcher.start();
-      harness.timers.flush();
-
-      harness.fakeWatch.emitError(new Error("EMFILE"));
-
-      expect(harness.fakeWatch.close).toHaveBeenCalledOnce();
-      expect(harness.logWarning.mock.calls[0]?.[0]).toContain("EMFILE");
-      await writeServerMovedFile(harness.dataDir, movedFile());
-      harness.timers.flush();
-      await vi.waitFor(() => {
-        expect(harness.onMove).toHaveBeenCalledExactlyOnceWith(CONNECT_MOVE);
-      });
-    } finally {
-      harness.watcher.stop();
-    }
   });
 
   it("notices a lock written atomically into a real data dir", async () => {

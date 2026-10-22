@@ -236,8 +236,8 @@ function createRuntimeLogBuffer(
         }
         lines.push(line);
       }
-      while (lines.length > args.maxLines) {
-        lines.shift();
+      if (lines.length > args.maxLines) {
+        lines.splice(0, lines.length - args.maxLines);
       }
     },
     text() {
