@@ -20,6 +20,7 @@ app.slots.experimental_sidebarThreadGroups({
           projectId: ticket.projectId,
           key: ticket.key,
           keyLabel: ticket.key,
+          labelHref: ticket.url,
           label: ticket.summary,
           icon: "GitPullRequestArrow",
           style: "minimal",
@@ -59,7 +60,11 @@ muted monospace style, then `label`. When the group has placeholder rows, bb
 right-aligns `<threads>/<rows>`. `style: "card"` wraps the header and rows in
 a bordered card; `"minimal"` draws no card and shows `keyLabel` as a small
 muted pill at the start of the header in place of the icon; the default
-`"flat"` matches other sidebar groups.
+`"flat"` matches other sidebar groups. `labelHref`, an HTTP(S) URL such as
+the ticket's page, makes `keyLabel` a link: clicking it opens the URL through
+bb's link handling (the bb browser or the system browser, per the user's
+setting) without toggling or navigating the header. Other schemes, and a
+`labelHref` without `keyLabel`, are dropped.
 
 Placeholder rows and thread entries take an optional 14px leading
 `icon: { name, tone }` and an optional `trailing` of `{ kind: "dot", tone }`
@@ -199,6 +204,7 @@ app.slots.experimental_sidebarThreadDecoration({
           : {
               icon: { name: "GitPullRequestArrow", tone: "success" },
               label: review.ticketKey,
+              labelHref: review.ticketUrl,
             },
       [review],
     );
@@ -206,7 +212,7 @@ app.slots.experimental_sidebarThreadDecoration({
 });
 ```
 
-An `ExperimentalSidebarThreadRowDecoration` has four optional fields. `icon`,
+An `ExperimentalSidebarThreadRowDecoration` has six optional fields. `icon`,
 `description`, and `trailing` have the same shapes as a thread placed in an
 `experimental_sidebarThreadGroups` group, so a plugin can reuse its group
 row model:
@@ -215,6 +221,10 @@ row model:
   The Thread list draws it in place of the row's provider icon.
 - `label` — short text, such as a ticket key, on the row's second line
   between the project and the pull request or branch.
+- `labelHref` — an HTTP(S) URL, such as the ticket's page, that makes
+  `label` a link. Clicking it opens the URL through bb's link handling (the
+  bb browser or the system browser, per the user's setting) without opening
+  the thread. Other schemes, and a `labelHref` without `label`, are dropped.
 - `description` — muted text after the thread title.
 - `trailing` — an `ExperimentalSidebarThreadGroupRowTrailing`, a dot or
   short text after the title.
