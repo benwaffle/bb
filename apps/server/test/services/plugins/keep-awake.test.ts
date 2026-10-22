@@ -64,7 +64,7 @@ describe("builtin Keep Awake plugin", () => {
         contributedEnv: [],
         pluginId: "keep-awake",
         method: "setEnabled",
-        input: { enabled: true },
+        input: { enabled: false },
       });
     } finally {
       await server.pluginService.stop();
