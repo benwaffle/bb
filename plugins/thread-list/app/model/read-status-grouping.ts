@@ -66,20 +66,3 @@ export function groupComparatorByReadStatus(
   }
   return grouped;
 }
-
-export function collapseParentThreads(
-  threads: readonly SidebarThread[],
-  expandedThreadIds: readonly string[],
-): Set<string> {
-  const expanded = new Set(expandedThreadIds);
-  const collapsed = new Set<string>();
-  for (const thread of threads) {
-    if (
-      thread.parentThreadId !== null &&
-      !expanded.has(thread.parentThreadId)
-    ) {
-      collapsed.add(thread.parentThreadId);
-    }
-  }
-  return collapsed;
-}
