@@ -1,4 +1,7 @@
-import type { ProjectThreadItem } from "./project-thread-groups.js";
+import {
+  getProjectThreadItemDescendants,
+  type ProjectThreadItem,
+} from "./project-thread-groups.js";
 
 export const SIDEBAR_DAY_BUCKETS = [
   "today",
@@ -52,7 +55,10 @@ export interface FlatThreadItemAnnotation {
 function newestUpdatedAt(item: ProjectThreadItem): number | null {
   switch (item.kind) {
     case "thread":
-      return item.node.thread.updatedAt;
+      return getProjectThreadItemDescendants([item]).reduce(
+        (newest, thread) => Math.max(newest, thread.updatedAt),
+        item.node.thread.updatedAt,
+      );
     case "environment":
     case "plugin-group":
       return item.group.nodes.reduce<number | null>(
