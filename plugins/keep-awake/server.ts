@@ -12,6 +12,13 @@ const RETRY_MIN_MS = 1_000;
 const RETRY_MAX_MS = 30_000;
 const CONFIGURATION_KEY = "configuration";
 const MAX_SELECTED_HOSTS = 256;
+const IDLE_RELEASE_DELAY_MS = 60_000;
+const ACTIVITY_CHANGE_KINDS: ReadonlySet<string> = new Set([
+  "thread-created",
+  "thread-deleted",
+  "status-changed",
+  "archived-changed",
+]);
 
 const JSON_OPTION = {
   type: "boolean",
@@ -63,6 +70,11 @@ type HostSelection = z.infer<typeof hostSelectionSchema>;
 type KeepAwakeConfiguration = z.infer<typeof keepAwakeConfigurationSchema>;
 
 type ReconcileOutcome = "settled" | "retry";
+type ThreadChangedSubscription = Extract<
+  Parameters<BbPluginApi["sdk"]["subscribe"]>[0],
+  { event: "thread:changed" }
+>;
+type ThreadChangedEvent = Parameters<ThreadChangedSubscription["callback"]>[0];
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -96,6 +108,13 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
   let configuration: KeepAwakeConfiguration = storedConfiguration.success
     ? normalizeConfiguration(storedConfiguration.data)
     : { enabled: false, selection: { mode: "all" } };
+  let workRunning = false;
+  let holdingAwake = false;
+  let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+  const backgroundCommandThreadIds = new Set<string>();
+  const backgroundChecks = new Set<string>();
+  let activityRefresh: Promise<void> | null = null;
+  let activityRefreshQueued = false;
 
   function requestReconcile(): void {
     reconcileRequested = true;
@@ -105,6 +124,100 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
   function requestRetry(): void {
     retryRequested = true;
     wakeWaiter?.();
+  }
+
+  function clearReleaseTimer(): void {
+    if (releaseTimer === null) return;
+    clearTimeout(releaseTimer);
+    releaseTimer = null;
+  }
+
+  function setHoldingAwake(next: boolean): void {
+    if (holdingAwake === next) return;
+    holdingAwake = next;
+    requestReconcile();
+  }
+
+  function setWorkRunning(next: boolean): void {
+    workRunning = next;
+    if (next) {
+      clearReleaseTimer();
+      setHoldingAwake(true);
+      return;
+    }
+    if (!holdingAwake || releaseTimer !== null) return;
+    releaseTimer = setTimeout(() => {
+      releaseTimer = null;
+      if (!workRunning) setHoldingAwake(false);
+    }, IDLE_RELEASE_DELAY_MS);
+  }
+
+  async function checkBackgroundCommands(threadId: string): Promise<void> {
+    try {
+      const { commands } = await bb.sdk.threads.backgroundCommands({
+        threadId,
+      });
+      if (commands.length > 0) backgroundCommandThreadIds.add(threadId);
+      else backgroundCommandThreadIds.delete(threadId);
+    } catch (error) {
+      backgroundCommandThreadIds.delete(threadId);
+      bb.log.warn(
+        `Could not read Keep Awake background commands for thread ${threadId}: ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  async function refreshActivity(): Promise<void> {
+    const threadIds = [...backgroundChecks];
+    backgroundChecks.clear();
+    await Promise.all(threadIds.map(checkBackgroundCommands));
+    try {
+      const running = await bb.sdk.threads.listRunning();
+      setWorkRunning(running.length > 0 || backgroundCommandThreadIds.size > 0);
+    } catch (error) {
+      bb.log.warn(
+        `Could not read Keep Awake thread activity: ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  function requestActivityRefresh(): void {
+    if (activityRefresh !== null) {
+      activityRefreshQueued = true;
+      return;
+    }
+    activityRefresh = (async () => {
+      do {
+        activityRefreshQueued = false;
+        await refreshActivity();
+      } while (activityRefreshQueued);
+    })().finally(() => {
+      activityRefresh = null;
+    });
+  }
+
+  function onThreadChanged(event: ThreadChangedEvent): void {
+    const threadId = event.id;
+    const activity = event.metadata?.statusChange?.activity;
+    if (threadId !== undefined) {
+      if (event.changes.includes("thread-deleted")) {
+        backgroundCommandThreadIds.delete(threadId);
+      } else if (activity !== undefined) {
+        if (activity.activeBackgroundCommandCount > 0) {
+          backgroundCommandThreadIds.add(threadId);
+        } else {
+          backgroundCommandThreadIds.delete(threadId);
+        }
+      } else if (event.metadata?.backgroundActivityChanged === true) {
+        backgroundChecks.add(threadId);
+      }
+    }
+    if (
+      event.metadata?.backgroundActivityChanged === true ||
+      event.changes.some((change) => ACTIVITY_CHANGE_KINDS.has(change))
+    ) {
+      requestActivityRefresh();
+    }
   }
 
   async function readHostConfiguration() {
@@ -154,7 +267,7 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
       name: "keep-awake",
       summary: "Configure idle-sleep prevention",
       description:
-        "Keep Awake keeps every selected macOS or Windows host from idle-sleeping while bb runs.",
+        "Keep Awake keeps every selected macOS or Windows host from idle-sleeping while a thread runs or a background command is running, and releases it a minute after work stops.",
       commands: {
         status: cliCommand({
           summary: "Show whether Keep Awake is enabled and which hosts it uses",
@@ -162,12 +275,12 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
           run: (input) => ({
             exitCode: 0,
             stdout: input.options.json
-              ? JSON.stringify(configuration)
+              ? JSON.stringify({ ...configuration, holdingAwake })
               : `${configuration.enabled ? "Enabled" : "Disabled"}\nHosts: ${
                   configuration.selection.mode === "all"
                     ? "all"
                     : configuration.selection.hostIds.join(", ")
-                }`,
+                }\nHolding awake: ${holdingAwake ? "yes" : "no"}`,
           }),
         }),
         enable: cliCommand({
@@ -247,6 +360,7 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
   async function reconcile(signal: AbortSignal): Promise<ReconcileOutcome> {
     try {
       const desiredConfiguration = configuration;
+      const desiredAwake = holdingAwake;
       const availableHosts = await bb.sdk.hosts.list();
       const selectedHostIds = new Set(
         desiredConfiguration.selection.mode === "selected"
@@ -259,6 +373,7 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
           .map(async (availableHost): Promise<ReconcileOutcome> => {
             const desired =
               desiredConfiguration.enabled &&
+              desiredAwake &&
               (desiredConfiguration.selection.mode === "all" ||
                 selectedHostIds.has(availableHost.id));
             try {
@@ -345,10 +460,17 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
         event: "realtime:connection",
         callback: (event) => {
           if (event.state === "connected" && event.reconnected) {
+            requestActivityRefresh();
             requestReconcile();
           }
         },
       });
+      const unsubscribeThreads = bb.sdk.subscribe({
+        event: "thread:changed",
+        callback: onThreadChanged,
+      });
+      requestActivityRefresh();
+      await activityRefresh;
       let retryMs = RETRY_MIN_MS;
       try {
         while (!signal.aborted) {
@@ -368,6 +490,8 @@ export default async function keepAwakePlugin(bb: BbPluginApi): Promise<void> {
           }
         }
       } finally {
+        clearReleaseTimer();
+        unsubscribeThreads();
         unsubscribeRealtime();
         unsubscribeHost();
         wakeWaiter?.();

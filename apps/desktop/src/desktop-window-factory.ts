@@ -77,14 +77,17 @@ export interface DesktopWindowWebContents extends DesktopContextMenuWebContents 
 export interface DesktopBrowserWindow extends StatefulBrowserWindow {
   readonly id: number;
   focus(): void;
+  isFocused(): boolean;
   isMinimized(): boolean;
   loadURL(url: string): Promise<void>;
   maximize(): void;
   on(
     eventName:
+      | "blur"
       | "close"
       | "closed"
       | "enter-full-screen"
+      | "focus"
       | "leave-full-screen"
       | "move"
       | "resize"

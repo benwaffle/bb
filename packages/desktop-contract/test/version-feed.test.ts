@@ -23,11 +23,15 @@ describe("desktop info schema", () => {
 
   it("accepts strict desktop window state payloads", () => {
     expect(
-      bbDesktopWindowStateSchema.safeParse({ isFullScreen: true }).success,
+      bbDesktopWindowStateSchema.safeParse({
+        isFullScreen: true,
+        isFocused: false,
+      }).success,
     ).toBe(true);
     expect(
       bbDesktopWindowStateSchema.safeParse({
         isFullScreen: true,
+        isFocused: true,
         extra: true,
       }).success,
     ).toBe(false);

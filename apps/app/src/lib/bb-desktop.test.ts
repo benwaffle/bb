@@ -47,19 +47,19 @@ describe("desktop chrome geometry", () => {
     expect(
       shouldReserveMacosTrafficLights({
         desktopInfo: macosDesktopApi,
-        windowState: { isFullScreen: false },
+        windowState: { isFullScreen: false, isFocused: true },
       }),
     ).toBe(true);
     expect(
       shouldReserveMacosTrafficLights({
         desktopInfo: macosDesktopApi,
-        windowState: { isFullScreen: true },
+        windowState: { isFullScreen: true, isFocused: true },
       }),
     ).toBe(false);
     expect(
       shouldReserveMacosTrafficLights({
         desktopInfo: null,
-        windowState: { isFullScreen: false },
+        windowState: { isFullScreen: false, isFocused: true },
       }),
     ).toBe(false);
   });

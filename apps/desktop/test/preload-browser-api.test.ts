@@ -73,6 +73,7 @@ const electronMock = vi.hoisted(() => {
   };
   const desktopWindowState: BbDesktopWindowState = {
     isFullScreen: false,
+    isFocused: true,
   };
   const invokeCalls: string[] = [];
   const listeners = new Map<string, IpcRendererListener>();
@@ -306,6 +307,7 @@ describe("desktop preload browser API", () => {
     await api.checkForUpdates();
     await expect(api.getWindowState?.()).resolves.toEqual({
       isFullScreen: false,
+      isFocused: true,
     });
     await api.installUpdate();
 
@@ -562,7 +564,7 @@ describe("desktop preload browser API", () => {
     });
     emitIpcPayload({
       channel: BB_DESKTOP_WINDOW_STATE_CHANGED_CHANNEL,
-      payload: { isFullScreen: false, extra: true },
+      payload: { isFullScreen: false, isFocused: true, extra: true },
     });
     emitIpcPayload({
       channel: BB_DESKTOP_BROWSER_STATE_CHANNEL,
@@ -590,7 +592,7 @@ describe("desktop preload browser API", () => {
     });
     emitIpcPayload({
       channel: BB_DESKTOP_WINDOW_STATE_CHANGED_CHANNEL,
-      payload: { isFullScreen: true },
+      payload: { isFullScreen: true, isFocused: false },
     });
     emitIpcPayload({
       channel: BB_DESKTOP_OPEN_NEW_TAB_CHANNEL,
@@ -615,7 +617,7 @@ describe("desktop preload browser API", () => {
     expect(focusedTabs).toEqual(["browser:a"]);
     expect(snapshots).toEqual([snapshot]);
     expect(findResults).toEqual([findResult]);
-    expect(windowStates).toEqual([{ isFullScreen: true }]);
+    expect(windowStates).toEqual([{ isFullScreen: true, isFocused: false }]);
     expect(closeWindowRequestCount).toBe(1);
     expect(openNewTabCount).toBe(1);
     expect(appCommands).toEqual(["thread.new"]);

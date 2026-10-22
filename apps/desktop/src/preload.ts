@@ -135,6 +135,7 @@ function createInitialDesktopInfo(): BbDesktopInfo {
 function createInitialDesktopWindowState(): BbDesktopWindowState {
   return {
     isFullScreen: false,
+    isFocused: true,
   };
 }
 

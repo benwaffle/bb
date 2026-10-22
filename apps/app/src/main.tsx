@@ -14,6 +14,7 @@ import { appQueryClient } from "./lib/app-query-client";
 import { applyAppFrameGeometry, getBbDesktopInfo } from "./lib/bb-desktop";
 import { applyCachedAppThemeCss } from "./lib/themes";
 import { installStaleChunkRecovery } from "./lib/stale-chunk-recovery";
+import { installWindowInactiveAttribute } from "./lib/window-inactive-attribute";
 import "./app.css";
 
 installStaleChunkRecovery();
@@ -28,6 +29,10 @@ initializePreferredTheme();
 applyCachedAppThemeCss();
 initializeFavicon();
 applyAppFrameGeometry(document.documentElement, getBbDesktopInfo());
+installWindowInactiveAttribute({
+  root: document.documentElement,
+  desktopApi: getBbDesktopInfo(),
+});
 
 createRoot(document.getElementById("root")!, {
   onUncaughtError: (error, errorInfo) => {
