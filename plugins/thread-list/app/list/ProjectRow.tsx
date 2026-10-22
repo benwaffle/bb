@@ -150,15 +150,14 @@ import {
   PluginThreadDepthRail,
 } from "../rows/pluginThreadDecoration.js";
 import {
+  FlatThreadGroupScope,
   FlatThreadItemFrame,
-  FlatThreadRowScope,
   getFlatGroupGuideLeft,
   getFlatRowPaddingLeft,
   ProjectHueEdge,
   projectHueEdgeColor,
   projectHueTextColor,
   shouldShowRowProject,
-  useFlatPreviousRowProjectIds,
   useFlatThreadItemAnnotations,
   useFlatThreadItemScope,
   useFlatThreadList,
@@ -185,6 +184,7 @@ import {
 import type { ConsumeDragClickSuppression } from "@/components/ui/use-drag-click-suppression";
 import type { NeighborReorderRequest } from "../model/neighbor-reorder.js";
 import { SidebarChildToggleChevron } from "../rows/SidebarChildToggleChevron.js";
+import { PluginLabelLink } from "../rows/PluginLabelLink.js";
 import { SidebarSectionOrderList } from "./SidebarSectionOrderList.js";
 import {
   useSectionThreadDnd,
@@ -1050,10 +1050,6 @@ const EnvironmentThreadGroupRow = memo(function EnvironmentThreadGroupRow({
       collapsedEnvironmentIds,
       selectedThreadId,
     });
-  const previousRowProjectIds = useFlatPreviousRowProjectIds(
-    nodeItems,
-    collapsedThreadIds,
-  );
 
   return (
     <>
@@ -1094,30 +1090,23 @@ const EnvironmentThreadGroupRow = memo(function EnvironmentThreadGroupRow({
                   return null;
                 }
                 return (
-                  <FlatThreadRowScope
+                  <SectionDndItemRow
                     key={node.thread.id}
-                    previousRowProjectId={previousRowProjectIds?.[index]}
-                    inGroup={false}
-                  >
-                    <SectionDndItemRow
-                      projectId={projectId}
-                      item={nodeItems[index]}
-                      sectionDnd={sectionDnd}
-                      depthOffset={depthOffset + 1}
-                      isEnvGrouped
-                      selectedThreadId={selectedThreadIdWithin(
-                        nodeItems[index],
-                        selectedThreadId,
-                      )}
-                      collapsedThreadIds={collapsedThreadIds}
-                      collapsedEnvironmentIds={collapsedEnvironmentIds}
-                      onProjectSelect={onProjectSelect}
-                      onToggleThreadCollapsed={onToggleThreadCollapsed}
-                      onToggleEnvironmentCollapsed={
-                        onToggleEnvironmentCollapsed
-                      }
-                    />
-                  </FlatThreadRowScope>
+                    projectId={projectId}
+                    item={nodeItems[index]}
+                    sectionDnd={sectionDnd}
+                    depthOffset={depthOffset + 1}
+                    isEnvGrouped
+                    selectedThreadId={selectedThreadIdWithin(
+                      nodeItems[index],
+                      selectedThreadId,
+                    )}
+                    collapsedThreadIds={collapsedThreadIds}
+                    collapsedEnvironmentIds={collapsedEnvironmentIds}
+                    onProjectSelect={onProjectSelect}
+                    onToggleThreadCollapsed={onToggleThreadCollapsed}
+                    onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+                  />
                 );
               }}
             />
@@ -1283,6 +1272,29 @@ function PluginThreadGroupHeader({
     group.progress === null
       ? null
       : `${group.progress.threads} of ${group.progress.total} started`;
+  const keyLabelProps =
+    group.keyLabel === null
+      ? null
+      : {
+          "data-sidebar-plugin-thread-group-key": showKeyPill
+            ? "pill"
+            : "inline",
+          className: cn(
+            "shrink-0 font-mono",
+            hueKeyPill
+              ? "rounded-sm px-1 text-eyebrow"
+              : showKeyPill
+                ? "rounded-sm bg-sidebar-accent px-1 text-2xs text-muted-foreground"
+                : "text-subtle-foreground",
+          ),
+          style: hueKeyPill
+            ? {
+                color: projectHueTextColor(hue),
+                boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${projectHueEdgeColor(hue)} 50%, transparent)`,
+              }
+            : undefined,
+          children: group.keyLabel,
+        };
   const headerTooltip = isFlat
     ? [group.tooltip ?? group.label, progressText]
         .filter((part) => part !== null && part !== "")
@@ -1315,30 +1327,10 @@ function PluginThreadGroupHeader({
         )}
         title={headerTooltip === "" ? undefined : headerTooltip}
       >
-        {group.keyLabel === null ? null : (
-          <span
-            data-sidebar-plugin-thread-group-key={
-              showKeyPill ? "pill" : "inline"
-            }
-            className={cn(
-              "shrink-0 font-mono",
-              hueKeyPill
-                ? "rounded-sm px-1 text-eyebrow"
-                : showKeyPill
-                  ? "rounded-sm bg-sidebar-accent px-1 text-2xs text-muted-foreground"
-                  : "text-subtle-foreground",
-            )}
-            style={
-              hueKeyPill
-                ? {
-                    color: projectHueTextColor(hue),
-                    boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${projectHueEdgeColor(hue)} 50%, transparent)`,
-                  }
-                : undefined
-            }
-          >
-            {group.keyLabel}
-          </span>
+        {keyLabelProps === null ? null : group.labelHref === null ? (
+          <span {...keyLabelProps} />
+        ) : (
+          <PluginLabelLink {...keyLabelProps} href={group.labelHref} />
         )}
         {showLabel ? (
           <span
@@ -1593,10 +1585,6 @@ function PluginThreadGroupThreadRun({
       collapsedEnvironmentIds,
       selectedThreadId,
     });
-  const previousRowProjectIds = useFlatPreviousRowProjectIds(
-    items,
-    collapsedThreadIds,
-  );
   return (
     <SidebarWindowedItems
       itemKeys={itemKeys}
@@ -1609,25 +1597,20 @@ function PluginThreadGroupThreadRun({
           return null;
         }
         return (
-          <FlatThreadRowScope
+          <SectionDndItemRow
             key={item.node.thread.id}
-            previousRowProjectId={previousRowProjectIds?.[index]}
-            inGroup
-          >
-            <SectionDndItemRow
-              projectId={projectId ?? item.node.thread.projectId}
-              item={item}
-              sectionDnd={sectionDnd}
-              depthOffset={depthOffset + 1}
-              isEnvGrouped
-              selectedThreadId={selectedThreadId}
-              collapsedThreadIds={collapsedThreadIds}
-              collapsedEnvironmentIds={collapsedEnvironmentIds}
-              onProjectSelect={onProjectSelect}
-              onToggleThreadCollapsed={onToggleThreadCollapsed}
-              onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
-            />
-          </FlatThreadRowScope>
+            projectId={projectId ?? item.node.thread.projectId}
+            item={item}
+            sectionDnd={sectionDnd}
+            depthOffset={depthOffset + 1}
+            isEnvGrouped
+            selectedThreadId={selectedThreadId}
+            collapsedThreadIds={collapsedThreadIds}
+            collapsedEnvironmentIds={collapsedEnvironmentIds}
+            onProjectSelect={onProjectSelect}
+            onToggleThreadCollapsed={onToggleThreadCollapsed}
+            onToggleEnvironmentCollapsed={onToggleEnvironmentCollapsed}
+          />
         );
       }}
     />
@@ -1720,7 +1703,13 @@ const PluginThreadGroupRow = memo(function PluginThreadGroupRow({
       {!isCollapsed ? (
         <SidebarHeaderProjectContext.Provider value={group.projectId}>
           <PluginThreadDecorationsContext.Provider value={group.decorations}>
-            {children}
+            {isFlat ? (
+              <FlatThreadGroupScope headerProjectId={group.projectId}>
+                {children}
+              </FlatThreadGroupScope>
+            ) : (
+              children
+            )}
           </PluginThreadDecorationsContext.Provider>
         </SidebarHeaderProjectContext.Provider>
       ) : null}
@@ -1953,10 +1942,7 @@ const SectionTreeItemRow = memo(function SectionTreeItemRow({
       collapsedEnvironmentIds,
       selectedThreadId,
     });
-  const flatAnnotations = useFlatThreadItemAnnotations(
-    section.items,
-    collapsedThreadIds,
-  );
+  const flatAnnotations = useFlatThreadItemAnnotations(section.items);
 
   const childrenArea = showChildren ? (
     <div className="relative space-y-px">
@@ -2203,10 +2189,6 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
   const projectDecoration =
     experimental_useSidebarThreadDecoration(rowProjectId);
   const guideHue = isFlat ? (projectDecoration?.hue ?? null) : null;
-  const childPreviousRowProjectIds = useFlatPreviousRowProjectIds(
-    node.children,
-    collapsedThreadIds,
-  );
   const { itemKeys, estimateRows, getNavigationEntries, alwaysMountedKeys } =
     useWindowedThreadItems({
       items: node.children,
@@ -2238,33 +2220,33 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
     >
       {row}
       {showChildren || nestPreviewThread !== null ? (
-        <div className="relative space-y-px">
-          <ThreadTreeGroupLine parentRowDepth={parentRowDepth} hue={guideHue} />
-          {showChildren ? (
-            <SidebarWindowedItems
-              itemKeys={itemKeys}
-              estimateRows={estimateRows}
-              getNavigationEntries={getNavigationEntries}
-              alwaysMountedKeys={alwaysMountedKeys}
-              renderItem={(index) => {
-                const item = node.children[index];
-                if (!item) {
-                  return null;
-                }
-                const itemKey = getSidebarItemKey(item);
-                return (
-                  <Fragment key={itemKey}>
-                    {nestPreviewThread !== null &&
-                    nestPreviewBeforeKey === itemKey ? (
-                      <NestDropPreviewRow
-                        depth={parentRowDepth + 1}
-                        thread={nestPreviewThread}
-                      />
-                    ) : null}
-                    <FlatThreadRowScope
-                      previousRowProjectId={childPreviousRowProjectIds?.[index]}
-                      inGroup
-                    >
+        <FlatThreadChildScope enabled={isFlat}>
+          <div className="relative space-y-px">
+            <ThreadTreeGroupLine
+              parentRowDepth={parentRowDepth}
+              hue={guideHue}
+            />
+            {showChildren ? (
+              <SidebarWindowedItems
+                itemKeys={itemKeys}
+                estimateRows={estimateRows}
+                getNavigationEntries={getNavigationEntries}
+                alwaysMountedKeys={alwaysMountedKeys}
+                renderItem={(index) => {
+                  const item = node.children[index];
+                  if (!item) {
+                    return null;
+                  }
+                  const itemKey = getSidebarItemKey(item);
+                  return (
+                    <Fragment key={itemKey}>
+                      {nestPreviewThread !== null &&
+                      nestPreviewBeforeKey === itemKey ? (
+                        <NestDropPreviewRow
+                          depth={parentRowDepth + 1}
+                          thread={nestPreviewThread}
+                        />
+                      ) : null}
                       <SectionDndItemRow
                         projectId={rowProjectId}
                         item={item}
@@ -2282,23 +2264,39 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
                         }
                         sectionDnd={sectionDnd ?? undefined}
                       />
-                    </FlatThreadRowScope>
-                  </Fragment>
-                );
-              }}
-            />
-          ) : null}
-          {nestPreviewThread !== null && nestPreviewBeforeKey === null ? (
-            <NestDropPreviewRow
-              depth={parentRowDepth + 1}
-              thread={nestPreviewThread}
-            />
-          ) : null}
-        </div>
+                    </Fragment>
+                  );
+                }}
+              />
+            ) : null}
+            {nestPreviewThread !== null && nestPreviewBeforeKey === null ? (
+              <NestDropPreviewRow
+                depth={parentRowDepth + 1}
+                thread={nestPreviewThread}
+              />
+            ) : null}
+          </div>
+        </FlatThreadChildScope>
       ) : null}
     </SidebarStickyGroup>
   );
 });
+
+function FlatThreadChildScope({
+  enabled,
+  children,
+}: {
+  enabled: boolean;
+  children: ReactNode;
+}) {
+  return enabled ? (
+    <FlatThreadGroupScope headerProjectId={null}>
+      {children}
+    </FlatThreadGroupScope>
+  ) : (
+    <>{children}</>
+  );
+}
 
 function ThreadTreeLoadingSkeleton() {
   return (
@@ -2432,10 +2430,7 @@ function SectionThreadTreeItems({
       collapsedEnvironmentIds,
       selectedThreadId,
     });
-  const flatAnnotations = useFlatThreadItemAnnotations(
-    items,
-    collapsedThreadIds,
-  );
+  const flatAnnotations = useFlatThreadItemAnnotations(items);
   const rows = (
     <SidebarWindowedItems
       itemKeys={itemKeys}
