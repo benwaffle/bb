@@ -2173,6 +2173,10 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
   );
   const rowProjectId = node.thread.projectId;
   const crossProjectId = rowProjectId !== projectId ? rowProjectId : null;
+  const isFlat = useFlatThreadList() !== null;
+  const projectDecoration =
+    experimental_useSidebarThreadDecoration(rowProjectId);
+  const guideHue = isFlat ? (projectDecoration?.hue ?? null) : null;
   const { itemKeys, estimateRows, getNavigationEntries, alwaysMountedKeys } =
     useWindowedThreadItems({
       items: node.children,
@@ -2204,59 +2208,82 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
     >
       {row}
       {showChildren || nestPreviewThread !== null ? (
-        <div className="relative space-y-px">
-          <ThreadTreeGroupLine parentRowDepth={parentRowDepth} />
-          {showChildren ? (
-            <SidebarWindowedItems
-              itemKeys={itemKeys}
-              estimateRows={estimateRows}
-              getNavigationEntries={getNavigationEntries}
-              alwaysMountedKeys={alwaysMountedKeys}
-              renderItem={(index) => {
-                const item = node.children[index];
-                if (!item) {
-                  return null;
-                }
-                const itemKey = getSidebarItemKey(item);
-                return (
-                  <Fragment key={itemKey}>
-                    {nestPreviewThread !== null &&
-                    nestPreviewBeforeKey === itemKey ? (
-                      <NestDropPreviewRow
-                        depth={parentRowDepth + 1}
-                        thread={nestPreviewThread}
+        <FlatThreadChildScope enabled={isFlat} projectId={rowProjectId}>
+          <div className="relative space-y-px">
+            <ThreadTreeGroupLine
+              parentRowDepth={parentRowDepth}
+              hue={guideHue}
+            />
+            {showChildren ? (
+              <SidebarWindowedItems
+                itemKeys={itemKeys}
+                estimateRows={estimateRows}
+                getNavigationEntries={getNavigationEntries}
+                alwaysMountedKeys={alwaysMountedKeys}
+                renderItem={(index) => {
+                  const item = node.children[index];
+                  if (!item) {
+                    return null;
+                  }
+                  const itemKey = getSidebarItemKey(item);
+                  return (
+                    <Fragment key={itemKey}>
+                      {nestPreviewThread !== null &&
+                      nestPreviewBeforeKey === itemKey ? (
+                        <NestDropPreviewRow
+                          depth={parentRowDepth + 1}
+                          thread={nestPreviewThread}
+                        />
+                      ) : null}
+                      <SectionDndItemRow
+                        projectId={rowProjectId}
+                        item={item}
+                        depthOffset={depthOffset}
+                        selectedThreadId={selectedThreadId}
+                        collapsedThreadIds={collapsedThreadIds}
+                        collapsedEnvironmentIds={collapsedEnvironmentIds}
+                        onProjectSelect={onProjectSelect}
+                        onToggleThreadCollapsed={onToggleThreadCollapsed}
+                        onToggleEnvironmentCollapsed={
+                          onToggleEnvironmentCollapsed
+                        }
+                        sectionDnd={sectionDnd ?? undefined}
                       />
-                    ) : null}
-                    <SectionDndItemRow
-                      projectId={rowProjectId}
-                      item={item}
-                      depthOffset={depthOffset}
-                      selectedThreadId={selectedThreadId}
-                      collapsedThreadIds={collapsedThreadIds}
-                      collapsedEnvironmentIds={collapsedEnvironmentIds}
-                      onProjectSelect={onProjectSelect}
-                      onToggleThreadCollapsed={onToggleThreadCollapsed}
-                      onToggleEnvironmentCollapsed={
-                        onToggleEnvironmentCollapsed
-                      }
-                      sectionDnd={sectionDnd ?? undefined}
-                    />
-                  </Fragment>
-                );
-              }}
-            />
-          ) : null}
-          {nestPreviewThread !== null && nestPreviewBeforeKey === null ? (
-            <NestDropPreviewRow
-              depth={parentRowDepth + 1}
-              thread={nestPreviewThread}
-            />
-          ) : null}
-        </div>
+                    </Fragment>
+                  );
+                }}
+              />
+            ) : null}
+            {nestPreviewThread !== null && nestPreviewBeforeKey === null ? (
+              <NestDropPreviewRow
+                depth={parentRowDepth + 1}
+                thread={nestPreviewThread}
+              />
+            ) : null}
+          </div>
+        </FlatThreadChildScope>
       ) : null}
     </SidebarStickyGroup>
   );
 });
+
+function FlatThreadChildScope({
+  enabled,
+  projectId,
+  children,
+}: {
+  enabled: boolean;
+  projectId: string;
+  children: ReactNode;
+}) {
+  return enabled ? (
+    <FlatThreadGroupScope projectId={projectId}>
+      {children}
+    </FlatThreadGroupScope>
+  ) : (
+    <>{children}</>
+  );
+}
 
 function ThreadTreeLoadingSkeleton() {
   return (
