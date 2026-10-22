@@ -10,11 +10,12 @@ import { cn } from "@/lib/utils";
 import type { SidebarThread } from "../model/sidebar-thread.js";
 import { useSidebarProjectName } from "../model/use-sidebar-data.js";
 import { projectHueTextColor } from "./flatThreadRows.js";
+import { PluginLabelLink } from "./PluginLabelLink.js";
 import { TONE_TEXT_CLASS } from "./pluginThreadDecoration.js";
 
 export interface ThreadRowSecondLineModel {
   project: { title: string; hue: number | null } | null;
-  label: string | null;
+  label: { text: string; href: string | null } | null;
   git:
     | {
         kind: "pullRequest";
@@ -47,6 +48,7 @@ export function useThreadRowSecondLine({
   showProject,
   projectDecoration,
   label,
+  labelHref,
   pullRequest,
   description,
 }: {
@@ -55,6 +57,7 @@ export function useThreadRowSecondLine({
   showProject: boolean;
   projectDecoration: ExperimentalResolvedSidebarThreadDecoration | null;
   label: string | null;
+  labelHref: string | null;
   pullRequest: ExperimentalSidebarThreadRowPullRequest | null;
   description: string | null;
 }): ThreadRowSecondLineModel | null {
@@ -75,7 +78,10 @@ export function useThreadRowSecondLine({
       : branchName
         ? { kind: "branch", name: branchName }
         : null;
-  const shownLabel = isOutsideProjectHeader ? label : null;
+  const shownLabel =
+    isOutsideProjectHeader && label !== null
+      ? { text: label, href: labelHref }
+      : null;
   if (project === null && shownLabel === null && git === null) return null;
   return {
     project,
@@ -139,19 +145,26 @@ export function ThreadRowSecondLine({
     });
   }
   if (line.label !== null) {
+    const labelClassName = cn(
+      "max-w-24 shrink-0 truncate font-mono",
+      flat && "text-eyebrow",
+    );
     parts.push({
       key: "label",
-      node: (
-        <span
-          data-sidebar-thread-second-line-label=""
-          className={cn(
-            "max-w-24 shrink-0 truncate font-mono",
-            flat && "text-eyebrow",
-          )}
-        >
-          {line.label}
-        </span>
-      ),
+      node:
+        line.label.href === null ? (
+          <span data-sidebar-thread-second-line-label="" className={labelClassName}>
+            {line.label.text}
+          </span>
+        ) : (
+          <PluginLabelLink
+            data-sidebar-thread-second-line-label=""
+            href={line.label.href}
+            className={labelClassName}
+          >
+            {line.label.text}
+          </PluginLabelLink>
+        ),
     });
   }
   if (line.git?.kind === "pullRequest") {

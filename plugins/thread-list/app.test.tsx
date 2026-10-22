@@ -298,6 +298,7 @@ describe("thread-list plugin", () => {
       thr_later: {
         icon: { name: "GitPullRequest", tone: "success" },
         label: "CORE-123",
+        labelHref: null,
         description: null,
         trailing: { kind: "text", text: "2/3" },
         pullRequest: null,
@@ -669,7 +670,7 @@ describe("thread-list plugin", () => {
   it("draws a minimal group with a key pill, ghost rows, and a compact action", async () => {
     setPreferencesMirrorStorageForTest(null);
     const run = vi.fn();
-    renderList(
+    const { inspection } = renderList(
       { organizationMode: "project" },
       {
         sidebarThreads: {
@@ -684,6 +685,7 @@ describe("thread-list plugin", () => {
             projectId: "proj_app",
             key: "CORE-21",
             keyLabel: "CORE-21",
+            labelHref: "https://jira.example/browse/CORE-21",
             label: "Speed up the importer",
             icon: "GitPullRequestArrow",
             threadIds: ["thr_parent"],
@@ -729,6 +731,15 @@ describe("thread-list plugin", () => {
     expect(pill.textContent).toBe("CORE-21");
     expect(header.firstElementChild?.firstElementChild).toBe(pill);
     expect(pill.nextElementSibling?.textContent).toBe("Speed up the importer");
+    expect(pill.tagName).toBe("A");
+    expect(pill.getAttribute("href")).toBe(
+      "https://jira.example/browse/CORE-21",
+    );
+    expect(fireEvent.click(pill)).toBe(false);
+    expect(inspection.navigateCalls).toEqual([
+      { method: "openUrl", url: "https://jira.example/browse/CORE-21" },
+    ]);
+    expect(screen.getByText("#600 Batch the importer")).not.toBeNull();
 
     const ghostRow = ticketGroup.querySelector(
       '[data-sidebar-plugin-thread-group-row="pr-600"]',
