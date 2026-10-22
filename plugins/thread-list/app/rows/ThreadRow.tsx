@@ -510,6 +510,7 @@ function ThreadRowBody({
     showProject: shouldShowRowProject(flatItemScope, thread),
     projectDecoration,
     label: rowDecoration?.label ?? null,
+    labelHref: rowDecoration?.labelHref ?? null,
     pullRequest:
       groupDecoration?.pullRequest ??
       rowDecoration?.pullRequest ??

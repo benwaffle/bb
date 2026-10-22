@@ -548,6 +548,7 @@ const SIDEBAR_THREAD_GROUP_FIELDS = [
   "key",
   "label",
   "keyLabel",
+  "labelHref",
   "icon",
   "style",
   "tooltip",
@@ -656,6 +657,7 @@ void _assertAllSidebarThreadDecorationFieldsListed;
 const SIDEBAR_THREAD_ROW_DECORATION_FIELDS = [
   "icon",
   "label",
+  "labelHref",
   "description",
   "trailing",
   "pullRequest",
