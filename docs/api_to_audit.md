@@ -2861,6 +2861,13 @@ shows `<keyLabel> · <project>`, moves the label and the
 `<threads>/<rows>` count into the header tooltip, and otherwise lets the
 label truncate before the project tag.
 
+**Key label link (added 2026-10-22).** A group also takes `labelHref`, an
+HTTP(S) URL that turns the header's `keyLabel` into a link opened with
+`useBbNavigate().openUrl`, the path core's link handling uses, so it honors
+the BB browser preference. The host drops other schemes and a `labelHref`
+without `keyLabel`. Consumer: the pr-review plugin, linking ticket keys to
+their Jira pages. Core caller: the bundled Thread list's plugin group header.
+
 8. **Pull request source.** Decide whether a plugin-supplied PR should
    override the branch lookup or only fill in when it finds none, and
    whether the host should fetch state itself from the number.
@@ -2977,6 +2984,11 @@ of the provider icon, `description` and `trailing` as for group rows, and
 The per-thread decoration also takes `pullRequest`, as a placed thread in
 `experimental_sidebarThreadGroups` does (added 2026-10-21, same consumer and
 core caller); a group entry's `pullRequest` wins over it.
+
+It also takes `labelHref` (added 2026-10-22, same consumer and core caller),
+an HTTP(S) URL that turns `label` on line 2 into a link opened with
+`useBbNavigate().openUrl`. The resolved decoration reports it as
+`labelHref: string | null`, `null` without a `label` or for other schemes.
 
 4. **Per-row cost.** The host mounts one hook per plugin per visible flat
    row. Measure with long flat lists, or batch into one hook taking every
