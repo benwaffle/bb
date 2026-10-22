@@ -420,6 +420,9 @@ const splitLayout = useSidebarSplitLayout(); // { panes: [{ paneId, rect, thread
 <span className="truncate">
   <ThreadTitle threadId={thread.id} />
 </span>;
+// `experimental_omitPrefix` leaves out a leading string the row already shows
+// elsewhere, such as "#12 " beside pull request #12:
+<ThreadTitle threadId={thread.id} experimental_omitPrefix="#12 " />;
 
 // `environment.providerId` names an entry in bb's environment provider
 // catalog; resolve it for a display name, and draw it with
