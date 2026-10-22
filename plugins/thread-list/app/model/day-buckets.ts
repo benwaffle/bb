@@ -47,7 +47,6 @@ export function getNextLocalMidnight(now: number): number {
 
 export interface FlatThreadItemAnnotation {
   dayBucket: SidebarDayBucket | null;
-  previousRowProjectId: string | null;
 }
 
 function newestUpdatedAt(item: ProjectThreadItem): number | null {
@@ -71,44 +70,12 @@ function newestUpdatedAt(item: ProjectThreadItem): number | null {
   }
 }
 
-function lastRowProjectId(
-  item: ProjectThreadItem | undefined,
-  collapsedThreadIds: ReadonlySet<string>,
-): string | null {
-  if (item?.kind !== "thread") return null;
-  const showsChildren =
-    item.node.children.length > 0 &&
-    !collapsedThreadIds.has(item.node.thread.id);
-  return showsChildren ? null : item.node.thread.projectId;
-}
-
-export function getFlatPreviousRowProjectIds(
-  items: readonly ProjectThreadItem[],
-  collapsedThreadIds: ReadonlySet<string>,
-): (string | null)[] {
-  return items.map((_, index) =>
-    lastRowProjectId(items[index - 1], collapsedThreadIds),
-  );
-}
-
 export function annotateFlatThreadItems(
   items: readonly ProjectThreadItem[],
-  {
-    dayLabels,
-    now,
-    collapsedThreadIds,
-  }: {
-    dayLabels: boolean;
-    now: number;
-    collapsedThreadIds: ReadonlySet<string>;
-  },
+  { dayLabels, now }: { dayLabels: boolean; now: number },
 ): FlatThreadItemAnnotation[] {
-  const previousRowProjectIds = getFlatPreviousRowProjectIds(
-    items,
-    collapsedThreadIds,
-  );
   let bucketIndex = -1;
-  return items.map((item, itemIndex) => {
+  return items.map((item) => {
     let dayBucket: SidebarDayBucket | null = null;
     const updatedAt = newestUpdatedAt(item);
     if (dayLabels && updatedAt !== null) {
@@ -121,10 +88,6 @@ export function annotateFlatThreadItems(
         dayBucket = SIDEBAR_DAY_BUCKETS[index] ?? null;
       }
     }
-    return {
-      dayBucket,
-      previousRowProjectId:
-        dayBucket === null ? (previousRowProjectIds[itemIndex] ?? null) : null,
-    };
+    return { dayBucket };
   });
 }
