@@ -7,8 +7,10 @@ import {
 } from "./day-buckets.js";
 import {
   buildFlatThreadGroups,
+  buildSectionThreadList,
   compareStandardThreads,
   type PluginThreadGroupDefinition,
+  type ProjectThreadItem,
 } from "./project-thread-groups.js";
 import { makeSidebarThread, type SidebarThreadOverrides } from "./fixtures.js";
 
@@ -197,12 +199,16 @@ describe("annotateFlatThreadItems", () => {
     ]);
   });
 
-  it("forgets the project after a group, since a deeper row sits directly above", () => {
+  it("forgets the project after an expanded parent or a group, since a deeper row sits directly above", () => {
     useTimeZone("America/New_York");
     const now = local(2026, 10, 21, 18);
     const items = buildFlatThreadGroups(
       [
-        thread("before-group", local(2026, 10, 21, 10)),
+        thread("parent", local(2026, 10, 21, 12)),
+        thread("child", local(2026, 10, 21, 11), {
+          parentThreadId: "parent",
+        }),
+        thread("after-parent", local(2026, 10, 21, 10)),
         thread("member-a", local(2026, 10, 21, 9)),
         thread("member-b", local(2026, 10, 21, 9)),
         thread("after-group", local(2026, 10, 21, 8)),
@@ -211,18 +217,30 @@ describe("annotateFlatThreadItems", () => {
       false,
       [pluginGroup("ticket", ["member-a", "member-b"], "proj_test")],
     );
-    expect(items.map((item) => item.kind)).toEqual([
-      "thread",
-      "plugin-group",
-      "thread",
-    ]);
-    expect(
+    const previousRowProjects = (collapsedThreadIds: ReadonlySet<string>) =>
       annotateFlatThreadItems(items, {
         dayLabels: false,
         now,
-        collapsedThreadIds: NO_COLLAPSED,
-      }).map(({ previousRowProjectId }) => previousRowProjectId),
-    ).toEqual([null, "proj_test", null]);
+        collapsedThreadIds,
+      }).map(({ previousRowProjectId }) => previousRowProjectId);
+    expect(summarizeTree(items)).toEqual([
+      ["parent", ["child"]],
+      "after-parent",
+      "plugin-group",
+      "after-group",
+    ]);
+    expect(previousRowProjects(NO_COLLAPSED)).toEqual([
+      null,
+      null,
+      "proj_test",
+      null,
+    ]);
+    expect(previousRowProjects(new Set(["parent"]))).toEqual([
+      null,
+      "proj_test",
+      "proj_test",
+      null,
+    ]);
   });
 });
 
@@ -241,6 +259,96 @@ describe("getFlatPreviousRowProjectIds", () => {
       null,
       "proj_a",
       "proj_a",
+    ]);
+  });
+});
+
+function summarizeTree(items: readonly ProjectThreadItem[]): unknown[] {
+  return items.map((item) => {
+    switch (item.kind) {
+      case "thread":
+        return item.node.children.length === 0
+          ? item.node.thread.id
+          : [item.node.thread.id, summarizeTree(item.node.children)];
+      case "section":
+        return [item.group.id, summarizeTree(item.group.items)];
+      case "environment":
+      case "plugin-group":
+        return item.kind;
+    }
+  });
+}
+
+describe("flat thread list nesting", () => {
+  it("places a parent at its newest member and labels that member's day", () => {
+    useTimeZone("America/New_York");
+    const now = local(2026, 10, 21, 18);
+    const items = buildFlatThreadGroups(
+      [
+        thread("today-a", local(2026, 10, 21, 9)),
+        thread("parent", local(2026, 10, 10)),
+        thread("child-new", local(2026, 10, 21, 10), {
+          parentThreadId: "parent",
+        }),
+        thread("child-old", local(2026, 10, 20, 8), {
+          parentThreadId: "parent",
+        }),
+        thread("yesterday-b", local(2026, 10, 20, 7)),
+      ],
+      compareStandardThreads,
+      false,
+    );
+    expect(summarizeTree(items)).toEqual([
+      ["parent", ["child-new", "child-old"]],
+      "today-a",
+      "yesterday-b",
+    ]);
+    expect(
+      annotateFlatThreadItems(items, {
+        dayLabels: true,
+        now,
+        collapsedThreadIds: NO_COLLAPSED,
+      }).map(({ dayBucket }, index) => [
+        summarizeTree(items.slice(index, index + 1))[0],
+        dayBucket,
+      ]),
+    ).toEqual([
+      [["parent", ["child-new", "child-old"]], "today"],
+      ["today-a", null],
+      ["yesterday-b", "yesterday"],
+    ]);
+  });
+
+  it("keeps a child whose parent is not in the list as its own top-level row", () => {
+    const items = buildFlatThreadGroups(
+      [
+        thread("newer", 300),
+        thread("orphan", 200, { parentThreadId: "archived-parent" }),
+        thread("older", 100),
+      ],
+      compareStandardThreads,
+      false,
+    );
+    expect(summarizeTree(items)).toEqual(["newer", "orphan", "older"]);
+  });
+
+  it("orders custom sections and loose rows by each parent's newest member", () => {
+    const items = buildSectionThreadList(
+      [
+        thread("loose-newer", 400),
+        thread("loose-parent", 100),
+        thread("loose-child", 500, { parentThreadId: "loose-parent" }),
+        thread("section-newer", 300, { sectionId: "sec" }),
+        thread("section-parent", 50, { sectionId: "sec" }),
+        thread("section-child", 350, { parentThreadId: "section-parent" }),
+      ],
+      compareStandardThreads,
+      [{ id: "sec", name: "Section" }],
+    );
+    expect(summarizeTree(items)).toEqual([
+      ["sec", [["section-parent", ["section-child"]], "section-newer"]],
+      ["loose-parent", ["loose-child"]],
+      "loose-newer",
     ]);
   });
 });

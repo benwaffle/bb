@@ -6,7 +6,6 @@ import {
   type ThreadComparator,
 } from "./project-thread-groups.js";
 import {
-  collapseParentThreads,
   createThreadUnreadPredicate,
   groupComparatorByReadStatus,
   rememberHeldReadStatus,
@@ -76,23 +75,6 @@ describe("groupComparatorByReadStatus", () => {
     expect(
       items.map((item) => (item.kind === "thread" ? item.node.thread.id : "")),
     ).toEqual(["alpha", "zulu"]);
-  });
-});
-
-describe("collapseParentThreads", () => {
-  it("collapses every parent except the expanded ones", () => {
-    const threads = [
-      thread("parent"),
-      thread("child", { parentThreadId: "parent" }),
-      thread("grandchild", { parentThreadId: "child" }),
-      thread("other-parent"),
-      thread("other-child", { parentThreadId: "other-parent" }),
-      thread("leaf"),
-    ];
-
-    expect(
-      [...collapseParentThreads(threads, ["other-parent"])].sort(),
-    ).toEqual(["child", "parent"]);
   });
 });
 
