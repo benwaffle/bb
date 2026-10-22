@@ -182,6 +182,7 @@ import {
 import type { ConsumeDragClickSuppression } from "@/components/ui/use-drag-click-suppression";
 import type { NeighborReorderRequest } from "../model/neighbor-reorder.js";
 import { SidebarChildToggleChevron } from "../rows/SidebarChildToggleChevron.js";
+import { PluginLabelLink } from "../rows/PluginLabelLink.js";
 import { SidebarSectionOrderList } from "./SidebarSectionOrderList.js";
 import {
   useSectionThreadDnd,
@@ -1267,6 +1268,29 @@ function PluginThreadGroupHeader({
     group.progress === null
       ? null
       : `${group.progress.threads} of ${group.progress.total} started`;
+  const keyLabelProps =
+    group.keyLabel === null
+      ? null
+      : {
+          "data-sidebar-plugin-thread-group-key": showKeyPill
+            ? "pill"
+            : "inline",
+          className: cn(
+            "shrink-0 font-mono",
+            hueKeyPill
+              ? "rounded-sm px-1 text-eyebrow"
+              : showKeyPill
+                ? "rounded-sm bg-sidebar-accent px-1 text-2xs text-muted-foreground"
+                : "text-subtle-foreground",
+          ),
+          style: hueKeyPill
+            ? {
+                color: projectHueTextColor(hue),
+                boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${projectHueEdgeColor(hue)} 50%, transparent)`,
+              }
+            : undefined,
+          children: group.keyLabel,
+        };
   const headerTooltip = isFlat
     ? [group.tooltip ?? group.label, progressText]
         .filter((part) => part !== null && part !== "")
@@ -1299,30 +1323,10 @@ function PluginThreadGroupHeader({
         )}
         title={headerTooltip === "" ? undefined : headerTooltip}
       >
-        {group.keyLabel === null ? null : (
-          <span
-            data-sidebar-plugin-thread-group-key={
-              showKeyPill ? "pill" : "inline"
-            }
-            className={cn(
-              "shrink-0 font-mono",
-              hueKeyPill
-                ? "rounded-sm px-1 text-eyebrow"
-                : showKeyPill
-                  ? "rounded-sm bg-sidebar-accent px-1 text-2xs text-muted-foreground"
-                  : "text-subtle-foreground",
-            )}
-            style={
-              hueKeyPill
-                ? {
-                    color: projectHueTextColor(hue),
-                    boxShadow: `inset 0 0 0 1px color-mix(in oklab, ${projectHueEdgeColor(hue)} 50%, transparent)`,
-                  }
-                : undefined
-            }
-          >
-            {group.keyLabel}
-          </span>
+        {keyLabelProps === null ? null : group.labelHref === null ? (
+          <span {...keyLabelProps} />
+        ) : (
+          <PluginLabelLink {...keyLabelProps} href={group.labelHref} />
         )}
         {showLabel ? (
           <span
