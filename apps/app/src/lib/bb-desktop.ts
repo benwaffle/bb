@@ -55,6 +55,7 @@ export const MACOS_CHROME_CONTROL_NO_DRAG_CLASS = `${MACOS_WINDOW_NO_DRAG_CLASS}
 type BbDesktopInfoResult = BbDesktopApi | null;
 export const DEFAULT_DESKTOP_WINDOW_STATE: BbDesktopWindowState = {
   isFullScreen: false,
+  isFocused: true,
 };
 
 export function getBbDesktopInfo(): BbDesktopInfoResult {

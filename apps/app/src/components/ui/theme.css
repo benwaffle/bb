@@ -1068,7 +1068,9 @@ body.sidebar-resizing [data-sidebar="panel"] {
   [inert] .animate-shine,
   [inert] .animate-shine-icon,
   [aria-hidden="true"] .animate-shine,
-  [aria-hidden="true"] .animate-shine-icon {
+  [aria-hidden="true"] .animate-shine-icon,
+  [data-window-inactive] .animate-shine,
+  [data-window-inactive] .animate-shine-icon {
     -webkit-mask-image: none;
     mask-image: none;
     will-change: auto;
@@ -1082,6 +1084,18 @@ body.sidebar-resizing [data-sidebar="panel"] {
    */
   .animate-indeterminate-progress {
     animation: indeterminate-progress 1.5s ease-in-out infinite;
+  }
+
+  [data-window-inactive]
+    :is(
+      .animate-spin,
+      .animate-pulse,
+      .animate-progress-ring,
+      .animate-progress-ring-slow,
+      .animate-indeterminate-progress,
+      .animate-caret-blink
+    ) {
+    animation-play-state: paused;
   }
 
   /* Reduced motion: drop the sweep and render the active cue as plain

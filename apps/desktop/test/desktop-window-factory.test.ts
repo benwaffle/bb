@@ -202,6 +202,10 @@ class FakeDesktopWindow implements DesktopBrowserWindow {
     return this.destroyed;
   }
 
+  isFocused(): boolean {
+    return true;
+  }
+
   isFullScreen(): boolean {
     return this.fullScreen;
   }

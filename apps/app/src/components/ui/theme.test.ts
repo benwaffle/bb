@@ -464,14 +464,29 @@ describe("theme.css shimmer and scroll-anchor paint scope", () => {
     expect(seconds).toBeCloseTo(1, 5);
   });
 
-  it("drops the mask and releases the layer under inert or aria-hidden hosts", () => {
+  it("drops the mask and releases the layer under inert or aria-hidden hosts and inactive windows", () => {
     const rule = css.match(
-      /\[inert\] \.animate-shine,\s*\[inert\] \.animate-shine-icon,\s*\[aria-hidden="true"\] \.animate-shine,\s*\[aria-hidden="true"\] \.animate-shine-icon \{([^}]*)\}/,
+      /\[inert\] \.animate-shine,\s*\[inert\] \.animate-shine-icon,\s*\[aria-hidden="true"\] \.animate-shine,\s*\[aria-hidden="true"\] \.animate-shine-icon,\s*\[data-window-inactive\] \.animate-shine,\s*\[data-window-inactive\] \.animate-shine-icon \{([^}]*)\}/,
     )?.[1];
     expect(rule).toBeDefined();
     expect(rule).toMatch(/(?<!-)mask-image:\s*none;/);
     expect(rule).toMatch(/-webkit-mask-image:\s*none;/);
     expect(rule).toMatch(/will-change:\s*auto;/);
+  });
+
+  it("pauses looping indicators while the window is inactive", () => {
+    const rule = css.match(
+      /\[data-window-inactive\]\s*:is\(([^)]*)\)\s*\{([^}]*)\}/,
+    );
+    expect(rule?.[1].split(",").map((selector) => selector.trim())).toEqual([
+      ".animate-spin",
+      ".animate-pulse",
+      ".animate-progress-ring",
+      ".animate-progress-ring-slow",
+      ".animate-indeterminate-progress",
+      ".animate-caret-blink",
+    ]);
+    expect(rule?.[2]).toMatch(/animation-play-state:\s*paused;/);
   });
 
   it("drops the sweep under reduced motion", () => {

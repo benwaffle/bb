@@ -648,10 +648,11 @@ function sendDesktopInfoChanged(): void {
 }
 
 function getDesktopWindowState(
-  browserWindow: Pick<DesktopBrowserWindow, "isFullScreen"> | null,
+  browserWindow: Pick<DesktopBrowserWindow, "isFocused" | "isFullScreen"> | null,
 ): BbDesktopWindowState {
   return {
     isFullScreen: browserWindow?.isFullScreen() ?? false,
+    isFocused: browserWindow?.isFocused() ?? false,
   };
 }
 
@@ -1169,6 +1170,12 @@ function registerApplicationWindow(browserWindow: DesktopBrowserWindow): void {
     sendDesktopWindowStateChanged(browserWindow);
   });
   browserWindow.on("leave-full-screen", () => {
+    sendDesktopWindowStateChanged(browserWindow);
+  });
+  browserWindow.on("focus", () => {
+    sendDesktopWindowStateChanged(browserWindow);
+  });
+  browserWindow.on("blur", () => {
     sendDesktopWindowStateChanged(browserWindow);
   });
   browserWindow.on("closed", () => {
