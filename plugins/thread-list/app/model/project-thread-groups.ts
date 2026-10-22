@@ -675,20 +675,70 @@ function withoutMemberlessPluginGroups(
   );
 }
 
+function getNewestMemberThread(
+  item: ProjectThreadItem,
+  compareThreads: ThreadComparator,
+): SidebarThread | null {
+  if (item.kind !== "thread") {
+    return getItemOrderingThread(item, compareThreads);
+  }
+  return getNodeAndDescendantThreads(item.node).reduce((first, thread) =>
+    compareThreads(thread, first) < 0 ? thread : first,
+  );
+}
+
+function orderByNewestMember(
+  items: readonly ProjectThreadItem[],
+  compareThreads: ThreadComparator,
+): ProjectThreadItem[] {
+  if (compareThreads.compareItems) {
+    return [...items];
+  }
+  const sections = items.flatMap((item): ProjectThreadItem[] =>
+    item.kind === "section"
+      ? [
+          {
+            kind: "section",
+            group: {
+              ...item.group,
+              items: orderByNewestMember(item.group.items, compareThreads),
+            },
+          },
+        ]
+      : [],
+  );
+  const looseItems = items
+    .filter((item) => item.kind !== "section")
+    .map((item) => ({
+      item,
+      thread: getNewestMemberThread(item, compareThreads),
+    }));
+  looseItems.sort((left, right) => {
+    if (left.thread && right.thread) {
+      return compareThreads(left.thread, right.thread);
+    }
+    return Number(left.thread === null) - Number(right.thread === null);
+  });
+  return [...sections, ...looseItems.map((entry) => entry.item)];
+}
+
 export function buildFlatThreadGroups(
   allThreads: readonly SidebarThread[],
   compareThreads: ThreadComparator = compareStandardThreads,
   groupEnvironmentThreads = true,
   pluginGroups: readonly PluginThreadGroupDefinition[] = [],
 ): ProjectThreadItem[] {
-  return withoutMemberlessPluginGroups(
-    buildThreadTreeItems(
-      allThreads,
-      compareThreads,
-      groupEnvironmentThreads,
-      false,
-      pluginGroups,
+  return orderByNewestMember(
+    withoutMemberlessPluginGroups(
+      buildThreadTreeItems(
+        allThreads,
+        compareThreads,
+        groupEnvironmentThreads,
+        false,
+        pluginGroups,
+      ),
     ),
+    compareThreads,
   );
 }
 
@@ -699,19 +749,22 @@ export function buildSectionThreadList(
   groupEnvironmentThreads = false,
   pluginGroups: readonly PluginThreadGroupDefinition[] = [],
 ): ProjectThreadItem[] {
-  return bucketIntoSections(
-    withoutMemberlessPluginGroups(
-      buildThreadTreeItems(
-        allThreads,
-        compareThreads,
-        groupEnvironmentThreads,
-        true,
-        pluginGroups,
+  return orderByNewestMember(
+    bucketIntoSections(
+      withoutMemberlessPluginGroups(
+        buildThreadTreeItems(
+          allThreads,
+          compareThreads,
+          groupEnvironmentThreads,
+          true,
+          pluginGroups,
+        ),
       ),
+      CHRONOLOGICAL_CONTAINER_ID,
+      compareThreads,
+      sections,
     ),
-    CHRONOLOGICAL_CONTAINER_ID,
     compareThreads,
-    sections,
   );
 }
 

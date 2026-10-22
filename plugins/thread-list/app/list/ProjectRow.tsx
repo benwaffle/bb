@@ -2199,6 +2199,14 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
   );
   const rowProjectId = node.thread.projectId;
   const crossProjectId = rowProjectId !== projectId ? rowProjectId : null;
+  const isFlat = useFlatThreadList() !== null;
+  const projectDecoration =
+    experimental_useSidebarThreadDecoration(rowProjectId);
+  const guideHue = isFlat ? (projectDecoration?.hue ?? null) : null;
+  const childPreviousRowProjectIds = useFlatPreviousRowProjectIds(
+    node.children,
+    collapsedThreadIds,
+  );
   const { itemKeys, estimateRows, getNavigationEntries, alwaysMountedKeys } =
     useWindowedThreadItems({
       items: node.children,
@@ -2231,7 +2239,7 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
       {row}
       {showChildren || nestPreviewThread !== null ? (
         <div className="relative space-y-px">
-          <ThreadTreeGroupLine parentRowDepth={parentRowDepth} />
+          <ThreadTreeGroupLine parentRowDepth={parentRowDepth} hue={guideHue} />
           {showChildren ? (
             <SidebarWindowedItems
               itemKeys={itemKeys}
@@ -2253,23 +2261,28 @@ export const ThreadTreeNodeRow = memo(function ThreadTreeNodeRow({
                         thread={nestPreviewThread}
                       />
                     ) : null}
-                    <SectionDndItemRow
-                      projectId={rowProjectId}
-                      item={item}
-                      depthOffset={depthOffset}
-                      selectedThreadId={selectedThreadIdWithin(
-                        item,
-                        selectedThreadId,
-                      )}
-                      collapsedThreadIds={collapsedThreadIds}
-                      collapsedEnvironmentIds={collapsedEnvironmentIds}
-                      onProjectSelect={onProjectSelect}
-                      onToggleThreadCollapsed={onToggleThreadCollapsed}
-                      onToggleEnvironmentCollapsed={
-                        onToggleEnvironmentCollapsed
-                      }
-                      sectionDnd={sectionDnd ?? undefined}
-                    />
+                    <FlatThreadRowScope
+                      previousRowProjectId={childPreviousRowProjectIds?.[index]}
+                      inGroup
+                    >
+                      <SectionDndItemRow
+                        projectId={rowProjectId}
+                        item={item}
+                        depthOffset={depthOffset}
+                        selectedThreadId={selectedThreadIdWithin(
+                          item,
+                          selectedThreadId,
+                        )}
+                        collapsedThreadIds={collapsedThreadIds}
+                        collapsedEnvironmentIds={collapsedEnvironmentIds}
+                        onProjectSelect={onProjectSelect}
+                        onToggleThreadCollapsed={onToggleThreadCollapsed}
+                        onToggleEnvironmentCollapsed={
+                          onToggleEnvironmentCollapsed
+                        }
+                        sectionDnd={sectionDnd ?? undefined}
+                      />
+                    </FlatThreadRowScope>
                   </Fragment>
                 );
               }}
