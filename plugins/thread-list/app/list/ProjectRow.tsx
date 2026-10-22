@@ -1259,6 +1259,17 @@ function PluginThreadGroupHeader({
   const showKeyPill =
     (isFlat || group.style === "minimal") && group.keyLabel !== null;
   const hueKeyPill = showKeyPill && hue !== null;
+  const showLabel = !(isFlat && showKeyPill && showProjectTag);
+  const showProgress = !isFlat && group.progress !== null;
+  const progressText =
+    group.progress === null
+      ? null
+      : `${group.progress.threads} of ${group.progress.total} started`;
+  const headerTooltip = isFlat
+    ? [group.tooltip ?? group.label, progressText]
+        .filter((part) => part !== null && part !== "")
+        .join("\n")
+    : (group.tooltip ?? undefined);
   const content = (
     <>
       {showKeyPill ? null : (
@@ -1283,7 +1294,7 @@ function PluginThreadGroupHeader({
           "relative z-10 flex min-w-0 flex-1 items-center gap-1.5 text-left",
           SIDEBAR_GROUP_TEXT_CLASS,
         )}
-        title={group.tooltip ?? undefined}
+        title={headerTooltip === "" ? undefined : headerTooltip}
       >
         {group.keyLabel === null ? null : (
           <span
@@ -1310,14 +1321,25 @@ function PluginThreadGroupHeader({
             {group.keyLabel}
           </span>
         )}
-        <span
-          className={cn(
-            "min-w-0 truncate",
-            isFlat && "text-xs font-medium text-sidebar-foreground",
-          )}
-        >
-          {group.label}
-        </span>
+        {showLabel ? (
+          <span
+            data-sidebar-plugin-thread-group-label=""
+            className={cn(
+              "min-w-0 truncate",
+              isFlat && "text-xs font-medium text-sidebar-foreground",
+              showProjectTag && "shrink-[1000]",
+            )}
+          >
+            {group.label}
+          </span>
+        ) : (
+          <span
+            aria-hidden="true"
+            className="shrink-0 text-subtle-foreground/55"
+          >
+            ·
+          </span>
+        )}
         {showProjectTag ? (
           <PluginThreadGroupProjectTag projectId={group.projectId} hue={hue} />
         ) : null}
@@ -1329,11 +1351,11 @@ function PluginThreadGroupHeader({
           revealOnHover={!isCollapsed}
         />
       </span>
-      {group.progress === null ? null : (
+      {!showProgress || group.progress === null ? null : (
         <span
           data-sidebar-plugin-thread-group-progress=""
           className="pointer-events-none relative z-10 shrink-0 pr-1.5 tabular-nums text-subtle-foreground"
-          aria-label={`${group.progress.threads} of ${group.progress.total} started`}
+          aria-label={progressText ?? undefined}
         >
           {`${group.progress.threads}/${group.progress.total}`}
         </span>

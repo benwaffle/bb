@@ -80,6 +80,7 @@ import {
   type PluginSettingsState,
   type PluginSidebarFooterActionRegistration,
   type PluginSidebarPullRequest,
+  type PluginThreadTitleProps,
   type PluginSidebarThreadActions,
   type PluginBrowserBbSdk,
   type PluginEnvironmentProvidersState,
@@ -481,11 +482,21 @@ function createSdkFake(
   return createSdkFakeNode(fakes, "", calls) as PluginBrowserBbSdk;
 }
 
-function TestThreadTitle({ threadId }: { threadId: string }) {
+function TestThreadTitle({
+  threadId,
+  experimental_omitPrefix: omitPrefix,
+}: PluginThreadTitleProps) {
   const env = useSlotEnv("ThreadTitle");
   const thread = env.sidebarThreads.threads.find((row) => row.id === threadId);
   if (thread === undefined) return null;
-  return <span data-thread-title={threadId}>{thread.displayTitle}</span>;
+  const title = thread.displayTitle;
+  return (
+    <span data-thread-title={threadId}>
+      {omitPrefix && title.startsWith(omitPrefix) && title !== omitPrefix
+        ? title.slice(omitPrefix.length)
+        : title}
+    </span>
+  );
 }
 
 /**
