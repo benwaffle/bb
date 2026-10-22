@@ -524,7 +524,7 @@ function ThreadRowBody({
   const rowIcon = groupDecoration?.icon ?? rowDecoration?.icon ?? null;
   const rowTrailing =
     groupDecoration?.trailing ?? rowDecoration?.trailing ?? null;
-  const description =
+  const pluginDescription =
     groupDecoration?.description ?? rowDecoration?.description ?? null;
   const flatList = useFlatThreadList();
   const flatItemScope = useFlatThreadItemScope();
@@ -535,10 +535,20 @@ function ThreadRowBody({
     showProject: shouldShowRowProject(flatItemScope, thread.projectId),
     projectDecoration,
     label: rowDecoration?.label ?? null,
-    pullRequest,
+    pullRequest:
+      groupDecoration?.pullRequest ??
+      rowDecoration?.pullRequest ??
+      pullRequest,
+    description: pluginDescription,
   });
   const showsSecondLine = twoLineRows && secondLine !== null;
   const showsMetadataLine = showRowMetadata && !showsSecondLine;
+  const secondLinePullRequest =
+    showsSecondLine && secondLine.git?.kind === "pullRequest"
+      ? secondLine.git
+      : null;
+  const description =
+    secondLinePullRequest === null ? pluginDescription : null;
   const hueEdge =
     isFlat && flatItemScope?.inGroup !== true
       ? (projectDecoration?.hue ?? null)
@@ -831,7 +841,14 @@ function ThreadRowBody({
             title={labelTitle}
             onDoubleClick={startTitleEditing}
           >
-            <ThreadTitle threadId={thread.id} />
+            <ThreadTitle
+              threadId={thread.id}
+              experimental_omitPrefix={
+                secondLinePullRequest === null
+                  ? undefined
+                  : `#${secondLinePullRequest.number} `
+              }
+            />
           </span>
         )}
         {description === null || isEditing ? null : (
