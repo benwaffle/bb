@@ -15,13 +15,33 @@ type RealtimeConnectionSubscription = Extract<
   Parameters<BbPluginApi["sdk"]["subscribe"]>[0],
   { event: "realtime:connection" }
 >;
+type ThreadChangedSubscription = Extract<
+  Parameters<BbPluginApi["sdk"]["subscribe"]>[0],
+  { event: "thread:changed" }
+>;
+type ThreadChangedEvent = Parameters<ThreadChangedSubscription["callback"]>[0];
 type SdkSubscription = Parameters<BbPluginApi["sdk"]["subscribe"]>[0];
 type HostResponse = ReturnType<typeof makeHostResponse>;
+type RunningThread = Awaited<
+  ReturnType<BbPluginApi["sdk"]["threads"]["listRunning"]>
+>[number];
+type BackgroundCommandRow = Awaited<
+  ReturnType<BbPluginApi["sdk"]["threads"]["backgroundCommands"]>
+>["commands"][number];
+
+const RUNNING_THREAD: RunningThread = { id: "thread-1", hostId: "host-1" };
+const IDLE_RELEASE_DELAY_MS = 60_000;
 
 function isHostChangedSubscription(
   subscription: SdkSubscription,
 ): subscription is HostChangedSubscription {
   return subscription.event === "host:changed";
+}
+
+function isThreadChangedSubscription(
+  subscription: SdkSubscription,
+): subscription is ThreadChangedSubscription {
+  return subscription.event === "thread:changed";
 }
 
 function isRealtimeConnectionSubscription(
@@ -51,21 +71,28 @@ function enabledInput(input: unknown): boolean {
 function lifecycleSubscriptions(): {
   emitHost(changes: HostChangedEvent["changes"]): void;
   emitReconnect(): void;
+  emitThread(event: Omit<ThreadChangedEvent, "type" | "entity">): void;
   subscribe: BbPluginApi["sdk"]["subscribe"];
 } {
   let hostCallback: HostChangedSubscription["callback"] | null = null;
+  let threadCallback: ThreadChangedSubscription["callback"] | null = null;
   let realtimeCallback: RealtimeConnectionSubscription["callback"] | null =
     null;
   const subscribe = (args: SdkSubscription): (() => void) => {
     if (isHostChangedSubscription(args)) hostCallback = args.callback;
+    if (isThreadChangedSubscription(args)) threadCallback = args.callback;
     if (isRealtimeConnectionSubscription(args))
       realtimeCallback = args.callback;
     return () => {
       if (isHostChangedSubscription(args)) hostCallback = null;
+      if (isThreadChangedSubscription(args)) threadCallback = null;
       if (isRealtimeConnectionSubscription(args)) realtimeCallback = null;
     };
   };
   return {
+    emitThread(event) {
+      threadCallback?.({ type: "changed", entity: "thread", ...event });
+    },
     emitHost(changes) {
       hostCallback?.({
         type: "changed",
@@ -95,6 +122,7 @@ describe("builtin Keep Awake server entry", () => {
         hosts: {
           list: async () => [hostRecord("host-1"), hostRecord("host-2")],
         },
+        threads: { listRunning: async () => [RUNNING_THREAD] },
       },
       experimental_callHostRpc: ({ input }) => ({
         enabled: enabledInput(input),
@@ -176,6 +204,7 @@ describe("builtin Keep Awake server entry", () => {
       sdk: {
         subscribe: subscriptions.subscribe,
         hosts: { list: async () => [hostRecord("host-1", status)] },
+        threads: { listRunning: async () => [RUNNING_THREAD] },
       },
       experimental_callHostRpc: () => ({ enabled: true, supported: true }),
     });
@@ -210,6 +239,7 @@ describe("builtin Keep Awake server entry", () => {
         sdk: {
           subscribe: subscriptions.subscribe,
           hosts: { list: async () => [hostRecord("host-1")] },
+          threads: { listRunning: async () => [RUNNING_THREAD] },
         },
         experimental_callHostRpc: () => ({ enabled: true, supported: true }),
       });
@@ -253,6 +283,7 @@ describe("builtin Keep Awake server entry", () => {
         sdk: {
           subscribe: subscriptions.subscribe,
           hosts: { list: async () => [hostRecord("host-1")] },
+          threads: { listRunning: async () => [RUNNING_THREAD] },
         },
         experimental_callHostRpc: async () => {
           await harness?.experimental_emitHostWorkerExit("host-1");
@@ -298,6 +329,149 @@ describe("builtin Keep Awake server entry", () => {
     }
   });
 
+  it("holds hosts awake only while a thread runs, releasing after a grace period", async () => {
+    vi.useFakeTimers();
+    try {
+      const subscriptions = lifecycleSubscriptions();
+      let running: RunningThread[] = [];
+      const host = createFakePluginHost({
+        pluginId: "keep-awake",
+        sdk: {
+          subscribe: subscriptions.subscribe,
+          hosts: { list: async () => [hostRecord("host-1")] },
+          threads: { listRunning: async () => running },
+        },
+        experimental_callHostRpc: ({ input }) => ({
+          enabled: enabledInput(input),
+          supported: true,
+        }),
+      });
+      await host.bb.storage.kv.set("configuration", {
+        enabled: true,
+        selection: { mode: "all" },
+      });
+      await plugin(host.bb);
+      const service = host.harness.runService("desired-state-reconciler");
+      await vi.advanceTimersByTimeAsync(0);
+      expect(host.harness.experimental_hostRpcCalls).toMatchObject([
+        { input: { enabled: false }, hostId: "host-1" },
+      ]);
+
+      subscriptions.emitThread({
+        id: "thread-1",
+        changes: ["events-appended"],
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(host.harness.inspection.sdk.callsTo("threads.listRunning")).toHaveLength(1);
+
+      running = [RUNNING_THREAD];
+      subscriptions.emitThread({ id: "thread-1", changes: ["status-changed"] });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(host.harness.experimental_hostRpcCalls.slice(1)).toMatchObject([
+        { input: { enabled: true }, hostId: "host-1" },
+      ]);
+      await expect(host.harness.runCli(["status"])).resolves.toMatchObject({
+        stdout: "Enabled\nHosts: all\nHolding awake: yes",
+      });
+
+      running = [];
+      subscriptions.emitThread({ id: "thread-1", changes: ["status-changed"] });
+      await vi.advanceTimersByTimeAsync(IDLE_RELEASE_DELAY_MS / 2);
+      running = [RUNNING_THREAD];
+      subscriptions.emitThread({ id: "thread-1", changes: ["status-changed"] });
+      await vi.advanceTimersByTimeAsync(0);
+      running = [];
+      subscriptions.emitThread({ id: "thread-1", changes: ["status-changed"] });
+      await vi.advanceTimersByTimeAsync(IDLE_RELEASE_DELAY_MS - 1);
+      expect(host.harness.experimental_hostRpcCalls).toHaveLength(2);
+
+      await vi.advanceTimersByTimeAsync(1);
+      expect(host.harness.experimental_hostRpcCalls.slice(2)).toMatchObject([
+        { input: { enabled: false }, hostId: "host-1" },
+      ]);
+
+      service.controller.abort();
+      await service.done;
+      await host.harness.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("holds hosts awake while an idle thread has a running background command", async () => {
+    vi.useFakeTimers();
+    try {
+      const subscriptions = lifecycleSubscriptions();
+      const host = createFakePluginHost({
+        pluginId: "keep-awake",
+        sdk: {
+          subscribe: subscriptions.subscribe,
+          hosts: { list: async () => [hostRecord("host-1")] },
+          threads: {
+            listRunning: async () => [],
+            backgroundCommands: async () => ({
+              commands: new Array<BackgroundCommandRow>(1),
+            }),
+          },
+        },
+        experimental_callHostRpc: ({ input }) => ({
+          enabled: enabledInput(input),
+          supported: true,
+        }),
+      });
+      await host.bb.storage.kv.set("configuration", {
+        enabled: true,
+        selection: { mode: "all" },
+      });
+      await plugin(host.bb);
+      const service = host.harness.runService("desired-state-reconciler");
+      await vi.advanceTimersByTimeAsync(0);
+
+      subscriptions.emitThread({
+        id: "thread-1",
+        changes: ["events-appended"],
+        metadata: { backgroundActivityChanged: true },
+      });
+      await vi.advanceTimersByTimeAsync(0);
+      expect(
+        host.harness.inspection.sdk.callsTo("threads.backgroundCommands"),
+      ).toEqual([[{ threadId: "thread-1" }]]);
+      expect(host.harness.experimental_hostRpcCalls.slice(1)).toMatchObject([
+        { input: { enabled: true }, hostId: "host-1" },
+      ]);
+
+      subscriptions.emitThread({
+        id: "thread-1",
+        changes: ["status-changed"],
+        metadata: {
+          statusChange: {
+            status: "idle",
+            runtime: { displayStatus: "idle" },
+            activity: {
+              activeWorkflowCount: 0,
+              activeBackgroundAgentCount: 0,
+              activeBackgroundCommandCount: 0,
+              activePlanModeCount: 0,
+              activeGoalCount: 0,
+            },
+            latestAttentionAt: 0,
+            updatedAt: 0,
+          },
+        },
+      });
+      await vi.advanceTimersByTimeAsync(IDLE_RELEASE_DELAY_MS);
+      expect(host.harness.experimental_hostRpcCalls.slice(2)).toMatchObject([
+        { input: { enabled: false }, hostId: "host-1" },
+      ]);
+
+      service.controller.abort();
+      await service.done;
+      await host.harness.dispose();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("loads its host selection from plugin KV and exposes CLI parity", async () => {
     const host = createFakePluginHost({
       pluginId: "keep-awake",
@@ -328,6 +502,7 @@ describe("builtin Keep Awake server entry", () => {
       stdout: JSON.stringify({
         enabled: true,
         selection: { mode: "selected", hostIds: ["host-2"] },
+        holdingAwake: false,
       }),
     });
     await expect(host.harness.runCli(["disable"])).resolves.toMatchObject({
