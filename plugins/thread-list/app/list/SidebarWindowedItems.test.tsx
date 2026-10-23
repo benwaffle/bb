@@ -419,4 +419,31 @@ describe("SidebarWindowedItems", () => {
       document.querySelectorAll("[data-sidebar-windowed-item]"),
     ).toHaveLength(3);
   });
+
+  it("keeps realized rows while the scroll container is hidden", () => {
+    let clientHeight = 500;
+    Object.defineProperty(scrollElement, "clientHeight", {
+      configurable: true,
+      get: () => clientHeight,
+    });
+    renderList({ current: scrollElement });
+    const wrappers = Array.from(
+      document.querySelectorAll("[data-sidebar-windowed-item]"),
+    );
+    act(() =>
+      emitIntersections(
+        wrappers.map((target) => ({ target, isIntersecting: true })),
+      ),
+    );
+    expect(screen.getAllByTestId(/^real-item-/)).toHaveLength(3);
+
+    clientHeight = 0;
+    act(() =>
+      emitIntersections(
+        wrappers.map((target) => ({ target, isIntersecting: false })),
+      ),
+    );
+
+    expect(screen.getAllByTestId(/^real-item-/)).toHaveLength(3);
+  });
 });
