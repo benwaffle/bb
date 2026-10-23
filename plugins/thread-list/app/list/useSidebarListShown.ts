@@ -14,8 +14,10 @@ export function useSidebarListShown(): boolean {
       return () => clearTimeout(fallback);
     }
     const readShown = () => element.clientHeight > 0;
-    setShown(readShown());
-    return observeSharedResize(element, { read: readShown, write: setShown });
+    const writeShown = (next: boolean) =>
+      setShown((current) => current === true || next);
+    writeShown(readShown());
+    return observeSharedResize(element, { read: readShown, write: writeShown });
   }, [canObserve, element]);
   return canObserve ? shown === true : true;
 }
