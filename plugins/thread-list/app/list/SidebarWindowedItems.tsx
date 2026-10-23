@@ -238,6 +238,9 @@ export function SidebarWindowedItems({
       }
       observer = new IntersectionObserver(
         (entries) => {
+          if (scrollElement.clientHeight === 0) {
+            return;
+          }
           const intended = new Map<string, boolean>();
           for (const entry of entries) {
             const key = keyByWrapperRef.current.get(entry.target);
