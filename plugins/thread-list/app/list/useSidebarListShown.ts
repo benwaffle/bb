@@ -14,7 +14,8 @@ export function useSidebarListShown(): boolean {
       );
       return () => clearTimeout(fallback);
     }
-    const update = () => setShown(element.clientHeight > 0);
+    const update = () =>
+      setShown((current) => current === true || element.clientHeight > 0);
     update();
     const observer = new ResizeObserver(update);
     observer.observe(element);
