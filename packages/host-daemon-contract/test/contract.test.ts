@@ -475,6 +475,7 @@ const SETTLED_RESPONSE_RESULT_FIXTURES: SettledResponseResultFixtures = {
   "thread.goal.clear": { cleared: true },
   "thread.plan.cancel": { cancelled: true },
   "thread.backgroundTask.stop": { stopped: true },
+  "thread.toolCall.background": { backgrounded: true },
   "thread.rename": {},
   "thread.archive": {},
   "thread.unarchive": {},
