@@ -35,6 +35,7 @@ import {
   type UseThreadTimelineControllerResult,
 } from "@/components/thread/timeline";
 import type { HostConnectionNotice } from "@/components/thread/timeline/ThreadTimelineSurface";
+import type { ThreadTimelineBackgroundCommandHandler } from "@/components/thread/timeline/types";
 import { ThreadTimelinePanelLoadingSkeleton } from "@/components/thread/timeline/ThreadChatLoading";
 import { ThreadTableOfContents } from "@/components/thread/toc/ThreadTableOfContents";
 import {
@@ -102,6 +103,7 @@ export interface ThreadScreenTimelineHost {
   includePluginMessageActions: boolean;
   leadingContent?: ReactNode;
   onForkMessage?: ThreadTimelineForkMessageHandler;
+  onBackgroundCommand?: ThreadTimelineBackgroundCommandHandler;
   onOpenLink?: ThreadTimelineLinkHandler;
   onOpenLocalFileLink?: ThreadTimelineLocalFileLinkHandler;
   onTitleAction?: TimelineTitleActionResolver;
@@ -525,6 +527,7 @@ export function ThreadScreen({
         consumerMessageActions={timelineHost.consumerMessageActions}
         includePluginMessageActions={timelineHost.includePluginMessageActions}
         onForkMessage={timelineHost.onForkMessage}
+        onBackgroundCommand={timelineHost.onBackgroundCommand}
         onEditMessage={handleEditSentMessage}
         inlineMessageEditor={inlineMessageEditor}
         onMessageAddToChat={selectionAddToChat}

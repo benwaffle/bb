@@ -89,3 +89,7 @@ export {
   type ExternalUserBoundaryMessage,
   type ExternalUserBoundaryTurnSpan,
 } from "./external-user-boundaries.js";
+export {
+  findLatestBackgroundableCommandRow,
+  isBackgroundableCommandRow,
+} from "./running-command.js";

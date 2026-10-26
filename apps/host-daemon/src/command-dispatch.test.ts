@@ -152,6 +152,7 @@ function createRuntime(): FakeDispatchRuntime {
     }),
     clearThreadGoal: vi.fn(async () => ({ cleared: true })),
     stopBackgroundTask: vi.fn(async () => ({ stopped: true })),
+    backgroundToolCall: vi.fn(async () => ({ backgrounded: true })),
     renameThread: vi.fn(async () => undefined),
     archiveThread: vi.fn(async () => undefined),
     unarchiveThread: vi.fn(async () => undefined),
