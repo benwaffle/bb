@@ -296,6 +296,15 @@ export interface StopBackgroundTaskResult {
   stopped: boolean;
 }
 
+interface BackgroundToolCallArgs {
+  threadId: string;
+  itemId: string;
+}
+
+export interface BackgroundToolCallResult {
+  backgrounded: boolean;
+}
+
 interface ArchiveThreadArgs {
   bridgeLaunch: AgentRuntimeBridgeLaunch;
   providerId: string;
@@ -364,6 +373,10 @@ export interface AgentRuntime {
   stopBackgroundTask(
     args: StopBackgroundTaskArgs,
   ): Promise<StopBackgroundTaskResult>;
+
+  backgroundToolCall(
+    args: BackgroundToolCallArgs,
+  ): Promise<BackgroundToolCallResult>;
 
   renameThread(args: RenameThreadArgs): Promise<void>;
 
