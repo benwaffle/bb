@@ -222,6 +222,13 @@ export class SdkSession {
     return true;
   }
 
+  async backgroundToolCall(toolUseId: string): Promise<boolean> {
+    if (!this.query) {
+      return false;
+    }
+    return this.query.backgroundTasks(toolUseId);
+  }
+
   async applyMutableSettings(args: {
     effort: ClaudeSdkReasoningEffort | undefined;
     settings: ClaudeMutableFlagSettings;
