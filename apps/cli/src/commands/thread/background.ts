@@ -88,4 +88,32 @@ export function registerBackgroundCommands(
         },
       ),
     );
+
+  background
+    .command("move <callId> [id]")
+    .description(
+      "Move a running foreground command to the background by its timeline call id; the turn continues and the agent is notified when the command exits",
+    )
+    .option("--self", "Target the current thread (from BB_THREAD_ID)")
+    .option("--json", "Print machine-readable JSON output")
+    .action(
+      action(
+        async (
+          callId: string,
+          id: string | undefined,
+          opts: ThreadBackgroundOptions,
+        ) => {
+          const threadId = requireThreadIdOrSelf(id, opts);
+          const sdk = createCliBbSdk(getUrl());
+          const result = await sdk.threads.backgroundCommand({
+            threadId,
+            callId,
+          });
+          if (outputJson(opts, { threadId, callId, ...result })) return;
+          console.log(
+            `Moved command ${callId} to the background in thread ${threadId}`,
+          );
+        },
+      ),
+    );
 }
