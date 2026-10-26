@@ -124,6 +124,8 @@ export {
   threadResumeParamsSchema,
   threadStartParamsSchema,
   threadStopParamsSchema,
+  threadToolCallBackgroundParamsSchema,
+  threadToolCallBackgroundResultSchema,
   threadUnarchiveParamsSchema,
   turnStartParamsSchema,
   turnSteerParamsSchema,
