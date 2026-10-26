@@ -283,6 +283,7 @@ import {
   type ThreadTimelineReadResponse,
   type ThreadBackgroundCommandStopResponse,
   type ThreadBackgroundCommandsResponse,
+  type ThreadCommandBackgroundResponse,
   type ThreadContextResponse,
   type ThreadHeadStateResponse,
   type ThreadCostResponse,
@@ -443,6 +444,9 @@ type PathThreadInteractionId = {
 };
 type PathThreadBackgroundCommandTaskId = {
   param: { id: string; taskId: string };
+};
+type PathThreadCommandCallId = {
+  param: { id: string; callId: string };
 };
 
 export const publicApiRoutes = {
@@ -1656,6 +1660,12 @@ export const publicApiRoutes = {
       method: "post",
       request: noRequest<PathThreadBackgroundCommandTaskId>(),
       response: jsonResponse<ThreadBackgroundCommandStopResponse>(),
+    }),
+    backgroundCommand: defineRoute({
+      path: "/threads/:id/commands/:callId/background",
+      method: "post",
+      request: noRequest<PathThreadCommandCallId>(),
+      response: jsonResponse<ThreadCommandBackgroundResponse>(),
     }),
     open: defineRoute({
       path: "/threads/:id/open",
