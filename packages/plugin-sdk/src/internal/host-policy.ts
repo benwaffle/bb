@@ -1479,6 +1479,14 @@ export function validatePluginProviderDeclaration(
     }
   }
   if (
+    capabilities.supportsToolCallBackground !== undefined &&
+    typeof capabilities.supportsToolCallBackground !== "boolean"
+  ) {
+    throw new Error(
+      `provider "${id}" capabilities.supportsToolCallBackground must be a boolean`,
+    );
+  }
+  if (
     !(PROVIDER_FORK_VALUES as readonly string[]).includes(capabilities.fork)
   ) {
     throw new Error(
@@ -1492,6 +1500,8 @@ export function validatePluginProviderDeclaration(
     supportsManualCompaction: capabilities.supportsManualCompaction,
     supportsThreadArchive: capabilities.supportsThreadArchive,
     supportsThreadRename: capabilities.supportsThreadRename,
+    supportsToolCallBackground:
+      capabilities.supportsToolCallBackground ?? false,
     permissionModes: validateProviderLiteralArray({
       providerId: id,
       field: "capabilities.permissionModes",
