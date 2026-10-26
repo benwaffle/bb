@@ -19,6 +19,7 @@ Lifecycle:
     --self                                 Target current thread
   bb thread background [id]                List running background commands: task id, runtime, command line
   bb thread background stop <task> [id]    Stop one background command by task id
+  bb thread background move <call> [id]    Move a running foreground command to the background
     --self                                 Target current thread
     --json                                 Machine-readable output
 
@@ -29,6 +30,13 @@ Lifecycle:
   returns once the task settles; the agent sees the stop as a task
   notification. A command whose agent session has already been released
   cannot be stopped from here and answers 409.
+  `background move` is the CLI form of the Background action on a running
+  command row (Mod+B in the app): the command keeps running as a background
+  command, the blocked tool call returns so the turn continues and queued
+  messages are processed, and the agent gets a task notification when the
+  command exits. `<call>` is the command's item id (`bb thread log --json`).
+  Only providers that declare `supportsToolCallBackground` (Claude Code)
+  accept it; others, or a command that already finished, answer 409.
   `thread compact` enqueues the same structured /compact turn used by the
   composer. Follow the thread timeline for the eventual compaction result.
   `thread clear` keeps the BB thread, workspace, durable event history, and

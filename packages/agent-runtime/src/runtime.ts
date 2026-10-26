@@ -201,6 +201,9 @@ const threadGoalClearResultSchema = z.object({ cleared: z.boolean() }).strict();
 const backgroundTaskStopResultSchema = z
   .object({ stopped: z.boolean() })
   .strict();
+const toolCallBackgroundResultSchema = z
+  .object({ backgrounded: z.boolean() })
+  .strict();
 const THREAD_GOAL_CLEAR_EVENT_TIMEOUT_MS = 5_000;
 const PREPARED_THREAD_REWIND_TTL_MS = 5 * 60_000;
 const PREPARED_THREAD_REWIND_RETRY_MS = 30_000;
@@ -2336,6 +2339,33 @@ export function createAgentRuntime(options: AgentRuntimeOptions): AgentRuntime {
             resultSchema: backgroundTaskStopResultSchema,
           });
           return { stopped: result.stopped };
+        },
+      });
+    },
+
+    async backgroundToolCall({ threadId, itemId }) {
+      return runThreadOperation({
+        threadId,
+        work: async () => {
+          const pid = threadIdentityRegistry.resolveProviderForThread(threadId);
+          const proc = requireProviderProcessForThread(threadId);
+          const plan = proc.adapter.buildCommandPlan({
+            type: "thread/toolCall/background",
+            threadId,
+            providerThreadId: requireProviderThreadId(threadId),
+            itemId,
+          });
+          if (plan.kind !== "request") {
+            throw new Error(
+              `Provider "${pid}" does not support moving tool calls to the background.`,
+            );
+          }
+          const result = await sendCommand({
+            proc,
+            message: plan,
+            resultSchema: toolCallBackgroundResultSchema,
+          });
+          return { backgrounded: result.backgrounded };
         },
       });
     },
