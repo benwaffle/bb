@@ -1322,6 +1322,12 @@ export interface PluginProviderCapabilities {
   /** The provider stores a thread name of its own, so BB forwards renames to
    * it. */
   supportsThreadRename: boolean;
+  /** The provider can move a running foreground tool call to the background
+   * so the turn continues while the command keeps running — gates the
+   * background affordance on running command rows. The bridge reports the
+   * same fact at `initialize` as `toolCallBackground`. Omitted means
+   * `false`. */
+  supportsToolCallBackground?: boolean;
   /** Permission modes the provider can actually run in. Non-empty, no
    * duplicates. */
   permissionModes: readonly PluginProviderPermissionMode[];

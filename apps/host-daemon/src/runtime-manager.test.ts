@@ -220,6 +220,7 @@ function createFakeRuntime() {
     })),
     clearThreadGoal: vi.fn(async () => ({ cleared: true })),
     stopBackgroundTask: vi.fn(async () => ({ stopped: true })),
+    backgroundToolCall: vi.fn(async () => ({ backgrounded: true })),
     renameThread: vi.fn(async (_args: RenameThreadArgs) => undefined),
     archiveThread: vi.fn(async () => undefined),
     unarchiveThread: vi.fn(async () => undefined),

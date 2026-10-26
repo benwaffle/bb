@@ -624,6 +624,41 @@ describe("provider-native id translation", () => {
     });
   });
 
+  it("backgrounds a tool call by its provider item id only when the bridge advertises it", () => {
+    const adapter = makeAdapter();
+    const events = feedDeltas(adapter, "t_1", [
+      { kind: "turn.open", providerTurnId: "claude-turn-1" },
+      {
+        kind: "item.open",
+        key: { providerItemId: "toolu_bash_1" },
+        item: { type: "command", command: "sleep 600", cwd: "/repo" },
+        providerTurnId: "claude-turn-1",
+      },
+    ]);
+    const bbItemId =
+      events[1]?.type === "item/started" ? events[1].item.id : "";
+    expect(bbItemId).not.toBe("");
+    const command = {
+      type: "thread/toolCall/background",
+      threadId: "t_1",
+      providerThreadId: "p_1",
+      itemId: bbItemId,
+    } as const;
+
+    expect(adapter.buildCommandPlan(command)).toMatchObject({ kind: "noop" });
+
+    completeHandshake(adapter, { toolCallBackground: true });
+    expect(adapter.buildCommandPlan(command)).toMatchObject({
+      kind: "request",
+      method: "thread/toolCall/background",
+      params: {
+        threadId: "t_1",
+        providerThreadId: "p_1",
+        providerItemId: "toolu_bash_1",
+      },
+    });
+  });
+
   it("maps providerNativeIds interaction requests onto assembler-minted ids", () => {
     const adapter = makeAdapter();
     const events = feedDeltas(adapter, "t_1", [
