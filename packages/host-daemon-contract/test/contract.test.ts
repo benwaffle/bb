@@ -474,6 +474,7 @@ const SETTLED_RESPONSE_RESULT_FIXTURES: SettledResponseResultFixtures = {
   "thread.goal.clear": { cleared: true },
   "thread.plan.cancel": { cancelled: true },
   "thread.backgroundTask.stop": { stopped: true },
+  "thread.toolCall.background": { backgrounded: true },
   "thread.rename": {},
   "thread.archive": {},
   "thread.unarchive": {},
@@ -1056,7 +1057,7 @@ describe("host-daemon command schemas", () => {
   });
 
   it("uses the current host-daemon protocol version", () => {
-    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(257);
+    expect(HOST_DAEMON_PROTOCOL_VERSION).toBe(258);
     expect(HOST_ARTIFACT_MAX_BYTES).toBe(256 * 1024 * 1024);
   });
 
@@ -1073,7 +1074,8 @@ describe("host-daemon command schemas", () => {
     expect(contract.isCompatibleHostDaemonProtocolVersion(254)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(255)).toBe(false);
     expect(contract.isCompatibleHostDaemonProtocolVersion(256)).toBe(false);
-    expect(contract.isCompatibleHostDaemonProtocolVersion(257)).toBe(true);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(257)).toBe(false);
+    expect(contract.isCompatibleHostDaemonProtocolVersion(258)).toBe(true);
     expect(contract.hostDaemonSupportsConnectNext(246)).toBe(false);
     expect(contract.hostDaemonSupportsConnectNext(247)).toBe(true);
     expect(contract.hostDaemonSupportsDesktopBrokerProof(247)).toBe(false);

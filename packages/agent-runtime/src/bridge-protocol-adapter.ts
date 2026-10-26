@@ -438,6 +438,20 @@ export function createBridgeProtocolAdapter(
               taskId: command.taskId,
             },
           });
+        case "thread/toolCall/background":
+          return gate("toolCallBackground", {
+            kind: "request",
+            method: BRIDGE_REQUEST_METHODS.threadToolCallBackground,
+            params: {
+              threadId: command.threadId,
+              providerThreadId: command.providerThreadId,
+              providerItemId:
+                deltaAssembler.getProviderItemId(
+                  command.threadId,
+                  command.itemId,
+                ) ?? command.itemId,
+            },
+          });
       }
     },
 

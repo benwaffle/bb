@@ -55,6 +55,7 @@ import {
   usePluginDetailPanelState,
 } from "@/components/plugin/plugin-detail-navigation";
 import { useForkThreadFromMessage } from "@/hooks/useForkThreadFromMessage";
+import { useBackgroundThreadCommand } from "../../hooks/mutations/thread-runtime-mutations";
 import { useUpdateEnvironment } from "../../hooks/mutations/environment-mutations";
 import { useUpdateThread } from "../../hooks/mutations/thread-state-mutations";
 import { useEnvironment } from "../../hooks/queries/environment-queries";
@@ -227,6 +228,7 @@ import {
 import { useRouteState } from "@/hooks/useRouteState";
 import { usePaneContext } from "./PaneContext";
 import { PaneThreadActionCommandHandler } from "./PaneThreadActionCommandHandler";
+import { ThreadBackgroundCommandHandler } from "./ThreadBackgroundCommandHandler";
 
 const EMPTY_PARENT_THREADS: readonly ThreadListEntry[] = [];
 const EMPTY_PROJECT_THREAD_SUBSET_FILTERS =
@@ -751,6 +753,19 @@ function ThreadDetailViewInternal(
     id: thread?.id ?? "",
     projectId: thread?.projectId ?? projectId,
   });
+  const backgroundThreadCommand = useBackgroundThreadCommand();
+  const backgroundThreadCommandMutate = backgroundThreadCommand.mutate;
+  const supportsToolCallBackground =
+    threadProviderInfo?.capabilities.supportsToolCallBackground ?? false;
+  const handleBackgroundCommand = useCallback(
+    (callId: string) => {
+      backgroundThreadCommandMutate({ threadId, callId });
+    },
+    [backgroundThreadCommandMutate, threadId],
+  );
+  const onBackgroundCommand = supportsToolCallBackground
+    ? handleBackgroundCommand
+    : undefined;
   const canCreateTerminal =
     !executionUnavailable &&
     thread?.environmentId !== null &&
@@ -1789,6 +1804,7 @@ function ThreadDetailViewInternal(
         environmentHostName: threadEnvironmentHost?.name ?? null,
         includePluginMessageActions: true,
         onForkMessage: isForkAvailable ? handleForkMessage : undefined,
+        onBackgroundCommand,
         onOpenLink: handleOpenTimelineLink,
         onOpenLocalFileLink: handleOpenTimelineLocalFileLink,
         onTitleAction: handleTimelineTitleAction,
@@ -2168,6 +2184,10 @@ function ThreadDetailViewInternal(
   return (
     <>
       <PaneThreadActionCommandHandler thread={threadActionTarget} />
+      <ThreadBackgroundCommandHandler
+        onBackgroundCommand={onBackgroundCommand}
+        timelineRows={timeline.timelineRows}
+      />
       <ThreadProviderContext.Provider value={threadProviderContextValue}>
         <PluginDetailPanelContext.Provider value={pluginDetails}>
           <MarkdownLocalFileOpenTargetsContext.Provider value={fileOpenTargets}>

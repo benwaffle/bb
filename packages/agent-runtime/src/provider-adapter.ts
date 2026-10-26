@@ -121,6 +121,12 @@ export type AdapterCommand =
       taskId: string;
     }
   | {
+      type: "thread/toolCall/background";
+      threadId: string;
+      providerThreadId: string;
+      itemId: string;
+    }
+  | {
       type: "thread/name/set";
       threadId: string;
       providerThreadId: string;

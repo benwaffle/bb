@@ -50,6 +50,7 @@ export const APP_COMMAND_IDS = [
   "thread.archive",
   "thread.markRead",
   "thread.pin",
+  "thread.backgroundCommand",
   "thread.previous",
   "thread.next",
   "history.back",

@@ -1307,6 +1307,14 @@ export type ThreadBackgroundCommandStopResponse = z.infer<
   typeof threadBackgroundCommandStopResponseSchema
 >;
 
+export const threadCommandBackgroundResponseSchema = z.object({
+  ok: z.literal(true),
+  backgrounded: z.literal(true),
+});
+export type ThreadCommandBackgroundResponse = z.infer<
+  typeof threadCommandBackgroundResponseSchema
+>;
+
 const threadTimelineWindowFieldsShape = {
   contextBoundarySeq: z.number().int().nonnegative().nullable(),
   completedTurnDisplay: completedTurnDisplaySchema,

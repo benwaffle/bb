@@ -388,6 +388,13 @@ const threadBackgroundTaskStopCommandSchema = hostDaemonThreadTargetSchema
   })
   .strict();
 
+const threadToolCallBackgroundCommandSchema = hostDaemonThreadTargetSchema
+  .extend({
+    type: z.literal("thread.toolCall.background"),
+    itemId: z.string().min(1),
+  })
+  .strict();
+
 const threadRenameCommandSchema = hostDaemonThreadTargetSchema
   .extend({
     type: z.literal("thread.rename"),
@@ -1475,6 +1482,15 @@ export const hostDaemonCommandRegistry = {
     type: "thread.backgroundTask.stop",
     schema: threadBackgroundTaskStopCommandSchema,
     resultSchema: z.object({ stopped: z.boolean() }).strict(),
+    transport: "settled",
+    retryable: false,
+    flushEventsBeforeResult: true,
+    envLane: null,
+  }),
+  "thread.toolCall.background": defineHostDaemonCommandDescriptor({
+    type: "thread.toolCall.background",
+    schema: threadToolCallBackgroundCommandSchema,
+    resultSchema: z.object({ backgrounded: z.boolean() }).strict(),
     transport: "settled",
     retryable: false,
     flushEventsBeforeResult: true,

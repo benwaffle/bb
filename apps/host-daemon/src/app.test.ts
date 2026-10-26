@@ -273,6 +273,9 @@ function createFakeRuntime(): AgentRuntime {
     async stopBackgroundTask() {
       return { stopped: true };
     },
+    async backgroundToolCall() {
+      return { backgrounded: true };
+    },
     async renameThread() {},
     async archiveThread() {},
     async unarchiveThread() {},

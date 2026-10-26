@@ -310,6 +310,7 @@
     "threadRename": "default",
     "threadGoalClear": "default",
     "backgroundTaskStop": "default",
+    "toolCallBackground": "default",
     "fork": "default",
     "approvalEnforcedBy": "default",
     "grammarVersions": "default",
@@ -341,6 +342,7 @@
     "thread/resume",
     "thread/start",
     "thread/stop",
+    "thread/toolCall/background",
     "thread/unarchive",
     "turn/start",
     "turn/steer"

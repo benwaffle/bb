@@ -95,6 +95,7 @@ interface ControlledClaudeQuery {
   mcpServerStatus: ReturnType<typeof vi.fn>;
   getContextUsage: ReturnType<typeof vi.fn>;
   stopTask: ReturnType<typeof vi.fn>;
+  backgroundTasks: ReturnType<typeof vi.fn>;
   applyFlagSettings: ReturnType<typeof vi.fn>;
   close: ReturnType<typeof vi.fn>;
   emit(message: SDKMessage): void;
@@ -320,6 +321,7 @@ function createControlledClaudeQuery(): ControlledClaudeQuery {
       .mockResolvedValue([{ name: "bb-bridge", status: "connected" }]),
     getContextUsage: vi.fn().mockResolvedValue(null),
     stopTask: vi.fn().mockResolvedValue(undefined),
+    backgroundTasks: vi.fn().mockResolvedValue(true),
     initializationResult: vi.fn(),
     interrupt: vi.fn().mockResolvedValue(undefined),
     setModel: vi.fn().mockResolvedValue(undefined),
@@ -6386,6 +6388,100 @@ describe("canonical model context-window hint", () => {
       });
     } finally {
       queries[0]?.finish();
+      bridge.restore();
+    }
+  });
+});
+
+describe("tool call background", () => {
+  it.each([
+    { sdkResult: true, backgrounded: true },
+    { sdkResult: false, backgrounded: false },
+  ])(
+    "asks the SDK to background the tool use and answers backgrounded=$backgrounded",
+    async ({ sdkResult, backgrounded }) => {
+      const bridge = createBridgeJsonRpcTestHarness(handleLine);
+      const queries: ControlledClaudeQuery[] = [];
+      queryMock.mockImplementation(() => {
+        const query = createControlledClaudeQuery();
+        query.backgroundTasks.mockResolvedValue(sdkResult);
+        queries.push(query);
+        return query;
+      });
+      const threadId = `thread-tool-call-background-${String(sdkResult)}`;
+      try {
+        await startIdleThreadWithBackgroundTasks({
+          bridge,
+          queries,
+          taskIds: [],
+          threadId,
+        });
+
+        bridge.sendRequest(4, "thread/toolCall/background", {
+          threadId,
+          providerThreadId: threadId,
+          providerItemId: "toolu_running_bash",
+        });
+
+        expect(await bridge.waitForResponse(4)).toMatchObject({
+          result: { backgrounded },
+        });
+        expect(queries[0]!.backgroundTasks).toHaveBeenCalledWith(
+          "toolu_running_bash",
+        );
+      } finally {
+        await stopBridgeThread({ bridge, queries, threadId });
+        bridge.restore();
+      }
+    },
+  );
+
+  it("answers backgrounded=false when the SDK rejects the request", async () => {
+    const bridge = createBridgeJsonRpcTestHarness(handleLine);
+    const queries: ControlledClaudeQuery[] = [];
+    queryMock.mockImplementation(() => {
+      const query = createControlledClaudeQuery();
+      query.backgroundTasks.mockRejectedValue(new Error("control closed"));
+      queries.push(query);
+      return query;
+    });
+    const threadId = "thread-tool-call-background-rejected";
+    try {
+      await startIdleThreadWithBackgroundTasks({
+        bridge,
+        queries,
+        taskIds: [],
+        threadId,
+      });
+
+      bridge.sendRequest(4, "thread/toolCall/background", {
+        threadId,
+        providerThreadId: threadId,
+        providerItemId: "toolu_running_bash",
+      });
+
+      expect(await bridge.waitForResponse(4)).toMatchObject({
+        result: { backgrounded: false },
+      });
+    } finally {
+      await stopBridgeThread({ bridge, queries, threadId });
+      bridge.restore();
+    }
+  });
+
+  it("answers backgrounded=false for a thread without a resident session", async () => {
+    const bridge = createBridgeJsonRpcTestHarness(handleLine);
+    try {
+      bridge.sendRequest(4, "thread/toolCall/background", {
+        threadId: "thread-tool-call-background-missing",
+        providerThreadId: "thread-tool-call-background-missing",
+        providerItemId: "toolu_running_bash",
+      });
+
+      expect(await bridge.waitForResponse(4)).toMatchObject({
+        result: { backgrounded: false },
+      });
+    } finally {
       bridge.restore();
     }
   });

@@ -26,6 +26,7 @@ export const BRIDGE_REQUEST_METHODS = {
   threadUnarchive: "thread/unarchive",
   threadGoalClear: "thread/goal/clear",
   threadBackgroundTaskStop: "thread/backgroundTask/stop",
+  threadToolCallBackground: "thread/toolCall/background",
   turnStart: "turn/start",
   turnSteer: "turn/steer",
   skillsConfigure: "skills/configure",
@@ -113,6 +114,24 @@ export const threadBackgroundTaskStopResultSchema = z
   .passthrough();
 export type ThreadBackgroundTaskStopResult = z.infer<
   typeof threadBackgroundTaskStopResultSchema
+>;
+
+export const threadToolCallBackgroundParamsSchema = z
+  .object({
+    threadId: z.string().min(1),
+    providerThreadId: z.string().min(1),
+    providerItemId: z.string().min(1),
+  })
+  .passthrough();
+export type ThreadToolCallBackgroundParams = z.infer<
+  typeof threadToolCallBackgroundParamsSchema
+>;
+
+export const threadToolCallBackgroundResultSchema = z
+  .object({ backgrounded: z.boolean() })
+  .passthrough();
+export type ThreadToolCallBackgroundResult = z.infer<
+  typeof threadToolCallBackgroundResultSchema
 >;
 
 export const threadNameSetParamsSchema = z
