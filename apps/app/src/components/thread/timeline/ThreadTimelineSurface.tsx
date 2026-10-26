@@ -20,6 +20,7 @@ import type { TimelineTitleActionResolver } from "./TimelineTitleView.js";
 import { TimelineReasoningExpansionProvider } from "./TimelineReasoningExpansion.js";
 import { TimelineWorkingIndicator } from "./TimelineWorkingIndicator.js";
 import type {
+  ThreadTimelineBackgroundCommandHandler,
   ThreadTimelineForkMessageHandler,
   ThreadTimelineEditMessageHandler,
   ThreadTimelineInlineMessageEditor,
@@ -45,6 +46,7 @@ export interface ThreadTimelineSurfaceProps {
   loadingContent?: ReactNode;
   leadingContent?: ReactNode;
   onForkMessage?: ThreadTimelineForkMessageHandler;
+  onBackgroundCommand?: ThreadTimelineBackgroundCommandHandler;
   onEditMessage?: ThreadTimelineEditMessageHandler;
   inlineMessageEditor?: ThreadTimelineInlineMessageEditor;
   onMessageAddToChat?: ThreadTimelineAddToChatHandler;
@@ -142,6 +144,7 @@ export function ThreadTimelineSurface({
   loadingContent,
   leadingContent,
   onForkMessage,
+  onBackgroundCommand,
   onEditMessage,
   inlineMessageEditor,
   onMessageAddToChat,
@@ -222,6 +225,7 @@ export function ThreadTimelineSurface({
           <ThreadTimelineRows
             canSpawnChild={canSpawnChild}
             onForkMessage={onForkMessage}
+            onBackgroundCommand={onBackgroundCommand}
             onEditMessage={onEditMessage}
             inlineMessageEditor={inlineMessageEditor}
             onMessageAddToChat={onMessageAddToChat}

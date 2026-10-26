@@ -64,6 +64,7 @@ interface ExpandableTimelineRowProps {
   summaryClassName?: string;
   onTitleAction?: TimelineTitleActionResolver;
   onIntent?: () => void;
+  trailingAction?: ReactNode;
 }
 
 interface TimelineRowHoverPreviewProps {
@@ -267,6 +268,7 @@ function ExpandableTimelineRowComponent({
   terminalAutoExpanded = false,
   title,
   titleContent,
+  trailingAction,
 }: ExpandableTimelineRowProps) {
   const [manualExpansionOverride, setManualExpansionOverride] =
     useTimelineReasoningExpansion(reasoningExpansionKey);
@@ -405,16 +407,27 @@ function ExpandableTimelineRowComponent({
       renderBody={renderBody}
     />
   );
-  if (!expandable || !renderHoverPreview) {
-    return panel;
+  const previewedPanel =
+    !expandable || !renderHoverPreview ? (
+      panel
+    ) : (
+      <TimelineRowHoverPreview
+        disabled={isExpanded}
+        renderPreview={renderHoverPreview}
+      >
+        {panel}
+      </TimelineRowHoverPreview>
+    );
+  if (trailingAction === undefined) {
+    return previewedPanel;
   }
   return (
-    <TimelineRowHoverPreview
-      disabled={isExpanded}
-      renderPreview={renderHoverPreview}
-    >
-      {panel}
-    </TimelineRowHoverPreview>
+    <div className="group/timeline-row relative">
+      {previewedPanel}
+      <div className="absolute right-1 top-0.5 opacity-0 transition-opacity focus-within:opacity-100 group-hover/timeline-row:opacity-100 [@media(hover:none)]:opacity-100">
+        {trailingAction}
+      </div>
+    </div>
   );
 }
 
