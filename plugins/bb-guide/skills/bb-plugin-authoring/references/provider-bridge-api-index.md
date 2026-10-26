@@ -193,6 +193,8 @@ Read the installed declarations for exact current signatures.
 - `threadResumeParamsSchema`
 - `threadStartParamsSchema`
 - `threadStopParamsSchema`
+- `threadToolCallBackgroundParamsSchema`
+- `threadToolCallBackgroundResultSchema`
 - `threadUnarchiveParamsSchema`
 - `toNonNegativeNumber`
 - `toOptionalRecord`

@@ -68,6 +68,7 @@ bb.providers.register({
     supportsManualCompaction: true,
     supportsThreadArchive: true,
     supportsThreadRename: true,
+    supportsToolCallBackground: true, // optional, default false; gates the background action on running command rows
     supportsServiceTier: false,
     reasoningLevels: ["low", "high"], // the coarse ladder; `reasoningLevels` below is precise
   },
@@ -256,6 +257,9 @@ semantics in [provider-bridge-protocol.md](provider-bridge-protocol.md),
 `thread/{start,resume,fork,stop,discard,archive,unarchive,name/set,goal/clear}`,
 `thread/backgroundTask/stop {taskId}` (only when the handshake declares
 `backgroundTaskStop`; answers `{stopped}` once the task settled),
+`thread/toolCall/background {providerItemId}` (only when the handshake declares
+`toolCallBackground`; moves the running foreground tool call opened under that
+provider item id to the background and answers `{backgrounded}`),
 `turn/{start,steer}`, `skills/configure {roots}` (only when the handshake
 declares `skills.configure`),
 `provider/{health,usage,installation/status,installation/run}`.

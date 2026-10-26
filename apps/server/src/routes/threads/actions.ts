@@ -488,6 +488,58 @@ export function registerThreadActionRoutes(app: Hono, deps: AppDeps): void {
     return context.json({ ok: true, stopped: true });
   });
 
+  post(routes.backgroundCommand, async (context) => {
+    const thread = requirePublicThread(deps.db, context.req.param("id"));
+    const callId = context.req.param("callId");
+    if (
+      deps.providerRegistry.get(thread.providerId)?.info.capabilities
+        .supportsToolCallBackground !== true
+    ) {
+      throw new ApiError(
+        409,
+        "invalid_request",
+        "This thread's provider cannot move a running command to the background",
+      );
+    }
+    const environment = requireThreadHostCommandEnvironment({
+      db: deps.db,
+      thread,
+    });
+    let result: { backgrounded: boolean };
+    try {
+      result = await runLiveHostCommand(deps, {
+        command: {
+          type: "thread.toolCall.background",
+          environmentId: environment.id,
+          threadId: thread.id,
+          itemId: callId,
+        },
+        hostId: environment.hostId,
+        timeoutMs: LIVE_DAEMON_COMMAND_TIMEOUT_MS,
+      });
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.body.code === "unknown_thread_runtime"
+      ) {
+        throw new ApiError(
+          409,
+          "invalid_request",
+          "The agent session running this command is no longer loaded",
+        );
+      }
+      throw error;
+    }
+    if (!result.backgrounded) {
+      throw new ApiError(
+        409,
+        "invalid_request",
+        "No running foreground command matched that call id",
+      );
+    }
+    return context.json({ ok: true, backgrounded: true });
+  });
+
   post(routes.clearGoal, async (context) => {
     const thread = requirePublicThread(deps.db, context.req.param("id"));
     const activity = getThreadPromptBannerActivity(deps, thread);

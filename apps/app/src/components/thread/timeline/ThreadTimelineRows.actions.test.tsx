@@ -17,6 +17,7 @@ import { COMPACT_VIEWPORT_QUERY } from "@bb/shared-ui/hooks/use-compact-viewport
 import { POINTER_COARSE_QUERY } from "@bb/shared-ui/hooks/use-pointer-coarse";
 import type { PluginMessageActionRegistration } from "@get-bb/plugin-sdk";
 import {
+  commandRow,
   conversationRow,
   delegationRow,
   turnRow,
@@ -275,6 +276,61 @@ afterEach(() => {
 });
 
 describe("ThreadTimelineRows actions", () => {
+  it("moves a running command to the background from its row action", () => {
+    const onBackgroundCommand = vi.fn();
+    renderWithRouter(
+      <ThreadTimelineRows
+        timelineRows={[
+          commandRow({
+            id: "finished_command",
+            command: "pnpm lint",
+            status: "completed",
+            exitCode: 0,
+          }),
+          commandRow({
+            id: "running_command",
+            callId: "call_running",
+            command: "pnpm test",
+            status: "pending",
+            exitCode: null,
+          }),
+        ]}
+        onBackgroundCommand={onBackgroundCommand}
+        threadRuntimeDisplayStatus="active"
+        workspaceRootPath={undefined}
+      />,
+    );
+
+    const buttons = screen.getAllByRole("button", {
+      name: "Move command to background",
+    });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]!);
+
+    expect(onBackgroundCommand).toHaveBeenCalledWith("call_running");
+  });
+
+  it("offers no background action when the provider cannot background commands", () => {
+    renderWithRouter(
+      <ThreadTimelineRows
+        timelineRows={[
+          commandRow({
+            id: "running_command",
+            command: "pnpm test",
+            status: "pending",
+            exitCode: null,
+          }),
+        ]}
+        threadRuntimeDisplayStatus="active"
+        workspaceRootPath={undefined}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Move command to background" }),
+    ).toBeNull();
+  });
+
   it("uses inline mobile candidates only for the last assistant message", () => {
     mockSelectionMenuMedia({ isCompactViewport: true, isPointerCoarse: true });
     const { container } = renderWithRouter(

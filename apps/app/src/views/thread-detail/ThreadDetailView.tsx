@@ -61,6 +61,7 @@ import {
   useUpdateThread,
 } from "../../hooks/mutations/thread-state-mutations";
 import {
+  useBackgroundThreadCommand,
   useCreateThreadQueuedMessage,
   useEditThreadMessage,
   useSendThreadMessage,
@@ -278,6 +279,7 @@ import { useRouteState } from "@/hooks/useRouteState";
 import { useAppCommandHandler } from "@/components/commands/AppCommandProvider";
 import { usePaneContext } from "./PaneContext";
 import { ThreadArchiveCommandHandler } from "./ThreadArchiveCommandHandler";
+import { ThreadBackgroundCommandHandler } from "./ThreadBackgroundCommandHandler";
 
 const EMPTY_PARENT_THREADS: readonly ThreadListEntry[] = [];
 const EMPTY_CHILD_THREAD_ITEMS: readonly ChildThreadPendingAttentionSource[] =
@@ -885,6 +887,19 @@ function ThreadDetailViewInternal(
     thread ?? null,
     threadProviderInfo?.capabilities.supportsFork ?? false,
   );
+  const backgroundThreadCommand = useBackgroundThreadCommand();
+  const backgroundThreadCommandMutate = backgroundThreadCommand.mutate;
+  const supportsToolCallBackground =
+    threadProviderInfo?.capabilities.supportsToolCallBackground ?? false;
+  const handleBackgroundCommand = useCallback(
+    (callId: string) => {
+      backgroundThreadCommandMutate({ threadId, callId });
+    },
+    [backgroundThreadCommandMutate, threadId],
+  );
+  const onBackgroundCommand = supportsToolCallBackground
+    ? handleBackgroundCommand
+    : undefined;
   const dismissCompactKeyboard = useCallback(() => {
     if (!renderSecondaryPanelAsDrawer) {
       return;
@@ -2845,6 +2860,7 @@ function ThreadDetailViewInternal(
               isThreadTimelinePending,
               timelineError: Boolean(timelineError),
               onForkMessage: isForkAvailable ? handleForkMessage : undefined,
+              onBackgroundCommand,
               onEditMessage: canEditSentMessages
                 ? handleEditSentMessage
                 : undefined,
@@ -2896,6 +2912,10 @@ function ThreadDetailViewInternal(
   return (
     <>
       <ThreadArchiveCommandHandler thread={threadActionTarget} />
+      <ThreadBackgroundCommandHandler
+        onBackgroundCommand={onBackgroundCommand}
+        timelineRows={timelineRows}
+      />
       <ThreadProviderContext.Provider value={threadProviderContextValue}>
         <PluginThreadPanelNavigationProvider
           openThreadPanel={handleOpenTimelinePluginPanel}
