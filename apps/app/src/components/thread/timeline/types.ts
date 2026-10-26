@@ -22,6 +22,8 @@ export type ThreadTimelineForkMessageHandler = (
   target: ThreadTimelineForkMessageTarget,
 ) => void;
 
+export type ThreadTimelineBackgroundCommandHandler = (callId: string) => void;
+
 export interface ThreadTimelineEditMessageTarget {
   messageId: string;
   expectedRequestSequence: number;

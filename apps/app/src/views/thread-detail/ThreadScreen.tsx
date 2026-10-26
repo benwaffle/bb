@@ -38,6 +38,7 @@ import {
   useThreadTimelineController,
 } from "@/components/thread/timeline";
 import type { HostConnectionNotice } from "@/components/thread/timeline/ThreadTimelineSurface";
+import type { ThreadTimelineBackgroundCommandHandler } from "@/components/thread/timeline/types";
 import { ThreadTimelinePanelLoadingSkeleton } from "@/components/thread/timeline/ThreadChatLoading";
 import { PluginThreadRail } from "@/components/plugin/PluginThreadRail";
 import { collectConversationRows } from "@/lib/conversation-outline";
@@ -110,6 +111,7 @@ export interface ThreadScreenTimelineHost {
   leadingContent: ReactNode;
   messageActionSurface: ExperimentalMessageActionSurface;
   onForkMessage: ThreadTimelineForkMessageHandler | null;
+  onBackgroundCommand: ThreadTimelineBackgroundCommandHandler | null;
   onTitleAction: TimelineTitleActionResolver | null;
   unreadDividerAutoScroll: boolean;
   unreadDividerPlacement: ThreadTimelineUnreadDividerPlacement | null;
@@ -614,6 +616,7 @@ export function ThreadScreen({
           leadingContent={timelineHost.leadingContent}
           consumerMessageActions={timelineHost.consumerMessageActions}
           onForkMessage={timelineHost.onForkMessage ?? undefined}
+          onBackgroundCommand={timelineHost.onBackgroundCommand ?? undefined}
           onEditMessage={handleEditSentMessage}
           inlineMessageEditor={inlineMessageEditor}
           onMessageAddToChat={selectionAddToChat}

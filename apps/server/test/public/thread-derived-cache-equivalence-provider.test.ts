@@ -85,6 +85,7 @@ const VALUE_CAPABILITY_CHANGES: {
     permissionModes: ["accept-edits", "auto", "full"],
   }),
   reasoningLevels: () => ({ reasoningLevels: ["medium", "high"] }),
+  supportsToolCallBackground: () => ({ supportsToolCallBackground: true }),
 };
 
 function changedDeclaration(

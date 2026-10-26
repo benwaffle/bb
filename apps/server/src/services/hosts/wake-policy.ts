@@ -14,6 +14,7 @@ const hostCommandWakePolicy = {
   "turn.submit": "work",
   "thread.stop": "never",
   "thread.backgroundTask.stop": "never",
+  "thread.toolCall.background": "never",
   "thread.storage.delete": "never",
   "thread.goal.clear": "never",
   "thread.plan.cancel": "never",

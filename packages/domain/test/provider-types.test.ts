@@ -15,6 +15,7 @@ describe("provider info schema", () => {
       supportsNativeUserQuestion: false,
       supportsFork: true,
       supportsSessionRewind: true,
+      supportsToolCallBackground: false,
       modelCatalogScope: "workspace",
       permissionModes: ["accept-edits", "auto", "full"],
     },

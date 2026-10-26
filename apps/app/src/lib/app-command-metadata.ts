@@ -64,6 +64,11 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Pin or unpin the focused thread.",
       ),
       command(
+        "thread.backgroundCommand",
+        "Move command to background",
+        "Move the focused thread's running command to the background so the turn continues.",
+      ),
+      command(
         "thread.previous",
         "Previous thread",
         "Open the previous visible sidebar thread.",

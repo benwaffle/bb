@@ -458,6 +458,9 @@ type PathThreadInteractionId = {
 type PathThreadBackgroundCommandTaskId = {
   param: { id: string; taskId: string };
 };
+type PathThreadCommandCallId = {
+  param: { id: string; callId: string };
+};
 
 export const publicApiRoutes = {
   promptHistory: {
@@ -1729,6 +1732,12 @@ export const publicApiRoutes = {
       path: "/threads/:id/background-commands/:taskId/stop",
       method: "post",
       request: noRequest<PathThreadBackgroundCommandTaskId>(),
+      response: jsonResponse<OperationResponse>(),
+    }),
+    backgroundCommand: defineRoute({
+      path: "/threads/:id/commands/:callId/background",
+      method: "post",
+      request: noRequest<PathThreadCommandCallId>(),
       response: jsonResponse<OperationResponse>(),
     }),
     open: defineRoute({

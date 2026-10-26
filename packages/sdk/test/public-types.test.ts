@@ -420,6 +420,7 @@ type ExpectedThreadsKey =
   | "context"
   | "archive"
   | "archiveAll"
+  | "backgroundCommand"
   | "backgroundCommands"
   | "cancelPlan"
   | "childSummary"

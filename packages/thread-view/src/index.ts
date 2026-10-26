@@ -96,3 +96,7 @@ export {
   formatContextWindowReadout,
   formatContextWindowTokens,
 } from "./thread-context-window-usage.js";
+export {
+  findLatestBackgroundableCommandRow,
+  isBackgroundableCommandRow,
+} from "./running-command.js";
