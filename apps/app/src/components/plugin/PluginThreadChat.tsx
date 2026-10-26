@@ -60,6 +60,7 @@ import {
   ThreadScreen,
   type ThreadScreenPresentation,
 } from "@/views/thread-detail/ThreadScreen";
+import { useThreadTimelineBackgroundCommand } from "@/views/thread-detail/useThreadTimelineBackgroundCommand";
 
 const NO_CONSUMER_MESSAGE_ACTIONS: readonly ThreadTimelineConsumerMessageAction[] =
   [];
@@ -170,6 +171,11 @@ function PluginThreadChatBody({
       void forkThreadFromMessage(target);
     },
     [forkThreadFromMessage],
+  );
+  const onBackgroundCommand = useThreadTimelineBackgroundCommand(
+    threadId,
+    hasComposer &&
+      (threadProviderInfo?.capabilities.supportsToolCallBackground ?? false),
   );
   const isForkAvailable =
     hasComposer &&
@@ -383,6 +389,7 @@ function PluginThreadChatBody({
               leadingContent: leadingContent ?? null,
               messageActionSurface: "embedded-chat",
               onForkMessage: isForkAvailable ? handleForkMessage : null,
+              onBackgroundCommand,
               onTitleAction: handleTimelineTitleAction,
               unreadDividerAutoScroll: unreadDividerState.autoScroll,
               unreadDividerPlacement: unreadDividerState.placement,

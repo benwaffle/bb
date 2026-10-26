@@ -20,7 +20,10 @@ import {
   vi,
   type Mock,
 } from "vitest";
-import { makeEnvironment } from "@bb/test-helpers/domain-fixtures";
+import {
+  makeEnvironment,
+  makeProviderInfo,
+} from "@bb/test-helpers/domain-fixtures";
 import type { UseThreadTimelineControllerResult } from "@/components/thread/timeline";
 import { LazyPluginThreadChat } from "@/components/plugin/LazyPluginThreadChat";
 import { PluginSlotMount } from "@/components/plugin/PluginSlotMount";
@@ -39,6 +42,7 @@ import { sdk } from "@/lib/sdk";
 import { makePluginRegistrationSet } from "@/test/fixtures/plugins";
 import { makeThreadResponse } from "@/test/fixtures/thread-responses";
 import {
+  commandRow,
   conversationRow,
   fileChangeRow,
 } from "@/test/fixtures/thread-timeline-rows";
@@ -104,6 +108,14 @@ const TIMELINE: UseThreadTimelineControllerResult = {
       threadId: THREAD.id,
     }),
     fileChangeRow({ id: "edit_row", path: "README.md", threadId: THREAD.id }),
+    commandRow({
+      id: "running_command_row",
+      callId: "call_running",
+      command: "sleep 60",
+      status: "pending",
+      exitCode: null,
+      threadId: THREAD.id,
+    }),
   ],
 };
 
@@ -305,6 +317,12 @@ beforeEach(() => {
   mocks.promptAreaProps = [];
   vi.spyOn(sdk.threads, "get").mockResolvedValue(THREAD as never);
   vi.spyOn(sdk.hosts, "list").mockResolvedValue([] as never);
+  vi.spyOn(sdk.providers, "list").mockResolvedValue([
+    makeProviderInfo({
+      id: THREAD.providerId,
+      capabilities: { supportsToolCallBackground: true },
+    }),
+  ] as never);
   setPluginSlotRegistrations(
     "provider",
     makePluginRegistrationSet({
@@ -398,6 +416,27 @@ describe.each(SURFACES)("ThreadScreen surface contract: $name", (surface) => {
     expect(title).toBeDefined();
     fireEvent.click(title!);
     await waitFor(() => expect(surface.openedReadme(hosts)).toBe(true));
+  });
+
+  it("moves a running command to the background wherever the thread can be driven", async () => {
+    const backgroundCommand = vi
+      .spyOn(sdk.threads, "backgroundCommand")
+      .mockResolvedValue({ ok: true, progress: "complete" });
+    const { container } = renderSurface(surface);
+    const row = await findRow(container, "running_command_row");
+    const label = '[aria-label="Move command to background"]';
+    if (!surface.hasComposer) {
+      expect(row.querySelector(label)).toBeNull();
+      return;
+    }
+    await waitFor(() => expect(row.querySelector(label)).not.toBeNull());
+    fireEvent.click(row.querySelector<HTMLElement>(label)!);
+    await waitFor(() =>
+      expect(backgroundCommand).toHaveBeenCalledWith({
+        threadId: THREAD.id,
+        callId: "call_running",
+      }),
+    );
   });
 
   it.runIf(surface.hasComposer)(
