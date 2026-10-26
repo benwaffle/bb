@@ -457,6 +457,7 @@ export class CommandRouter {
       case "thread.plan.cancel":
       case "thread.goal.clear":
       case "thread.backgroundTask.stop":
+      case "thread.toolCall.background":
         return `${command.environmentId}\0thread:${command.threadId}`;
       default:
         return null;
