@@ -207,6 +207,7 @@ Use `--selected-model <model-id>` to discover its reasoning choices and include 
 - `bb thread clear-goal`
 - `bb thread background`
 - `bb thread background stop`
+- `bb thread background move`
 - `bb thread interactions`
 - `bb thread interactions list`
 - `bb thread interactions show`

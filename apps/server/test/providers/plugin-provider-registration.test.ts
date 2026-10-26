@@ -59,6 +59,7 @@ describe("buildPluginProviderRegistration", () => {
         supportsNativeUserQuestion: true,
         supportsFork: true,
         supportsSessionRewind: true,
+        supportsToolCallBackground: false,
         modelCatalogScope: "workspace",
         permissionModes: ["accept-edits", "full"],
       },

@@ -18,6 +18,7 @@ import { COMPACT_VIEWPORT_QUERY } from "@bb/shared-ui/hooks/use-compact-viewport
 import { POINTER_COARSE_QUERY } from "@bb/shared-ui/hooks/use-pointer-coarse";
 import type { PluginMessageActionRegistration } from "@get-bb/plugin-sdk";
 import {
+  commandRow,
   conversationRow,
   delegationRow,
   turnRow,
@@ -276,6 +277,108 @@ afterEach(() => {
 });
 
 describe("ThreadTimelineRows actions", () => {
+  it("moves a running command to the background from its row action", () => {
+    const onBackgroundCommand = vi.fn();
+    renderWithRouter(
+      <ThreadTimelineRows
+        timelineRows={[
+          commandRow({
+            id: "finished_command",
+            command: "pnpm lint",
+            status: "completed",
+            exitCode: 0,
+          }),
+          commandRow({
+            id: "running_command",
+            callId: "call_running",
+            command: "pnpm test",
+            status: "pending",
+            exitCode: null,
+          }),
+        ]}
+        onBackgroundCommand={onBackgroundCommand}
+        threadRuntimeDisplayStatus="active"
+        workspaceRootPath={undefined}
+      />,
+    );
+
+    const buttons = screen.getAllByRole("button", {
+      name: "Move command to background",
+    });
+    expect(buttons).toHaveLength(1);
+    fireEvent.click(buttons[0]!);
+
+    expect(onBackgroundCommand).toHaveBeenCalledWith("call_running");
+  });
+
+  it("keeps a command row mounted when its command finishes", () => {
+    const runningCommand = commandRow({
+      id: "running_command",
+      callId: "call_running",
+      command: "pnpm test",
+      status: "pending",
+      exitCode: null,
+    });
+    const queryClient = new QueryClient();
+    const onBackgroundCommand = vi.fn();
+    const renderRows = (row: typeof runningCommand) => (
+      <QueryClientProvider client={queryClient}>
+        <MemoryRouter>
+          <ThreadTimelineRows
+            timelineRows={[row]}
+            onBackgroundCommand={onBackgroundCommand}
+            threadRuntimeDisplayStatus="active"
+            workspaceRootPath={undefined}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>
+    );
+    const { rerender } = render(renderRows(runningCommand));
+    const runningTitle = screen.getByText("pnpm test");
+    expect(
+      screen.getByRole("button", { name: "Move command to background" }),
+    ).toBeTruthy();
+
+    rerender(
+      renderRows(
+        commandRow({
+          id: "running_command",
+          callId: "call_running",
+          command: "pnpm test",
+          status: "completed",
+          exitCode: 0,
+        }),
+      ),
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Move command to background" }),
+    ).toBeNull();
+    expect(screen.getByText("pnpm test")).toBe(runningTitle);
+    expect(runningTitle.isConnected).toBe(true);
+  });
+
+  it("offers no background action when the provider cannot background commands", () => {
+    renderWithRouter(
+      <ThreadTimelineRows
+        timelineRows={[
+          commandRow({
+            id: "running_command",
+            command: "pnpm test",
+            status: "pending",
+            exitCode: null,
+          }),
+        ]}
+        threadRuntimeDisplayStatus="active"
+        workspaceRootPath={undefined}
+      />,
+    );
+
+    expect(
+      screen.queryByRole("button", { name: "Move command to background" }),
+    ).toBeNull();
+  });
+
   it("uses inline mobile candidates only for the last assistant message", () => {
     mockSelectionMenuMedia({ isCompactViewport: true, isPointerCoarse: true });
     const { container } = renderWithRouter(

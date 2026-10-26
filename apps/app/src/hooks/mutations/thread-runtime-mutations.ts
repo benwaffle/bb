@@ -502,6 +502,20 @@ export function useStopThreadBackgroundCommand() {
   });
 }
 
+export function useBackgroundThreadCommand() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    meta: { errorMessage: "Failed to move the command to the background." },
+    mutationFn: async (args: { threadId: string; callId: string }) => {
+      await sdk.threads.backgroundCommand(args);
+    },
+    onSuccess: (_data, { threadId }) => {
+      invalidateThreadBannerQueries({ queryClient, threadId });
+    },
+  });
+}
+
 export function useCancelThreadPlan() {
   const queryClient = useQueryClient();
   return useMutation(cancelThreadPlanMutationOptions(queryClient));

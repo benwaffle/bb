@@ -83,6 +83,7 @@ import {
   type ThreadStartParams,
   type ThreadStopParams,
   type ThreadBackgroundTaskStopParams,
+  type ThreadToolCallBackgroundParams,
   type TurnStartParams,
   type TurnSteerParams,
 } from "./commands.js";
@@ -1826,6 +1827,28 @@ async function handleBackgroundTaskStop(
   }
 }
 
+async function handleToolCallBackground(
+  id: string | number,
+  params: ThreadToolCallBackgroundParams,
+): Promise<void> {
+  const threadSession = threadAttachments.get(params.threadId)?.residentSession;
+  if (!threadSession || threadSession.closing) {
+    sendResult(id, { backgrounded: false });
+    return;
+  }
+  const backgrounded = await threadSession.session
+    .backgroundToolCall(params.providerItemId)
+    .catch((error: unknown) => {
+      logBridgeError(
+        `could not move tool call ${params.providerItemId} to the background: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return false;
+    });
+  sendResult(id, { backgrounded });
+}
+
 function wakeThreadForSettledBackgroundTask(
   threadSession: ThreadSession,
   threadId: string,
@@ -2416,6 +2439,7 @@ async function handleRequest(request: ClaudeCodeJsonRpcRequest): Promise<void> {
           threadRename: false,
           threadGoalClear: false,
           backgroundTaskStop: true,
+          toolCallBackground: true,
           fork: "checkpoint",
           approvalEnforcedBy: "provider",
           grammarVersions: [THREAD_DELTA_GRAMMAR_V3, THREAD_DELTA_GRAMMAR_V3],
@@ -2520,6 +2544,9 @@ async function handleRequest(request: ClaudeCodeJsonRpcRequest): Promise<void> {
       break;
     case "thread/backgroundTask/stop":
       await handleBackgroundTaskStop(request.id, request.params);
+      break;
+    case "thread/toolCall/background":
+      await handleToolCallBackground(request.id, request.params);
       break;
     case "skills/configure":
       configuredSkillRoots = request.params.roots;
