@@ -59,6 +59,7 @@ import type {
   ThreadTimelineReadResponse,
   ThreadTimelineResponse,
   ThreadBackgroundCommandStopResponse,
+  ThreadCommandBackgroundResponse,
   ThreadContextResponse,
   ThreadCostResponse,
   ThreadWithIncludesResponse,
@@ -218,6 +219,7 @@ export type ThreadCompactResult = { ok: true };
 export type ThreadBannerActionResult = { ok: true };
 export type ThreadBackgroundCommandStopResult =
   ThreadBackgroundCommandStopResponse;
+export type ThreadCommandBackgroundResult = ThreadCommandBackgroundResponse;
 export interface ThreadBackgroundCommandsResult {
   commands: TimelineWorkflowWorkRow[];
 }
@@ -366,6 +368,10 @@ export interface ThreadStatusArgs extends ThreadActionArgs {
 
 export interface ThreadBackgroundCommandStopArgs extends ThreadActionArgs {
   taskId: string;
+}
+
+export interface ThreadCommandBackgroundArgs extends ThreadActionArgs {
+  callId: string;
 }
 
 export interface ThreadPromptHistoryArgs extends PromptHistoryQuery {
@@ -660,6 +666,14 @@ export interface ThreadsArea {
   stopBackgroundCommand(
     args: ThreadBackgroundCommandStopArgs,
   ): Promise<ThreadBackgroundCommandStopResult>;
+  /**
+   * Move a running foreground command to the background by its timeline call
+   * id. The turn continues, the command keeps running as a background command,
+   * and the agent is notified when it exits.
+   */
+  backgroundCommand(
+    args: ThreadCommandBackgroundArgs,
+  ): Promise<ThreadCommandBackgroundResult>;
   conversationOutline(
     args: ThreadConversationOutlineArgs,
   ): Promise<ThreadConversationOutlineResult>;
@@ -1710,6 +1724,16 @@ export function createThreadsArea(args: CreateSdkAreaArgs): ThreadsArea {
         ].stop.$post(
           {
             param: { id: input.threadId, taskId: input.taskId },
+          },
+          ...signalRequestArgs(input.signal),
+        ),
+      );
+    },
+    async backgroundCommand(input) {
+      return transport.readJson(
+        transport.api.v1.threads[":id"].commands[":callId"].background.$post(
+          {
+            param: { id: input.threadId, callId: input.callId },
           },
           ...signalRequestArgs(input.signal),
         ),

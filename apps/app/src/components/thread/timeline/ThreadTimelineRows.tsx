@@ -43,6 +43,7 @@ import {
   type TimelineViewWorkRow,
 } from "@bb/thread-view";
 import { cn } from "@bb/shared-ui/lib/utils";
+import { useAppCommandShortcut } from "@/components/commands/AppCommandProvider";
 import {
   collectTimelineAutoExpansionRowIds,
   deferredTimelineContentItemId,
@@ -58,6 +59,7 @@ import type {
   ThreadTimelineAddToChatHandler,
   ThreadTimelineEditMessageHandler,
   ThreadTimelineInlineMessageEditor,
+  ThreadTimelineBackgroundCommandHandler,
   ThreadTimelineForkMessageHandler,
   ThreadTimelineLinkHandler,
   ThreadTimelineLocalFileLinkHandler,
@@ -176,6 +178,7 @@ export interface ThreadTimelineRowsProps {
   canSpawnChild?: boolean;
   onForkMessage?: ThreadTimelineForkMessageHandler;
   onEditMessage?: ThreadTimelineEditMessageHandler;
+  onBackgroundCommand?: ThreadTimelineBackgroundCommandHandler;
   inlineMessageEditor?: ThreadTimelineInlineMessageEditor;
   onMessageAddToChat?: ThreadTimelineAddToChatHandler;
   onSelectionAddToChat?: ThreadTimelineAddToChatHandler;
@@ -205,6 +208,7 @@ interface TimelineRendererStaticContextValue {
   getViewRows: GetTimelineViewRows;
   onForkMessage: ThreadTimelineForkMessageHandler | undefined;
   onEditMessage: ThreadTimelineEditMessageHandler | undefined;
+  onBackgroundCommand: ThreadTimelineBackgroundCommandHandler | undefined;
   inlineMessageEditor: ThreadTimelineInlineMessageEditor | undefined;
   onMessageAddToChat: ThreadTimelineAddToChatHandler | undefined;
   onSelectionAddToChat: ThreadTimelineAddToChatHandler | undefined;
@@ -1898,7 +1902,8 @@ function TimelineExpandableRowView({
   horizontalPadding,
   row,
 }: TimelineExpandableRowViewProps) {
-  const { onTitleAction, threadId } = useTimelineRendererStaticContext();
+  const { onBackgroundCommand, onTitleAction, threadId } =
+    useTimelineRendererStaticContext();
   const preloadBody = usePreloadTimelineRowBody(row, threadId);
   const {
     initialAutoExpandedRowIds,
@@ -1994,7 +1999,45 @@ function TimelineExpandableRowView({
       onIntent={preloadBody}
       renderBody={renderBody}
       renderHoverPreview={renderHoverPreview}
+      trailingAction={
+        onBackgroundCommand !== undefined &&
+        row.kind === "work" &&
+        row.workKind === "command" ? (
+          row.status === "pending" && row.approvalStatus === null ? (
+            <BackgroundCommandButton
+              callId={row.callId}
+              onBackgroundCommand={onBackgroundCommand}
+            />
+          ) : null
+        ) : undefined
+      }
     />
+  );
+}
+
+function BackgroundCommandButton({
+  callId,
+  onBackgroundCommand,
+}: {
+  callId: string;
+  onBackgroundCommand: ThreadTimelineBackgroundCommandHandler;
+}) {
+  const shortcut = useAppCommandShortcut("thread.backgroundCommand");
+  return (
+    <button
+      type="button"
+      aria-label="Move command to background"
+      aria-keyshortcuts={shortcut?.ariaKeyshortcuts}
+      title={
+        shortcut === null
+          ? "Move to background"
+          : `Move to background (${shortcut.label})`
+      }
+      onClick={() => onBackgroundCommand(callId)}
+      className="rounded px-1.5 text-xs text-subtle-foreground hover:bg-accent hover:text-foreground focus-visible:text-foreground"
+    >
+      Background
+    </button>
   );
 }
 
@@ -2580,6 +2623,7 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       getViewRows,
       onForkMessage: props.onForkMessage,
       onEditMessage: props.onEditMessage,
+      onBackgroundCommand: props.onBackgroundCommand,
       inlineMessageEditor: props.inlineMessageEditor,
       onMessageAddToChat: props.onMessageAddToChat,
       onSelectionAddToChat: selectionAddToChatHandler,
@@ -2608,6 +2652,7 @@ function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
       getViewRows,
       props.onForkMessage,
       props.onEditMessage,
+      props.onBackgroundCommand,
       props.inlineMessageEditor,
       props.onMessageAddToChat,
       selectionAddToChatHandler,
