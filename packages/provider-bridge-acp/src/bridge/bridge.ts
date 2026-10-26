@@ -4093,6 +4093,7 @@ async function handleRequest(
           threadRename: false,
           threadGoalClear: false,
           backgroundTaskStop: false,
+          toolCallBackground: false,
           fork: "tip",
           approvalEnforcedBy: "runtime",
           grammarVersions: [THREAD_DELTA_GRAMMAR_V3, THREAD_DELTA_GRAMMAR_V3],

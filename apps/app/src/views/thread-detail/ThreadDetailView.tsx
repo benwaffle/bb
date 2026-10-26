@@ -207,6 +207,8 @@ import {
 import { useRouteState } from "@/hooks/useRouteState";
 import { usePaneContext } from "./PaneContext";
 import { PaneThreadActionCommandHandler } from "./PaneThreadActionCommandHandler";
+import { ThreadBackgroundCommandHandler } from "./ThreadBackgroundCommandHandler";
+import { useThreadTimelineBackgroundCommand } from "./useThreadTimelineBackgroundCommand";
 
 const EMPTY_PARENT_THREADS: readonly ThreadListEntry[] = [];
 const EMPTY_PROJECT_THREAD_SUBSET_FILTERS =
@@ -636,6 +638,10 @@ function ThreadDetailViewInternal(
     id: thread?.id ?? "",
     projectId: thread?.projectId ?? projectId,
   });
+  const onBackgroundCommand = useThreadTimelineBackgroundCommand(
+    threadId,
+    threadProviderInfo?.capabilities.supportsToolCallBackground ?? false,
+  );
   const canCreateTerminal =
     !executionUnavailable &&
     thread?.environmentId !== null &&
@@ -1518,6 +1524,7 @@ function ThreadDetailViewInternal(
         leadingContent: null,
         messageActionSurface: "thread-view",
         onForkMessage: isForkAvailable ? handleForkMessage : null,
+        onBackgroundCommand,
         onTitleAction: handleTimelineTitleAction,
         unreadDividerAutoScroll: unreadDividerState.autoScroll,
         unreadDividerPlacement: unreadDividerState.placement,
@@ -1777,6 +1784,10 @@ function ThreadDetailViewInternal(
   return (
     <>
       <PaneThreadActionCommandHandler thread={threadActionTarget} />
+      <ThreadBackgroundCommandHandler
+        onBackgroundCommand={onBackgroundCommand}
+        threadId={threadId}
+      />
       <ThreadProviderContext.Provider value={threadProviderContextValue}>
         <MarkdownLocalFileOpenTargetsContext.Provider value={fileOpenTargets}>
           <AttachmentOpenerContext.Provider value={openAttachment}>

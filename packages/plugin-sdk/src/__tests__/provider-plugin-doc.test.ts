@@ -58,6 +58,7 @@ const REGISTRATION_FIELDS = {
   supportsManualCompaction: "capabilities.supportsManualCompaction",
   supportsThreadArchive: "capabilities.supportsThreadArchive",
   supportsThreadRename: "capabilities.supportsThreadRename",
+  supportsToolCallBackground: "capabilities.supportsToolCallBackground",
   supportsServiceTier: "capabilities.supportsServiceTier",
   maintenance: "maintenance",
   composerActions: "composerActions",
