@@ -6,6 +6,7 @@ import { seedStoredEvent, seedThreadFixture } from "../helpers/seed.js";
 import { withTestHarness, type TestAppHarness } from "../helpers/test-app.js";
 
 const TASK_ID = "b0i8hik1l";
+const FOREGROUND_CALL_ID = "toolu_01ForegroundBash";
 const COMMAND = "for i in $(seq 1 100); do echo tick $i; sleep 1; done";
 
 function seedRunningBackgroundCommand(
@@ -195,6 +196,59 @@ describe("thread background command routes", () => {
 
       expect(response.status).toBe(404);
       expect(responder.requests).toHaveLength(0);
+    });
+  });
+
+  it("moves a running foreground command to the background through the thread's host", async () => {
+    await withTestHarness(async (harness) => {
+      const fixture = seedRunningBackgroundCommand(harness);
+      const responder = registerHostRpcResponder(harness, {
+        hostId: fixture.host.id,
+        sessionId: fixture.session.id,
+        handle: ({ command }) => {
+          expect(command).toMatchObject({
+            type: "thread.toolCall.background",
+            threadId: fixture.thread.id,
+            environmentId: fixture.environment.id,
+            itemId: FOREGROUND_CALL_ID,
+          });
+          return { ok: true, result: { backgrounded: true } };
+        },
+      });
+
+      const response = await harness.app.request(
+        `/api/v1/threads/${fixture.thread.id}/commands/${FOREGROUND_CALL_ID}/background`,
+        { method: "POST" },
+      );
+
+      expect(
+        response.status,
+        JSON.stringify(await readJson(response.clone())),
+      ).toBe(200);
+      expect(await readJson(response)).toEqual({ ok: true, backgrounded: true });
+      expect(responder.requests).toHaveLength(1);
+    });
+  });
+
+  it("reports a conflict when no running foreground command matches the call id", async () => {
+    await withTestHarness(async (harness) => {
+      const fixture = seedRunningBackgroundCommand(harness);
+      const responder = registerHostRpcResponder(harness, {
+        hostId: fixture.host.id,
+        sessionId: fixture.session.id,
+        handle: () => ({ ok: true, result: { backgrounded: false } }),
+      });
+
+      const response = await harness.app.request(
+        `/api/v1/threads/${fixture.thread.id}/commands/unknown-call/background`,
+        { method: "POST" },
+      );
+
+      expect(response.status).toBe(409);
+      expect(await readJson(response)).toMatchObject({
+        message: expect.stringContaining("No running foreground command"),
+      });
+      expect(responder.requests).toHaveLength(1);
     });
   });
 });
