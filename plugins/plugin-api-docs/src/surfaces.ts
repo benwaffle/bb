@@ -693,10 +693,10 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
         summary:
           "Add commands to bb's command palette. With this, a plugin can:",
         bullets: [
-          "Run plugin actions from the palette or a keyboard shortcut",
-          "Suggest a default shortcut that people can rebind",
+          "Run plugin actions from the palette or a rebindable keyboard shortcut",
           "Show a command only when the current thread or project fits",
           "Open a plugin panel for the focused thread or New thread screen",
+          "Run bb's own commands and handle the Leader key, even from embedded browser pages",
         ],
         apiSymbols: [
           "PluginAppBuilder.commands",
@@ -706,6 +706,10 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "PluginCommandShortcut",
           "experimental_matchesShortcutKey",
           "ExperimentalShortcutKeyEvent",
+          "experimental_useAppCommands",
+          "ExperimentalAppCommands",
+          "ExperimentalAppCommandInfo",
+          "experimental_useLeaderKeyCommand",
         ],
         firstParty: ["File Editor"],
       },

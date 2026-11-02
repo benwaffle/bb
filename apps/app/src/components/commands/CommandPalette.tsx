@@ -115,18 +115,27 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
       ),
     [appPluginCommands],
   );
-  useIndexedAppCommandHandlers(appPluginCommandIds, (index) => {
+  const buildPluginCommandAction = (index: number) => {
     const slot = appPluginCommands[index];
-    if (!slot) return false;
-    const action = buildFocusedSurfacePaletteActions({
+    if (!slot) return undefined;
+    return buildFocusedSurfacePaletteActions({
       slots: [slot],
       threadId,
       projectId,
     })[0];
-    if (!action) return false;
-    action.run();
-    return true;
-  });
+  };
+  useIndexedAppCommandHandlers(
+    appPluginCommandIds,
+    (index) => {
+      const action = buildPluginCommandAction(index);
+      if (!action) return false;
+      action.run();
+      return true;
+    },
+    0,
+    true,
+    (index) => buildPluginCommandAction(index) !== undefined,
+  );
   const openTargetRef = useRef<EventTarget | null>(null);
   const pendingRunRef = useRef<(() => void) | null>(null);
 
@@ -135,7 +144,7 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
       ...buildAppCommandActions({
         target,
         isCommandAvailable: runner.isCommandAvailable,
-        dispatch: runner.dispatch,
+        dispatch: runner.execute,
         shortcuts,
       }),
       ...[
@@ -162,6 +171,7 @@ export function CommandPalette({ threadId, projectId }: CommandPaletteProps) {
       projectId,
       pluginShortcuts,
       runner.dispatch,
+      runner.execute,
       runner.isCommandAvailable,
       shortcuts,
       threadId,
