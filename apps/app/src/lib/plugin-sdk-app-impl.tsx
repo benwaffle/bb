@@ -142,6 +142,10 @@ import { useThreadContextKind } from "@/components/plugin/thread-context-card-pa
 import { useTabVisible } from "@/components/secondary-panel/tab-visibility";
 import { useServerChoices } from "@/hooks/useServerChoices";
 import { getServerChoices } from "@/lib/server-choices";
+import {
+  usePluginAppCommands,
+  usePluginLeaderKeyCommand,
+} from "./plugin-app-commands";
 import { ThreadRowMetadata } from "@/components/plugin/ThreadRowMetadata";
 
 function PluginInfoListRow({
@@ -181,6 +185,8 @@ export const pluginSdkAppImplementation = {
   experimental_useThreadRequests: useThreadRequests,
   experimental_useCanOpenFileExternally: usePluginCanOpenFileExternally,
   experimental_useTabVisible: useTabVisible,
+  experimental_useAppCommands: usePluginAppCommands,
+  experimental_useLeaderKeyCommand: usePluginLeaderKeyCommand,
   experimental_useServers: useServerChoices,
   experimental_hasServers: () => getServerChoices() !== null,
   experimental_useAppPanel,
