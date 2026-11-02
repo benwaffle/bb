@@ -250,6 +250,11 @@ export const APP_COMMAND_GROUPS: readonly AppCommandGroup[] = [
         "Clean up plugin cache",
         "Delete cached plugin versions that no installed plugin uses, such as versions left by earlier bb releases.",
       ),
+      paletteHiddenCommand(
+        "keymap.leader",
+        "Leader key",
+        "Start a leader key sequence from an embedded browser page. A plugin such as leader-keys handles it.",
+      ),
     ],
   },
   {
