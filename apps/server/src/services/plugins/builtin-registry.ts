@@ -196,6 +196,11 @@ export const BUILTIN_PLUGINS = [
     defaultEnabled: true,
   },
   {
+    name: "inbox",
+    pluginId: "bb--inbox",
+    defaultEnabled: true,
+  },
+  {
     name: "navigation",
     pluginId: "navigation",
     defaultEnabled: true,
