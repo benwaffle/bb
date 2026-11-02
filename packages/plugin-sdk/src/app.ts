@@ -204,6 +204,12 @@ export const experimental_useCanOpenFileExternally = runtimeFunction(
 export const experimental_useTabVisible = runtimeFunction(
   "experimental_useTabVisible",
 );
+export const experimental_useAppCommands = runtimeFunction(
+  "experimental_useAppCommands",
+);
+export const experimental_useLeaderKeyCommand = runtimeFunction(
+  "experimental_useLeaderKeyCommand",
+);
 export const experimental_useServers = runtimeFunction(
   "experimental_useServers",
 );
