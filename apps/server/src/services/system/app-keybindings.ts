@@ -416,6 +416,16 @@ export const DEFAULT_APP_KEYBINDINGS: AppDefaultKeybindings = [
     },
   ),
   binding(
+    "keymap.leader",
+    "Space",
+    { alt: true },
+    {
+      all: ["mainSurface", "browserFocus"],
+      desktopOnly: true,
+      none: ["modalOpen"],
+    },
+  ),
+  binding(
     "window.find",
     "f",
     { mod: true },
