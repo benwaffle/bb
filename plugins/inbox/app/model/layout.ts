@@ -4,6 +4,11 @@ import type {
   PluginSidebarThread,
 } from "@get-bb/plugin-sdk/app";
 import type { PendingInteractionKind } from "../../shared/contract.js";
+import {
+  snoozeExpired,
+  type InboxThreadState,
+  type InboxThreadStates,
+} from "../../shared/inbox-state.js";
 import { graceStatus, type GraceState } from "./grace.js";
 import {
   deriveInboxStatus,
@@ -12,14 +17,24 @@ import {
   type InboxStatus,
 } from "./status.js";
 
-export type InboxSection = "pinned" | "inbox" | "working" | "done";
+export type InboxSection =
+  | "pinned"
+  | "inbox"
+  | "working"
+  | "done"
+  | "snoozed"
+  | "settled";
 
 export const INBOX_SECTIONS: readonly InboxSection[] = [
   "pinned",
   "inbox",
   "working",
   "done",
+  "snoozed",
+  "settled",
 ];
+
+export type ParkedPlacement = "settled" | "snoozed" | "woke";
 
 export interface InboxEntry {
   thread: PluginSidebarThread;
@@ -27,6 +42,7 @@ export interface InboxEntry {
   section: InboxSection;
   returnAt: number;
   workingSince: number | null;
+  parked: InboxThreadState | null;
 }
 
 export interface InboxThreadNode {
@@ -52,35 +68,82 @@ export interface InboxSectionLayout {
 
 export type InboxLayout = Record<InboxSection, InboxSectionLayout>;
 
+export function hasWokenSince(
+  thread: Pick<PluginSidebarThread, "latestAttentionAt">,
+  status: InboxStatus,
+  settledAt: number,
+): boolean {
+  if (thread.latestAttentionAt > settledAt) return true;
+  return status === "approval" || status === "input" || status === "working";
+}
+
+export function parkedPlacement(
+  thread: Pick<PluginSidebarThread, "latestAttentionAt">,
+  status: InboxStatus,
+  state: InboxThreadState | null,
+  now: number,
+): ParkedPlacement | null {
+  if (state === null) return null;
+  if (hasWokenSince(thread, status, state.settledAt)) return null;
+  if (snoozeExpired(state, now)) return "woke";
+  return state.snoozeUntil === null ? "settled" : "snoozed";
+}
+
 export function placeSection(
   status: InboxStatus,
   isPinned: boolean,
+  parked: ParkedPlacement | null = null,
 ): InboxSection {
+  if (parked === "snoozed" || parked === "settled") return parked;
   if (isPinned) return "pinned";
   if (isWorkingStatus(status)) return "working";
-  if (needsAttention(status)) return "inbox";
+  if (parked === "woke" || needsAttention(status)) return "inbox";
   return "done";
+}
+
+export function parkedPlacements(
+  threads: readonly PluginSidebarThread[],
+  pendingKinds: Readonly<Record<string, PendingInteractionKind>>,
+  states: InboxThreadStates,
+  now: number,
+): Map<string, ParkedPlacement> {
+  const placements = new Map<string, ParkedPlacement>();
+  for (const thread of threads) {
+    const state = states[thread.id];
+    if (state === undefined) continue;
+    const derived = deriveInboxStatus(thread, pendingKinds[thread.id] ?? null);
+    const placement = parkedPlacement(thread, derived, state, now);
+    if (placement !== null) placements.set(thread.id, placement);
+  }
+  return placements;
 }
 
 export function buildInboxEntries(
   threads: readonly PluginSidebarThread[],
   pendingKinds: Readonly<Record<string, PendingInteractionKind>>,
   grace: GraceState,
+  states: InboxThreadStates = {},
+  now = 0,
 ): InboxEntry[] {
   const entries: InboxEntry[] = [];
+  const placements = parkedPlacements(threads, pendingKinds, states, now);
   for (const thread of threads) {
     if (thread.isHidden || thread.isArchived) continue;
     const derived = deriveInboxStatus(thread, pendingKinds[thread.id] ?? null);
+    const placement = placements.get(thread.id) ?? null;
+    const state = placement === null ? null : (states[thread.id] ?? null);
     const status = graceStatus(grace, thread.id) ?? derived;
     entries.push({
       thread,
       status,
-      section: placeSection(status, thread.isPinned),
+      section: placeSection(status, thread.isPinned, placement),
       returnAt: Math.max(
         thread.latestAttentionAt,
         grace.returnedAt.get(thread.id) ?? 0,
+        placement === "woke" ? (state?.snoozeUntil ?? 0) : 0,
       ),
       workingSince: grace.workingSince.get(thread.id) ?? null,
+      parked: state,
     });
   }
   return entries;
@@ -91,7 +154,15 @@ const SECTION_URGENCY: Record<InboxSection, number> = {
   working: 2,
   pinned: 1,
   done: 0,
+  snoozed: -1,
+  settled: -2,
 };
+
+const QUIET_SECTIONS: ReadonlySet<InboxSection> = new Set([
+  "done",
+  "snoozed",
+  "settled",
+]);
 
 export function childEscapesParent(
   childSection: InboxSection,
@@ -99,7 +170,10 @@ export function childEscapesParent(
 ): boolean {
   if (childSection === "pinned") return true;
   if (childSection === "inbox") return parentSection !== "inbox";
-  if (childSection === "working") return parentSection === "done";
+  if (childSection === "working") return QUIET_SECTIONS.has(parentSection);
+  if (childSection === "snoozed" || childSection === "settled") {
+    return parentSection !== childSection;
+  }
   return false;
 }
 
@@ -114,18 +188,22 @@ function comparePinned(left: InboxEntry, right: InboxEntry): number {
   return (left.thread.pinnedAt ?? 0) - (right.thread.pinnedAt ?? 0);
 }
 
-function sortAt(entry: InboxEntry): number {
-  if (entry.section === "working") {
+function sortAt(section: InboxSection, entry: InboxEntry): number {
+  if (section === "working") {
     return entry.workingSince ?? entry.thread.updatedAt;
   }
+  if (section === "snoozed") {
+    return entry.parked?.snoozeUntil ?? Number.MAX_SAFE_INTEGER;
+  }
+  if (section === "settled") return entry.parked?.settledAt ?? 0;
   return entry.returnAt;
 }
 
-function nodeSortAt(node: InboxNode): number {
-  if (node.kind === "thread") return sortAt(node.entry);
-  let latest = 0;
-  for (const row of node.rows) latest = Math.max(latest, sortAt(row.entry));
-  return latest;
+function nodeSortAt(section: InboxSection, node: InboxNode): number {
+  if (node.kind === "thread") return sortAt(section, node.entry);
+  const times = node.rows.map((row) => sortAt(section, row.entry));
+  if (times.length === 0) return 0;
+  return section === "snoozed" ? Math.min(...times) : Math.max(...times);
 }
 
 function compareNodes(
@@ -136,7 +214,10 @@ function compareNodes(
   if (section === "pinned" && left.kind === "thread" && right.kind === "thread") {
     return comparePinned(left.entry, right.entry);
   }
-  return nodeSortAt(right) - nodeSortAt(left);
+  if (section === "snoozed") {
+    return nodeSortAt(section, left) - nodeSortAt(section, right);
+  }
+  return nodeSortAt(section, right) - nodeSortAt(section, left);
 }
 
 function countThreads(node: InboxThreadNode): number {
@@ -229,12 +310,16 @@ export function buildInboxLayout(
     const placeholders = group.rows.filter(isPlaceholderRow);
     if (rows.length < 2 && placeholders.length === 0) continue;
     for (const row of rows) claimed.add(row.entry.thread.id);
-    let section: InboxSection = "done";
+    let section: InboxSection | null = null;
     for (const row of rows) {
-      if (SECTION_URGENCY[row.entry.section] > SECTION_URGENCY[section]) {
+      if (
+        section === null ||
+        SECTION_URGENCY[row.entry.section] > SECTION_URGENCY[section]
+      ) {
         section = row.entry.section;
       }
     }
+    section ??= "done";
     groupNodes.push({ node: { kind: "group", group, rows, placeholders }, section });
   }
 
@@ -243,6 +328,8 @@ export function buildInboxLayout(
     inbox: { nodes: [], threadCount: 0 },
     working: { nodes: [], threadCount: 0 },
     done: { nodes: [], threadCount: 0 },
+    snoozed: { nodes: [], threadCount: 0 },
+    settled: { nodes: [], threadCount: 0 },
   };
   for (const root of roots) {
     if (claimed.has(root.entry.thread.id)) continue;

@@ -162,7 +162,7 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
     [activeThreadId, onNavigate, projectsById, icons, providers],
   );
   if (status === "loading") return null;
-  const { pinned, inbox, working, done } = layout;
+  const { pinned, inbox, working, done, snoozed, settled } = layout;
   const inboxEmpty = inbox.nodes.length === 0;
   return (
     <nav
@@ -214,6 +214,24 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
           threadCount={done.threadCount}
           context={context}
         />
+        {snoozed.nodes.length > 0 ? (
+          <Shelf
+            section="snoozed"
+            title="Snoozed"
+            nodes={snoozed.nodes}
+            threadCount={snoozed.threadCount}
+            context={context}
+          />
+        ) : null}
+        {settled.nodes.length > 0 ? (
+          <Shelf
+            section="settled"
+            title="Settled"
+            nodes={settled.nodes}
+            threadCount={settled.threadCount}
+            context={context}
+          />
+        ) : null}
       </div>
     </nav>
   );

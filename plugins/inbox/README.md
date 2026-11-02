@@ -1,9 +1,9 @@
 # Inbox
 
 The Inbox plugin draws bb's sidebar thread list as an inbox, after T3 Code's
-sidebar. It registers the `inbox` thread list (`bb--inbox/inbox`). This phase
-is read-only: it derives every placement from the live thread view and stores
-no per-thread state.
+sidebar. It registers the `inbox` thread list (`bb--inbox/inbox`). Placement
+comes from the live thread view plus one stored record per settled or snoozed
+thread.
 
 ## Sections
 
@@ -13,6 +13,8 @@ no per-thread state.
 | Inbox | Threads that stopped and need you: unread done, input, approval, failed | Newest return first |
 | Working | Threads whose agent turn is running (shelf, collapsed by default) | Newest work first |
 | Done | Read threads with no attention state (shelf, collapsed by default) | Newest return first |
+| Snoozed | Snoozed threads, with the time until they wake (shelf, collapsed) | Soonest wake first |
+| Settled | Threads you settled (shelf, collapsed) | Newest settle first |
 
 Archived and hidden threads do not show. The return time is the thread's
 `latestAttentionAt`, or the moment the list saw it stop working, whichever is
@@ -100,8 +102,50 @@ Classic: a preference that names a disabled plugin leaves the sidebar on bb's
 bb plugin config bb--inbox set layout classic
 ```
 
-## Deferred to later phases
+## Settle and snooze
 
-Settle, snooze and auto-settle, with their per-thread state, hover actions,
-undo and CLI commands. With settle, the end of a background command is a wake
-event that brings a settled thread back to the inbox.
+Settle a thread when you are done with it for now. It leaves Inbox, Done,
+Working and Pinned for the Settled shelf. Archive is separate and unchanged.
+Snooze hides a thread in the Snoozed shelf until a time: 1 hour, tomorrow at
+9am, next Monday at 9am, or a picked time. Nothing settles on its own.
+
+- **Row**: hovering a row swaps its status for a snooze clock and **Settle**.
+  Settled rows offer **Unsettle**, snoozed rows **Wake**. Rows whose turn is
+  running or that wait for an answer have no strip, because they would wake
+  at once.
+- **Menu**: "Settle thread" / "Unsettle thread" / "Wake thread now" and a
+  **Snooze** submenu in every thread actions menu (row, right-click, thread
+  header, long-press drawer).
+- **Commands** (Settings → Keyboard, rebindable, and callable from leader
+  keys): "Settle thread" (Mod+Shift+S), "Unsettle thread" (Mod+Shift+U),
+  "Snooze thread…" (Mod+Shift+H, opens the picker), and one unbound command
+  per preset. They act on the thread in view.
+- **CLI**: `bb inbox list | settle [id] | unsettle [id] | snooze [id] <1h|tomorrow|monday|ISO time>`.
+
+### Wake
+
+A parked thread wakes, returns to the Inbox and is marked unread, when
+something happens after it was parked:
+
+| Event | Signal |
+| ----- | ------ |
+| A turn starts (a user, child or agent message) | `thread.active` |
+| A turn finishes, including a child thread's | `thread.idle` |
+| The thread fails | `thread.failed` |
+| An approval or question is requested | `interaction.pending` |
+| A background command finishes | `experimental_thread.events`, then a drop in `bb.sdk.threads.backgroundCommands` |
+| A snooze time comes | a server timer |
+
+The server deletes the record and marks the thread unread on each event. The
+list also treats a thread as awake on its own, for events the server missed
+while it was reloading: `latestAttentionAt` newer than `settledAt` (core moves
+it when a root turn ends or a running thread fails), a pending interaction, a
+running turn, or a snooze time in the past. A failure or a background command
+that was already there when you settled does not wake the thread.
+
+### Storage
+
+Each parked thread is one `bb.storage.kv` row, `thread:<threadId>` →
+`{ settledAt, snoozeUntil }` (`snoozeUntil` is null for a settled thread).
+There is no Drizzle migration. `thread.deleted` drops a row, and the first
+list read each hour drops rows for threads that no longer exist.
