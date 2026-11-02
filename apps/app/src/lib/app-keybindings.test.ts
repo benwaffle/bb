@@ -119,6 +119,31 @@ describe("app keybindings", () => {
     },
   );
 
+  it("matches Alt+Space when macOS reports a non-breaking space", () => {
+    const shortcut: AppShortcut = {
+      key: "Space",
+      mod: false,
+      meta: false,
+      control: false,
+      alt: true,
+      shift: false,
+    };
+    expect(
+      matchesAppShortcut(
+        {
+          key: "\u00a0",
+          code: "Space",
+          metaKey: false,
+          ctrlKey: false,
+          altKey: true,
+          shiftKey: false,
+        },
+        shortcut,
+        true,
+      ),
+    ).toBe(true);
+  });
+
   it.each([
     ["m", "Â", "KeyM"],
     ["p", "∏", "KeyP"],
