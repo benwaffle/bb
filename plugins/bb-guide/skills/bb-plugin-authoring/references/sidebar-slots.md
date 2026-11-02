@@ -93,8 +93,10 @@ the `pluginId`, folds placed threads into `threadIds`, and always sets
 ### Decorating sidebar project headers
 
 `app.slots.experimental_sidebarProjectDecoration` describes how a thread
-list should decorate a project's header. bb's bundled Thread list and Inbox
-list do not draw it; a replacement thread list that reads it does.
+list should decorate a project's header. bb's bundled Thread list does not
+draw it. The Inbox list draws a row's `leading` in place of the project's
+favicon or monogram and, when no `experimental_sidebarThreadDecoration` hue
+applies, colors the row's project name with `accentColor`.
 `useDecoration(projectId)` is a React hook the host calls inside your
 plugin's context, once per project a thread list requests, so `useRpc` and `useRealtime` work. Return the same object
 while nothing changed, or `null` for no decoration.
@@ -143,7 +145,10 @@ fields come from the first plugin that sets a color or classes.
 for rows a thread list shows outside that project's header.
 `useDecoration(projectId)` is a React hook the host calls inside your
 plugin's context, once per project a thread list requests. bb's bundled
-lists do not draw the per-project decoration. Return the same object while
+Thread list does not draw the per-project decoration. The Inbox list draws
+`hue` as an edge on the row and a tint on its project name, shows `title` in
+place of the project name, and shows `leading` in place of the project's
+favicon when no `experimental_sidebarProjectDecoration` supplies a node. Return the same object while
 nothing changed, or `null` for no decoration.
 
 ```tsx
@@ -218,12 +223,19 @@ row model:
   link handling (the bb browser or the system browser, per the user's
   setting) without opening the thread. Other schemes, and a `labelHref`
   without `label`, are dropped.
-- `description` — muted text after the thread title.
+- `description` — muted text after the thread title. The Inbox list shows it
+  on the line below the title in place of the branch, with the branch as its
+  tooltip.
 - `trailing` — an `ExperimentalSidebarThreadGroupRowTrailing`, a dot or
   short text after the title.
 - `pullRequest` — an `ExperimentalSidebarThreadRowPullRequest`
   (`{ number, state }`), the pull request the thread works on, such as the
-  PR a review thread reviews. It wins over the branch's pull request.
+  PR a review thread reviews. It wins over the branch's pull request. The
+  Inbox list draws it as `#number` with a state icon at the end of the line
+  below the title: green open, muted draft, purple merged, red closed.
+
+In the Inbox list, `icon` replaces the provider icon at the end of the line
+below the title, and `trailing` sits before the pull request.
 
 Invalid fields are dropped, and a decoration with no valid field counts as
 `null`. A replacement thread list reads it with
