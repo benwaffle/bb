@@ -139,7 +139,7 @@ export const preferenceDefinitions = {
   groupByReadStatus: definePreference(
     z.boolean(),
     false,
-    "List threads that show an unread dot above the rest, keeping the selected sort within each group. The open thread keeps its place until another thread is opened.",
+    "List threads that show an unread dot above the rest, keeping the selected sort within each group. Opening a thread never moves it between groups: the open thread keeps its group, and threads opened earlier keep theirs until new activity re-sorts the list.",
     null,
   ),
   chronologicalSort: definePreference(
