@@ -3858,6 +3858,34 @@ export interface ExperimentalComposerCommandRegistration {
   run(context: { composer: PluginComposerApi }): void | Promise<void>;
 }
 
+/**
+ * One keyboard command as `experimental_useAppCommands().list()` reports it:
+ * bb's own commands with their Settings → Keyboard label, and plugin commands
+ * as `plugin:<pluginId>/<commandId>` with their registered title.
+ */
+export interface ExperimentalAppCommandInfo {
+  /** A bb command id such as `palette.open`, or `plugin:<pluginId>/<commandId>`. */
+  id: string;
+  title: string;
+  /**
+   * Whether `execute(id)` would run now, by the check the command palette
+   * uses to list a command for the focused element.
+   */
+  available: boolean;
+}
+
+/** Runs bb's keyboard commands the way the command palette does. */
+export interface ExperimentalAppCommands {
+  /**
+   * Run a command for the focused element. Returns false, and runs nothing,
+   * for an unknown id, a command the palette would not list here, or one no
+   * handler accepted.
+   */
+  execute(commandId: string): boolean;
+  /** Every bb command and registered plugin command, read at call time. */
+  list(): ExperimentalAppCommandInfo[];
+}
+
 /** Registers commands for bb's command palette. */
 export interface PluginAppCommands {
   /** Register a command. IDs are unique within this plugin, including legacy slot registrations. */
@@ -5889,6 +5917,19 @@ export interface PluginSdkApp {
    * tabs. Experimental: see docs/api_to_audit.md.
    */
   experimental_useTabVisible(): boolean;
+  /**
+   * Run and list bb's keyboard commands through the path the command palette
+   * uses. Experimental: see docs/api_to_audit.md.
+   */
+  experimental_useAppCommands(): ExperimentalAppCommands;
+  /**
+   * Handle bb's "Leader key" command (`keymap.leader`, Alt+Space by default).
+   * bb Desktop forwards its chord from embedded browser pages, returns focus
+   * to the app window, and runs the handler. Return false to decline. While
+   * the component is unmounted the command does nothing. Experimental: see
+   * docs/api_to_audit.md.
+   */
+  experimental_useLeaderKeyCommand(handler: () => boolean): void;
   /**
    * The servers this client can switch between, the list bb's command palette
    * offers. Null when the client keeps no server list: any web browser.

@@ -3315,6 +3315,7 @@ describe("DesktopBrowserViewManager", () => {
 
   it.each([
     "browser.find",
+    "keymap.leader",
     "panel.previousTab",
     "panel.nextTab",
     "pane.focus.previous",

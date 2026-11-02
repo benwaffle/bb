@@ -237,6 +237,19 @@ message, Original }` — render fenced code blocks of chosen languages in
   Errors from either callback are contained and logged, never breaking the
   palette. Write self-identifying titles ("Linear: open issue for this
   thread"): the palette matches the query against the title.
+  `experimental_useAppCommands()` runs commands from plugin code:
+  `execute(commandId)` takes a bb command id such as `palette.open` or
+  `pane.focus.left`, or `plugin:<pluginId>/<commandId>`, and runs it for the
+  focused element through the palette's own path. It returns false and runs
+  nothing when the id is unknown, when the palette would not list the command
+  here, or when no handler accepted it. `list()` returns
+  `{ id, title, available }` for every bb and plugin command, where
+  `available` is the palette's check for the focused element. A component
+  that calls `experimental_useLeaderKeyCommand(handler)` handles bb's
+  "Leader key" command (`keymap.leader`, Alt+Space by default, rebindable in
+  Settings → Keyboard). bb Desktop forwards that chord from embedded browser
+  pages, which otherwise keep every key, returns focus to the app window, and
+  runs the handler; return false to decline.
   `app.slots.commandPaletteAction` is a deprecated alias accepting the same
   fields. Both entry points share one ID namespace; registering the same ID
   through either path twice rejects plugin setup.

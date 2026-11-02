@@ -658,6 +658,7 @@ describe("app keybindings", () => {
         { command: "modelPicker.cycleProviderBackward", shift: true },
         { command: "modelPicker.cycleReasoning", shift: false },
         { command: "modelPicker.cycleReasoningBackward", shift: true },
+        { command: "keymap.leader", shift: false },
       ]);
       expect(
         assignedDefaultKeybindings
@@ -762,6 +763,7 @@ describe("app keybindings", () => {
         "browser.focusLocation",
         "browser.reload",
         "browser.find",
+        "keymap.leader",
         "window.find",
         "window.new",
       ]);
