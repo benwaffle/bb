@@ -2,8 +2,9 @@ import type { SidebarThread } from "./sidebar-thread.js";
 import type { ThreadComparator } from "./project-thread-groups.js";
 
 export interface HeldReadStatus {
-  threadId: string;
-  isUnread: boolean;
+  selectedThreadId: string | undefined;
+  sortSignature: string;
+  isUnreadByThreadId: ReadonlyMap<string, boolean>;
 }
 
 export type ThreadUnreadPredicate = (thread: SidebarThread) => boolean;
@@ -25,35 +26,77 @@ export function rememberHeldReadStatus(held: HeldReadStatus | null): void {
 export function restoreHeldReadStatus(
   selectedThreadId: string | undefined,
 ): HeldReadStatus | null {
-  return lastHeldReadStatus?.threadId === selectedThreadId
+  return lastHeldReadStatus?.selectedThreadId === selectedThreadId
     ? lastHeldReadStatus
     : null;
+}
+
+export function threadSortSignature(
+  threads: readonly SidebarThread[],
+): string {
+  return threads
+    .map((thread) =>
+      [
+        thread.id,
+        thread.parentThreadId,
+        thread.sectionId,
+        thread.status,
+        thread.createdAt,
+        thread.latestAttentionAt,
+        thread.displayTitle,
+        thread.isPinned,
+        thread.isArchived,
+        thread.isHidden,
+      ].join("\u0000"),
+    )
+    .sort()
+    .join("\u0001");
 }
 
 export function resolveHeldReadStatus(
   held: HeldReadStatus | null,
   threads: readonly SidebarThread[],
   selectedThreadId: string | undefined,
+  sortSignature = threadSortSignature(threads),
 ): HeldReadStatus | null {
-  if (held?.threadId === selectedThreadId) {
+  if (
+    held !== null &&
+    held.selectedThreadId === selectedThreadId &&
+    held.sortSignature === sortSignature
+  ) {
     return held;
   }
-  const thread =
-    selectedThreadId === undefined
-      ? undefined
-      : threads.find((candidate) => candidate.id === selectedThreadId);
-  return thread ? { threadId: thread.id, isUnread: thread.isUnread } : null;
+  const isUnreadByThreadId = new Map<string, boolean>();
+  if (held?.sortSignature === sortSignature) {
+    for (const [threadId, isUnread] of held.isUnreadByThreadId) {
+      isUnreadByThreadId.set(threadId, isUnread);
+    }
+  }
+  if (selectedThreadId !== undefined) {
+    const heldSelected = held?.isUnreadByThreadId.get(selectedThreadId);
+    const selected = threads.find((thread) => thread.id === selectedThreadId);
+    if (heldSelected !== undefined) {
+      isUnreadByThreadId.set(selectedThreadId, heldSelected);
+    } else if (selected) {
+      isUnreadByThreadId.set(selectedThreadId, selected.isUnread);
+    }
+  }
+  return isUnreadByThreadId.size === 0
+    ? null
+    : { selectedThreadId, sortSignature, isUnreadByThreadId };
 }
 
 export function createThreadUnreadPredicate(
   held: HeldReadStatus | null,
 ): ThreadUnreadPredicate {
-  return (thread) =>
-    isUnreadDoneThread(
-      held !== null && thread.id === held.threadId
-        ? { ...thread, isUnread: held.isUnread }
-        : thread,
+  return (thread) => {
+    const heldIsUnread = held?.isUnreadByThreadId.get(thread.id);
+    return isUnreadDoneThread(
+      heldIsUnread === undefined
+        ? thread
+        : { ...thread, isUnread: heldIsUnread },
     );
+  };
 }
 
 export function groupComparatorByReadStatus(
