@@ -124,8 +124,9 @@ Organize → Groups → By read status lists threads that show the unread dot ab
 the rest, keeping the selected sort within each group. `groupByReadStatus`
 defaults to `false`; use `bb thread-list prefs set groupByReadStatus true` to
 turn it on. Parents start collapsed while it is on, without changing
-`collapsedThreads`, and `environmentGrouping` is ignored. The open thread keeps
-its place until another thread is opened.
+`collapsedThreads`, and `environmentGrouping` is ignored. Opening a thread never
+moves it between groups: the open thread keeps its group, and threads opened
+earlier keep theirs until new activity re-sorts the list.
 
 New threads inherit the sidebar group where creation was invoked. Pinned
 creates pinned threads; custom sections supply their section; project, machine,

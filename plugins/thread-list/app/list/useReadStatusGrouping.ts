@@ -8,6 +8,7 @@ import {
   rememberHeldReadStatus,
   resolveHeldReadStatus,
   restoreHeldReadStatus,
+  threadSortSignature,
   type HeldReadStatus,
 } from "../model/read-status-grouping.js";
 import {
@@ -25,7 +26,13 @@ function useHeldReadStatus(
   useEffect(() => {
     rememberHeldReadStatus(held);
   }, [held]);
-  const next = resolveHeldReadStatus(held, threads, selectedThreadId);
+  const sortSignature = useMemo(() => threadSortSignature(threads), [threads]);
+  const next = resolveHeldReadStatus(
+    held,
+    threads,
+    selectedThreadId,
+    sortSignature,
+  );
   if (next !== held) {
     setHeld(next);
   }
