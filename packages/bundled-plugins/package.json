@@ -30,6 +30,7 @@
     "bb-plugin-bb--github-star": "workspace:*",
     "bb-plugin-bb--git": "workspace:*",
     "bb-plugin-bb--github-pr-status": "workspace:*",
+    "bb-plugin-bb--inbox": "workspace:*",
     "bb-plugin-inline-vis": "workspace:*",
     "bb-plugin-keep-awake": "workspace:*",
     "bb-plugin-memory": "workspace:*",
