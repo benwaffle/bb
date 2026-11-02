@@ -3343,6 +3343,7 @@ export function PromptBoxInternal({
         pushToTalkHoldTimerRef.current !== null
       ) {
         if (isSpaceKey(event)) event.preventDefault();
+        else if (!pushToTalkHeldRef.current) clearHoldTimer();
         return;
       }
       const gate = pushToTalkGateRef.current;
