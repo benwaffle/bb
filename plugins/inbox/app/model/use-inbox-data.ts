@@ -21,11 +21,42 @@ import {
   type GraceObservation,
   type GraceState,
 } from "./grace.js";
-import { buildInboxEntries, buildInboxLayout, type InboxLayout } from "./layout.js";
+import { nextSnoozeWake, type InboxThreadStates } from "../../shared/inbox-state.js";
+import {
+  buildInboxEntries,
+  buildInboxLayout,
+  parkedPlacements,
+  type InboxLayout,
+} from "./layout.js";
 import { deriveInboxStatus } from "./status.js";
 
 const NO_KINDS: Readonly<Record<string, PendingInteractionKind>> = {};
 const NO_ICONS: Readonly<Record<string, string | null>> = {};
+const NO_STATES: InboxThreadStates = {};
+const MAX_TIMER_MS = 2_147_483_647;
+
+export function useThreadStates(): InboxThreadStates {
+  const { data } = experimental_useRpcQuery({
+    contract: inboxRpcContract,
+    method: "threadStates",
+    input: null,
+  });
+  return data?.states ?? NO_STATES;
+}
+
+function useWakeClock(states: InboxThreadStates): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const next = nextSnoozeWake(states, now);
+    if (next === null) return;
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(Math.max(0, next - Date.now()) + 20, MAX_TIMER_MS),
+    );
+    return () => clearTimeout(timer);
+  }, [states, now]);
+  return now;
+}
 
 function usePendingInteractionKinds(
   threads: readonly PluginSidebarThread[],
@@ -90,25 +121,35 @@ export function useInboxData(): InboxData {
   const state = experimental_useSidebarThreads();
   const groups = experimental_useSidebarThreadGroups();
   const pendingKinds = usePendingInteractionKinds(state.threads);
-  const observations = useMemo(
-    () =>
-      state.threads
-        .filter((thread) => !thread.isHidden && !thread.isArchived)
-        .map((thread) => ({
+  const threadStates = useThreadStates();
+  const now = useWakeClock(threadStates);
+  const observations = useMemo(() => {
+    const placements = parkedPlacements(
+      state.threads,
+      pendingKinds,
+      threadStates,
+      now,
+    );
+    return state.threads
+      .filter((thread) => !thread.isHidden && !thread.isArchived)
+      .map((thread) => {
+        const placement = placements.get(thread.id);
+        return {
           id: thread.id,
           status: deriveInboxStatus(thread, pendingKinds[thread.id] ?? null),
-          isPinned: thread.isPinned,
-        })),
-    [state.threads, pendingKinds],
-  );
+          isPinned:
+            thread.isPinned || placement === "settled" || placement === "snoozed",
+        };
+      });
+  }, [state.threads, pendingKinds, threadStates, now]);
   const grace = useGrace(observations);
   const layout = useMemo(
     () =>
       buildInboxLayout(
-        buildInboxEntries(state.threads, pendingKinds, grace),
+        buildInboxEntries(state.threads, pendingKinds, grace, threadStates, now),
         groups,
       ),
-    [state.threads, pendingKinds, grace, groups],
+    [state.threads, pendingKinds, grace, groups, threadStates, now],
   );
   const projectsById = useMemo(
     () => new Map(state.projects.map((project) => [project.id, project])),
