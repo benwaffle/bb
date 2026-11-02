@@ -44,6 +44,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `useBbNavigate`
 - `experimental_useCanOpenFileExternally`
 - `experimental_useTabVisible`
+- `experimental_useAppCommands`
+- `experimental_useLeaderKeyCommand`
 - `experimental_useAppPanel`
 - `experimental_usePanelTabs`
 - `experimental_PanelTabIcon`
@@ -217,6 +219,8 @@ Read the installed SDK declarations for the exact current signatures.
 - `PluginCodeThemeState`
 - `ExperimentalServer`
 - `ExperimentalServers`
+- `ExperimentalAppCommands`
+- `ExperimentalAppCommandInfo`
 - `ExperimentalClipboardContent`
 - `ExperimentalSaveFileRequest`
 - `ExperimentalSaveFileOutcome`
