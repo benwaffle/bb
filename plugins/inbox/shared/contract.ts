@@ -1,5 +1,6 @@
 import { defineRpcContract } from "@get-bb/plugin-sdk";
 import { z } from "zod";
+import { inboxThreadStateSchema } from "./inbox-state.js";
 
 export const INBOX_THREAD_LIST_ID = "inbox";
 export const CLASSIC_THREAD_LIST_PROVIDER = "thread-list/thread-list";
@@ -27,6 +28,13 @@ export type PendingInteractionKind = z.infer<
 
 export const MAX_PENDING_KIND_THREADS = 200;
 
+export const THREAD_STATES_TAG = "thread-states";
+
+const threadIdInput = z.object({ threadId: z.string().min(1) }).strict();
+const threadStateOutput = z
+  .object({ state: inboxThreadStateSchema.nullable() })
+  .strict();
+
 export const inboxRpcContract = defineRpcContract({
   projectIcons: {
     input: z.null(),
@@ -43,5 +51,23 @@ export const inboxRpcContract = defineRpcContract({
     output: z
       .object({ kinds: z.record(z.string(), pendingInteractionKindSchema) })
       .strict(),
+  },
+  threadStates: {
+    input: z.null(),
+    output: z
+      .object({ states: z.record(z.string(), inboxThreadStateSchema) })
+      .strict(),
+    tags: () => [THREAD_STATES_TAG],
+  },
+  settle: { input: threadIdInput, output: threadStateOutput },
+  unsettle: { input: threadIdInput, output: threadStateOutput },
+  snooze: {
+    input: z
+      .object({
+        threadId: z.string().min(1),
+        until: z.number().int().positive(),
+      })
+      .strict(),
+    output: threadStateOutput,
   },
 });

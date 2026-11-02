@@ -12,7 +12,18 @@ import {
   type PendingInteractionKind,
   type SidebarLayout,
 } from "./shared/contract.js";
+import {
+  formatWakeAt,
+  isSnoozePresetId,
+  snoozePresetTime,
+  type InboxThreadState,
+} from "./shared/inbox-state.js";
 import { parseGitRemote, projectIconSourceUrl } from "./shared/project-icon.js";
+import {
+  createInboxThreadStates,
+  type InboxThreadStatesOptions,
+  type InboxThreadStatesStore,
+} from "./server/thread-states.js";
 
 export const ICON_FRESH_MS = 7 * 24 * 60 * 60 * 1000;
 export const ICON_RETRY_MS = 24 * 60 * 60 * 1000;
@@ -209,6 +220,70 @@ export async function pendingInteractionKinds(
   return kinds;
 }
 
+export function parseSnoozeTime(value: string, now: number): number | null {
+  if (isSnoozePresetId(value)) return snoozePresetTime(value, now);
+  const at = Date.parse(value);
+  return Number.isNaN(at) ? null : at;
+}
+
+const CLI_USAGE = [
+  "bb inbox list",
+  "bb inbox settle [thread-id]",
+  "bb inbox unsettle [thread-id]",
+  "bb inbox snooze [thread-id] <1h|tomorrow|monday|ISO time>",
+].join("\n");
+
+function describeState(threadId: string, state: InboxThreadState): string {
+  return state.snoozeUntil === null
+    ? `${threadId}\tsettled\t${new Date(state.settledAt).toISOString()}`
+    : `${threadId}\tsnoozed\t${new Date(state.snoozeUntil).toISOString()}`;
+}
+
+export async function runInboxCli(
+  store: InboxThreadStatesStore,
+  argv: readonly string[],
+  contextThreadId: string | undefined,
+  now: () => number,
+): Promise<{ exitCode: number; stdout?: string; stderr?: string }> {
+  const [command, ...rest] = argv;
+  const fail = (message: string) => ({
+    exitCode: 1,
+    stderr: `${message}\n\n${CLI_USAGE}\n`,
+  });
+  if (command === undefined || command === "--help" || command === "-h") {
+    return { exitCode: 0, stdout: `${CLI_USAGE}\n` };
+  }
+  if (command === "list") {
+    const states = await store.list();
+    const lines = Object.entries(states).map(([threadId, state]) =>
+      describeState(threadId, state),
+    );
+    return { exitCode: 0, stdout: lines.length === 0 ? "" : `${lines.join("\n")}\n` };
+  }
+  const threadArgs = command === "snooze" ? rest.slice(0, -1) : rest;
+  if (threadArgs.length > 1) return fail(`Too many arguments for ${command}.`);
+  const threadId = threadArgs[0] ?? contextThreadId;
+  if (threadId === undefined) {
+    return fail(`Pass a thread id, or run bb inbox ${command} inside a thread.`);
+  }
+  if (command === "settle") {
+    await store.settle(threadId);
+    return { exitCode: 0, stdout: `Settled ${threadId}\n` };
+  }
+  if (command === "unsettle") {
+    await store.unsettle(threadId);
+    return { exitCode: 0, stdout: `Unsettled ${threadId}\n` };
+  }
+  if (command === "snooze") {
+    const when = rest.at(-1);
+    const until = when === undefined ? null : parseSnoozeTime(when, now());
+    if (until === null) return fail("Pass 1h, tomorrow, monday or an ISO time.");
+    await store.snooze(threadId, until);
+    return { exitCode: 0, stdout: `Snoozed ${threadId} until ${formatWakeAt(until)}\n` };
+  }
+  return fail(`Unknown command: ${command}`);
+}
+
 export default async function inboxPlugin(
   bb: BbPluginApi,
   fetchIcon: IconFetch = (url) =>
@@ -216,13 +291,14 @@ export default async function inboxPlugin(
       redirect: "follow",
       signal: AbortSignal.timeout(ICON_FETCH_TIMEOUT_MS),
     }),
+  stateOptions: InboxThreadStatesOptions = {},
 ) {
   const settings = bb.settings.define({
     layout: {
       type: "select",
       label: "Sidebar layout",
       description:
-        "Inbox puts threads that need you on top and folds working and done threads below. Classic is bb's thread list.",
+        "Inbox lists every thread until you settle it and folds working threads below. Classic is bb's thread list.",
       options: [...SIDEBAR_LAYOUTS],
       experimental_optionLabels: { inbox: "Inbox", classic: "Classic" },
       default: DEFAULT_SIDEBAR_LAYOUT,
@@ -230,6 +306,9 @@ export default async function inboxPlugin(
   });
 
   const iconStore = createProjectIconStore(bb, fetchIcon);
+  const threadStates = createInboxThreadStates(bb, stateOptions);
+  const now = stateOptions.now ?? Date.now;
+  bb.onDispose(() => threadStates.dispose());
 
   bb.rpc.register(inboxRpcContract, {
     async projectIcons() {
@@ -245,6 +324,63 @@ export default async function inboxPlugin(
     async pendingInteractionKinds({ threadIds }) {
       return { kinds: await pendingInteractionKinds(bb, threadIds) };
     },
+    async threadStates() {
+      return { states: await threadStates.list() };
+    },
+    async settle({ threadId }) {
+      return { state: await threadStates.settle(threadId) };
+    },
+    async unsettle({ threadId }) {
+      await threadStates.unsettle(threadId);
+      return { state: null };
+    },
+    async snooze({ threadId, until }) {
+      return { state: await threadStates.snooze(threadId, until) };
+    },
+  });
+
+  bb.events.on("thread.active", ({ thread }) =>
+    threadStates.wake(thread.id, "turn-started").then(() => undefined),
+  );
+  bb.events.on("thread.idle", ({ thread }) =>
+    threadStates.wake(thread.id, "turn-finished").then(() => undefined),
+  );
+  bb.events.on("thread.failed", ({ thread }) =>
+    threadStates.wake(thread.id, "failed").then(() => undefined),
+  );
+  bb.events.on("interaction.pending", ({ thread }) =>
+    threadStates.wake(thread.id, "interaction-pending").then(() => undefined),
+  );
+  bb.events.on("experimental_thread.events", ({ thread }) =>
+    threadStates.observeThreadEvents(thread.id),
+  );
+  bb.events.on("thread.deleted", ({ thread }) =>
+    threadStates.forget(thread.id).then(() => undefined),
+  );
+
+  bb.cli.register({
+    name: "inbox",
+    summary: "Settle, unsettle and snooze threads in the Inbox sidebar",
+    commands: [
+      { name: "list", summary: "List settled and snoozed threads", usage: "bb inbox list" },
+      { name: "settle", summary: "Settle a thread", usage: "bb inbox settle [thread-id]" },
+      { name: "unsettle", summary: "Return a settled or snoozed thread to the inbox", usage: "bb inbox unsettle [thread-id]" },
+      {
+        name: "snooze",
+        summary: "Snooze a thread until a time",
+        usage: "bb inbox snooze [thread-id] <1h|tomorrow|monday|ISO time>",
+      },
+    ],
+    rendersHelp: true,
+    run: (argv, ctx) => runInboxCli(threadStates, argv, ctx.threadId, now),
+  });
+
+  void threadStates.start().catch((error: unknown) => {
+    bb.log.warn(
+      `could not load settled threads: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
   });
 
   settings.onChange((next, previous) => {

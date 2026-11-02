@@ -33,7 +33,7 @@ function thread(node: InboxNode | undefined) {
 }
 
 describe("section placement", () => {
-  it("sorts each thread into Pinned, Inbox, Working or Done", () => {
+  it("sorts each thread into Pinned, Inbox or Working", () => {
     const layout = layoutOf(
       [
         testThread("pinned-working", {
@@ -64,12 +64,23 @@ describe("section placement", () => {
     );
     expect(ids(layout.pinned.nodes)).toEqual(["pinned-working"]);
     expect(new Set(ids(layout.inbox.nodes))).toEqual(
-      new Set(["approval", "question", "failed", "unread"]),
+      new Set(["approval", "question", "failed", "unread", "read"]),
     );
     expect(new Set(ids(layout.working.nodes))).toEqual(new Set(["running", "dev-server"]));
-    expect(ids(layout.done.nodes)).toEqual(["read"]);
     expect(thread(layout.inbox.nodes.find((node) => node.kind === "thread" && node.entry.thread.id === "approval")).entry.status).toBe("approval");
-    expect(layout.inbox.threadCount).toBe(4);
+    expect(layout.inbox.threadCount).toBe(5);
+  });
+
+  it("keeps an idle thread in the inbox after it is read, ordered by its last activity", () => {
+    const layout = layoutOf([
+      testThread("read-new", { latestAttentionAt: 300 }),
+      testThread("unread-mid", { isUnread: true, latestAttentionAt: 200 }),
+      testThread("read-old", { latestAttentionAt: 100 }),
+    ]);
+    expect(ids(layout.inbox.nodes)).toEqual(["read-new", "unread-mid", "read-old"]);
+    expect(
+      layout.inbox.nodes.map((node) => thread(node).entry.status),
+    ).toEqual(["idle", "done", "idle"]);
   });
 
   it("orders the inbox by newest return and pins by manual order", () => {
@@ -87,17 +98,24 @@ describe("section placement", () => {
 });
 
 describe("child nesting", () => {
+  const read = { section: "inbox", status: "idle", parked: null } as const;
+  const unread = { section: "inbox", status: "done", parked: null } as const;
+  const working = { section: "working", status: "working", parked: null } as const;
+  const pinned = { section: "pinned", status: "idle", parked: null } as const;
   it.each([
-    ["done", "inbox", false],
-    ["working", "inbox", false],
-    ["done", "working", false],
-    ["inbox", "working", true],
-    ["inbox", "done", true],
-    ["inbox", "pinned", true],
-    ["working", "done", true],
-    ["working", "pinned", false],
-    ["pinned", "inbox", true],
-  ] as const)("a %s child under a %s parent escapes: %s", (child, parent, escapes) => {
+    ["read", read, "inbox", false],
+    ["read", read, "working", false],
+    ["read", read, "pinned", false],
+    ["read", read, "settled", false],
+    ["unread", unread, "inbox", false],
+    ["unread", unread, "working", true],
+    ["unread", unread, "pinned", true],
+    ["unread", unread, "settled", true],
+    ["working", working, "inbox", false],
+    ["working", working, "pinned", false],
+    ["working", working, "snoozed", true],
+    ["pinned", pinned, "inbox", true],
+  ] as const)("a %s child under a %s parent escapes: %s", (_name, child, parent, escapes) => {
     expect(childEscapesParent(child, parent)).toBe(escapes);
   });
 
@@ -204,7 +222,7 @@ describe("thread groups", () => {
     expect(layout.inbox.threadCount).toBe(3);
   });
 
-  it("puts an all-working group in Working and an all-read group in Done", () => {
+  it("puts an all-working group in Working and an all-read group in Inbox", () => {
     const layout = layoutOf(
       [
         testThread("w1", { status: "active", runtimeStatus: "active" }),
@@ -215,7 +233,7 @@ describe("thread groups", () => {
       [group("W", ["w1", "w2"]), group("D", ["d1", "d2"])],
     );
     expect(ids(layout.working.nodes)).toEqual(["group:W"]);
-    expect(ids(layout.done.nodes)).toEqual(["group:D"]);
+    expect(ids(layout.inbox.nodes)).toEqual(["group:D"]);
   });
 
   it("leaves a lone thread as a plain row and keeps pinned threads out", () => {
