@@ -11,6 +11,7 @@ import {
   rememberHeldReadStatus,
   resolveHeldReadStatus,
   restoreHeldReadStatus,
+  threadSortSignature,
 } from "./read-status-grouping.js";
 
 const read = { lastReadAt: 10_000 };
@@ -81,29 +82,102 @@ describe("groupComparatorByReadStatus", () => {
 describe("resolveHeldReadStatus", () => {
   afterEach(() => rememberHeldReadStatus(null));
 
-  it("keeps the open thread unread until another thread opens", () => {
-    const opened = resolveHeldReadStatus(
-      null,
-      [thread("opened"), thread("other", read)],
-      "opened",
-    );
-    const afterRead = resolveHeldReadStatus(
-      opened,
-      [thread("opened", read), thread("other", read)],
-      "opened",
-    );
-    expect(createThreadUnreadPredicate(afterRead)(thread("opened", read))).toBe(
-      true,
-    );
+  function orderWith(
+    held: ReturnType<typeof resolveHeldReadStatus>,
+    threads: Parameters<typeof resolveHeldReadStatus>[1],
+  ) {
+    return buildSectionThreadList(
+      threads,
+      groupComparatorByReadStatus(
+        compareStandardThreads,
+        createThreadUnreadPredicate(held),
+      ),
+    ).map((item) => (item.kind === "thread" ? item.node.thread.id : ""));
+  }
 
-    const afterSwitch = resolveHeldReadStatus(
-      afterRead,
-      [thread("opened", read), thread("other", read)],
-      "other",
+  it("keeps the order when the user opens threads", () => {
+    const initial = [
+      thread("first", { latestAttentionAt: 300 }),
+      thread("second", { latestAttentionAt: 200 }),
+      thread("read", { latestAttentionAt: 400, ...read }),
+    ];
+    const order = ["first", "second", "read"];
+    expect(orderWith(null, initial)).toEqual(order);
+
+    const openedFirst = resolveHeldReadStatus(null, initial, "first");
+    const firstRead = [
+      thread("first", { latestAttentionAt: 300, ...read }),
+      initial[1],
+      initial[2],
+    ];
+    const afterFirstRead = resolveHeldReadStatus(
+      openedFirst,
+      firstRead,
+      "first",
     );
+    expect(orderWith(afterFirstRead, firstRead)).toEqual(order);
+
+    const openedSecond = resolveHeldReadStatus(
+      afterFirstRead,
+      firstRead,
+      "second",
+    );
+    expect(orderWith(openedSecond, firstRead)).toEqual(order);
+
+    const bothRead = [
+      firstRead[0],
+      thread("second", { latestAttentionAt: 200, ...read }),
+      initial[2],
+    ];
+    const afterSecondRead = resolveHeldReadStatus(
+      openedSecond,
+      bothRead,
+      "second",
+    );
+    expect(orderWith(afterSecondRead, bothRead)).toEqual(order);
     expect(
-      createThreadUnreadPredicate(afterSwitch)(thread("opened", read)),
-    ).toBe(false);
+      orderWith(
+        resolveHeldReadStatus(afterSecondRead, bothRead, "read"),
+        bothRead,
+      ),
+    ).toEqual(order);
+  });
+
+  it("regroups opened threads when new activity re-sorts the list", () => {
+    const threads = [
+      thread("opened", { latestAttentionAt: 300, ...read }),
+      thread("open", { latestAttentionAt: 200, ...read }),
+      thread("idle", { latestAttentionAt: 100, ...read }),
+    ];
+    const opened = resolveHeldReadStatus(
+      {
+        selectedThreadId: "open",
+        sortSignature: threadSortSignature(threads),
+        isUnreadByThreadId: new Map([
+          ["opened", true],
+          ["open", true],
+        ]),
+      },
+      threads,
+      "open",
+    );
+    expect(orderWith(opened, threads)).toEqual(["opened", "open", "idle"]);
+
+    const withNewMessage = [
+      threads[0],
+      threads[1],
+      thread("idle", { latestAttentionAt: 500 }),
+    ];
+    const afterMessage = resolveHeldReadStatus(
+      opened,
+      withNewMessage,
+      "open",
+    );
+    expect(orderWith(afterMessage, withNewMessage)).toEqual([
+      "idle",
+      "open",
+      "opened",
+    ]);
   });
 
   it("keeps the held status when the sidebar remounts", () => {
