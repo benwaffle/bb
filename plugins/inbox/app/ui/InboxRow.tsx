@@ -18,7 +18,8 @@ import {
 import { cn } from "@/lib/utils";
 import type { InboxThreadNode } from "../model/layout.js";
 import { ProjectIcon } from "./ProjectIcon.js";
-import { GlyphIcon, StatusSlot } from "./StatusGlyph.js";
+import { canParkFromRow, RowActions, WakeSlot } from "./RowActions.js";
+import { GlyphIcon, RelativeTime, StatusSlot } from "./StatusGlyph.js";
 
 type ProviderInfo = PluginProvidersState["providers"][number];
 
@@ -69,8 +70,11 @@ export function InboxThreadRow({
   context: InboxRowContext;
 }) {
   const [childrenOpen, setChildrenOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const { entry, children, detachedFrom } = node;
-  const { thread, status } = entry;
+  const { thread, status, section, parked } = entry;
+  const isParkedRow = section === "settled" || section === "snoozed";
+  const showActions = isParkedRow || canParkFromRow(section, status);
   const shortcut = useSidebarThreadShortcut(thread.id);
   const isActive = context.activeThreadId === thread.id;
   const projectName = context.projectName(thread.projectId);
@@ -92,7 +96,7 @@ export function InboxThreadRow({
           ? SIDEBAR_ROW_SELECTED_STATE_CLASS
           : SIDEBAR_ROW_INTERACTIVE_STATE_CLASS,
         SIDEBAR_ROW_ACCENT_STATE_CLASS,
-        isWorking && !isActive && "opacity-70 hover:opacity-100",
+        isWorking && !isActive && !isParkedRow && "opacity-70 hover:opacity-100",
       )}
       style={rowStyle}
     >
@@ -116,17 +120,46 @@ export function InboxThreadRow({
         {shortcut ? (
           <ShortcutPill shortcut={shortcut} />
         ) : (
-          <StatusSlot
-            status={status}
-            workingSince={entry.workingSince}
-            timeAt={entry.returnAt}
-          />
+          <>
+            <span
+              className={cn(
+                "ml-auto inline-flex shrink-0 items-center",
+                showActions &&
+                  "group-focus-within/inbox-row:hidden group-hover/inbox-row:hidden",
+                showActions && menuOpen && "hidden",
+              )}
+            >
+              {section === "snoozed" && parked?.snoozeUntil != null ? (
+                <WakeSlot until={parked.snoozeUntil} />
+              ) : section === "settled" && parked !== null ? (
+                <span className="inline-flex items-center text-xs">
+                  <RelativeTime at={parked.settledAt} />
+                </span>
+              ) : (
+                <StatusSlot
+                  status={status}
+                  workingSince={entry.workingSince}
+                  timeAt={entry.returnAt}
+                />
+              )}
+            </span>
+            {showActions ? (
+              <RowActions
+                threadId={thread.id}
+                section={section}
+                menuOpen={menuOpen}
+                onMenuOpenChange={setMenuOpen}
+              />
+            ) : null}
+          </>
         )}
       </span>
       <span
         className={cn(
           "pointer-events-none mt-1 truncate text-sm font-medium text-foreground transition-colors",
           isRead && "text-foreground/75 group-hover/inbox-row:text-foreground",
+          isParkedRow &&
+            "font-normal text-muted-foreground/70 group-hover/inbox-row:text-foreground",
         )}
       >
         <ThreadTitle threadId={thread.id} />
