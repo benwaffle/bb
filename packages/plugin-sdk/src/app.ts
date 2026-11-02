@@ -206,6 +206,12 @@ export const experimental_useTabVisible = runtimeFunction(
   "experimental_useTabVisible",
 );
 // The viewing client's servers (experimental — see docs/api_to_audit.md).
+export const experimental_useAppCommands = runtimeFunction(
+  "experimental_useAppCommands",
+);
+export const experimental_useLeaderKeyCommand = runtimeFunction(
+  "experimental_useLeaderKeyCommand",
+);
 export const experimental_useServers = runtimeFunction(
   "experimental_useServers",
 );

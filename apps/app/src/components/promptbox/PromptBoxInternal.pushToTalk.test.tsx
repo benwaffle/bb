@@ -215,6 +215,28 @@ describe("ComposerBox push-to-talk", () => {
     expect(pushToTalk.start).toHaveBeenCalledOnce();
   });
 
+  it("does not start when another key goes down before the hold delay", async () => {
+    const pushToTalk = createPushToTalk();
+    render(
+      <ComposerBox
+        {...createProps({ voice: createVoice(pushToTalk) })}
+      />,
+    );
+    await waitFor(() => editorElement());
+
+    pressSpace(document.body);
+    act(() => {
+      vi.advanceTimersByTime(80);
+    });
+    fireEvent.keyDown(document.body, { key: "f", code: "KeyF" });
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    releaseSpace(document.body);
+    expect(pushToTalk.start).not.toHaveBeenCalled();
+    expect(pushToTalk.stop).not.toHaveBeenCalled();
+  });
+
   it("does nothing when push-to-talk is disabled or Space is pressed in a button", async () => {
     const pushToTalk = createPushToTalk({ enabled: false });
     const { rerender } = render(
