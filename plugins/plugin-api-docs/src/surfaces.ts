@@ -710,6 +710,7 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "Suggest a rebindable default shortcut, even a single key that works only on the plugin's page",
           "Show a command only when the current thread or project fits",
           "Open a plugin panel, call bb's SDK, or navigate from the focused screen",
+          "Run bb's own commands and handle the Leader key, even from embedded browser pages",
         ],
         apiSymbols: [
           "PluginAppBuilder.commands",
@@ -722,6 +723,10 @@ export const SURFACE_GROUPS: SurfaceGroup[] = [
           "ExperimentalShortcutPresentation",
           "experimental_matchesShortcutKey",
           "ExperimentalShortcutKeyEvent",
+          "experimental_useAppCommands",
+          "ExperimentalAppCommands",
+          "ExperimentalAppCommandInfo",
+          "experimental_useLeaderKeyCommand",
         ],
         firstParty: ["File Editor", "Tasks"],
       },

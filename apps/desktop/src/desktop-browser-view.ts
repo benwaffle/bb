@@ -1064,6 +1064,7 @@ export function createDesktopBrowserViewManager(
       if (
         command === "browser.focusLocation" ||
         command === "browser.find" ||
+        command === "keymap.leader" ||
         command === "panel.previousTab" ||
         command === "panel.nextTab" ||
         PANE_DIRECTION_APP_COMMAND_IDS.some((id) => id === command) ||

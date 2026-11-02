@@ -108,6 +108,7 @@ export const APP_COMMAND_IDS = [
   "plugins.enterSafeMode",
   "plugins.exitSafeMode",
   "plugins.pruneCache",
+  "keymap.leader",
   ...QUESTION_SELECT_APP_COMMAND_IDS,
   ...QUESTION_ACTION_APP_COMMAND_IDS,
 ] as const;
@@ -239,7 +240,11 @@ type AppShortcutKeyInput = Pick<
 >;
 
 function layoutAppShortcutKey(input: AppShortcutKeyInput): string {
-  if (input.key === " " || input.key === "Spacebar") {
+  if (
+    input.key === " " ||
+    input.key === "Spacebar" ||
+    (input.altKey && input.code === "Space")
+  ) {
     return "Space";
   }
   return input.shiftKey

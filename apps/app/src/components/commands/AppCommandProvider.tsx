@@ -51,6 +51,7 @@ interface AppCommandHandlerRegistration {
 
 interface AppCommandProviderValue {
   dispatch: (command: KeyboardCommandId, target: EventTarget | null) => boolean;
+  execute: (command: KeyboardCommandId, target: EventTarget | null) => boolean;
   getShortcut: (command: KeyboardCommandId) => AppShortcut | null;
   getShortcutCommand: (
     event: KeyboardEvent,
@@ -351,6 +352,12 @@ export function AppCommandProvider({ children }: { children: ReactNode }) {
     [currentContext, defaultKeybindings, focusedPluginPageId, isDesktop],
   );
 
+  const execute = useCallback(
+    (command: KeyboardCommandId, target: EventTarget | null): boolean =>
+      isCommandAvailable(command, target) && dispatch(command, target),
+    [dispatch, isCommandAvailable],
+  );
+
   const getShortcut = useCallback(
     (command: KeyboardCommandId): AppShortcut | null => {
       let binding;
@@ -476,6 +483,7 @@ export function AppCommandProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AppCommandProviderValue>(
     () => ({
       dispatch,
+      execute,
       getShortcut,
       getShortcutCommand,
       handleKeyboardEvent,
@@ -487,6 +495,7 @@ export function AppCommandProvider({ children }: { children: ReactNode }) {
     }),
     [
       dispatch,
+      execute,
       getShortcut,
       getShortcutCommand,
       handleKeyboardEvent,
@@ -570,6 +579,7 @@ export function useAppCommandKeyDispatch(): (event: KeyboardEvent) => boolean {
 
 export interface AppCommandRunner {
   dispatch: (command: KeyboardCommandId, target: EventTarget | null) => boolean;
+  execute: (command: KeyboardCommandId, target: EventTarget | null) => boolean;
   getShortcutCommand: AppCommandProviderValue["getShortcutCommand"];
   isCommandAvailable: (
     command: KeyboardCommandId,
@@ -582,6 +592,7 @@ export function useAppCommandRunner(): AppCommandRunner {
   return useMemo(
     () => ({
       dispatch: (command, target) => value?.dispatch(command, target) ?? false,
+      execute: (command, target) => value?.execute(command, target) ?? false,
       getShortcutCommand: (event, commands) =>
         value?.getShortcutCommand(event, commands) ?? null,
       isCommandAvailable: (command, target) =>
