@@ -23,6 +23,7 @@
     "app/**/*.ts",
     "app/**/*.tsx",
     "shared/**/*.ts",
+    "server/**/*.ts",
     "vitest.config.ts"
   ]
 }

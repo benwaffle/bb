@@ -65,15 +65,6 @@ export function isWorkingStatus(status: InboxStatus): status is WorkingStatus {
   return status === "working" || status === "background";
 }
 
-export function needsAttention(status: InboxStatus): boolean {
-  return (
-    status === "approval" ||
-    status === "input" ||
-    status === "failed" ||
-    status === "done"
-  );
-}
-
 export function isActionable(status: InboxStatus): boolean {
   return status === "approval" || status === "input" || status === "failed";
 }
