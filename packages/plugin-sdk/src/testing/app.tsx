@@ -154,6 +154,7 @@ import {
   type ExperimentalFilePreviewProps,
   type ExperimentalLiveFileTarget,
   type ExperimentalServers,
+  type ExperimentalAppCommands,
   type ExperimentalFixedTabTargetState,
   type ExperimentalOpenTabOptions,
   type ExperimentalPanelController,
@@ -418,6 +419,7 @@ interface SlotEnv {
     target: ExperimentalLiveFileTarget,
   ) => ExperimentalFilePreviewFile | null;
   tabVisible: boolean;
+  appCommands: ExperimentalAppCommands;
   servers: ExperimentalServers | null;
   branchesState: BranchesState;
   checkoutState: CheckoutState;
@@ -1940,6 +1942,12 @@ const testPluginSdkApp = {
   experimental_useTabVisible(): boolean {
     return useSlotEnv("experimental_useTabVisible").tabVisible;
   },
+  experimental_useAppCommands(): ExperimentalAppCommands {
+    return useSlotEnv("experimental_useAppCommands").appCommands;
+  },
+  experimental_useLeaderKeyCommand(_handler: () => boolean): void {
+    useSlotEnv("experimental_useLeaderKeyCommand");
+  },
   experimental_useServers(): ExperimentalServers | null {
     return useSlotEnv("experimental_useServers").servers;
   },
@@ -2601,6 +2609,11 @@ export interface RenderSlotOptions<
    * that is selected in an open panel.
    */
   tabVisible?: boolean;
+  /**
+   * Answer for `experimental_useAppCommands()`. Omitted → a host with no
+   * commands, whose `execute` returns false.
+   */
+  appCommands?: ExperimentalAppCommands;
   /**
    * Answer for `experimental_useServers()`. Omitted → null, as in a web
    * browser. Pass `{ status, servers, switchTo }` to act as bb Desktop or the
@@ -3555,6 +3568,10 @@ export function renderSlot<
     canOpenFileExternally: options.canOpenFileExternally ?? (() => false),
     filePreview: options.filePreview ?? (() => null),
     tabVisible: options.tabVisible ?? true,
+    appCommands: options.appCommands ?? {
+      execute: () => false,
+      list: () => [],
+    },
     servers: options.servers ?? null,
     branchesState: {
       branches: options.branchesState?.branches ?? [],
