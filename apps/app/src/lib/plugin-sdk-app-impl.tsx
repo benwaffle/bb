@@ -134,6 +134,10 @@ import { ThreadContextCardRow } from "@/components/plugin/ThreadContextCardRow";
 import { useThreadContextKind } from "@/components/plugin/PluginThreadContextCard";
 import { useTabVisible } from "@/components/secondary-panel/tab-visibility";
 import { useServerChoices } from "@/hooks/useServerChoices";
+import {
+  usePluginAppCommands,
+  usePluginLeaderKeyCommand,
+} from "./plugin-app-commands";
 import { ThreadRowMetadata } from "@/components/plugin/ThreadRowMetadata";
 
 function PluginInfoListRow({
@@ -172,6 +176,8 @@ export const pluginSdkAppImplementation = {
   useBbNavigate,
   experimental_useCanOpenFileExternally: usePluginCanOpenFileExternally,
   experimental_useTabVisible: useTabVisible,
+  experimental_useAppCommands: usePluginAppCommands,
+  experimental_useLeaderKeyCommand: usePluginLeaderKeyCommand,
   experimental_useServers: useServerChoices,
   experimental_useAppPanel,
   experimental_useFixedTabTarget,
