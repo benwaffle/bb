@@ -4471,6 +4471,7 @@ export function listStoredProviderSessionsByProvider(
     .innerJoin(threads, eq(threads.id, events.threadId))
     .where(
       and(
+        eq(events.type, "thread/identity"),
         isNotNull(events.providerThreadId),
         eq(threads.providerId, args.providerId),
       ),
