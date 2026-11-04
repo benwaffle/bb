@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   experimental_useProviders,
   type PluginThreadListProps,
@@ -6,7 +13,9 @@ import {
 import { Icon } from "@/components/ui/icon";
 import { cn } from "@/lib/utils";
 import type { InboxNode, InboxSection } from "../model/layout.js";
+import { nodeContainsThread } from "../model/row-equality.js";
 import { useInboxData, useProjectIcons } from "../model/use-inbox-data.js";
+import { InboxClockProvider } from "./InboxClock.js";
 import { InboxGroup } from "./InboxGroup.js";
 import { InboxThreadRow, type InboxRowContext } from "./InboxRow.js";
 
@@ -45,31 +54,31 @@ function useShelfExpanded(
   return [expanded, update];
 }
 
-function nodeContainsThread(node: InboxNode, threadId: string): boolean {
-  if (node.kind === "group") {
-    return node.rows.some((row) => nodeContainsThread(row, threadId));
-  }
-  if (node.entry.thread.id === threadId) return true;
-  return node.children.some((child) => nodeContainsThread(child, threadId));
-}
-
 function InboxNodes({
   nodes,
+  activeThreadId,
   context,
 }: {
   nodes: readonly InboxNode[];
+  activeThreadId: string | null;
   context: InboxRowContext;
 }) {
   return (
     <>
       {nodes.map((node) =>
         node.kind === "group" ? (
-          <InboxGroup key={node.group.id} node={node} context={context} />
+          <InboxGroup
+            key={node.group.id}
+            node={node}
+            activeThreadId={activeThreadId}
+            context={context}
+          />
         ) : (
           <InboxThreadRow
             key={node.entry.thread.id}
             node={node}
             depth={0}
+            activeThreadId={activeThreadId}
             context={context}
           />
         ),
@@ -102,6 +111,7 @@ function Shelf({
   title,
   nodes,
   threadCount,
+  activeThreadId,
   context,
   className,
 }: {
@@ -109,11 +119,11 @@ function Shelf({
   title: string;
   nodes: readonly InboxNode[];
   threadCount: number;
+  activeThreadId: string | null;
   context: InboxRowContext;
   className?: string;
 }) {
   const [expanded, setExpanded] = useShelfExpanded(section);
-  const activeThreadId = context.activeThreadId;
   const visibleNodes = useMemo(() => {
     if (expanded) return nodes;
     if (activeThreadId === null) return [];
@@ -141,25 +151,77 @@ function Shelf({
         <span>{title}</span>
         <span className="ml-auto font-normal tabular-nums">{threadCount}</span>
       </button>
-      <InboxNodes nodes={visibleNodes} context={context} />
+      <InboxNodes
+        nodes={visibleNodes}
+        activeThreadId={activeThreadId}
+        context={context}
+      />
     </section>
   );
 }
 
-export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps) {
+function useStableCallback(callback: () => void): () => void {
+  const latest = useRef(callback);
+  useLayoutEffect(() => {
+    latest.current = callback;
+  }, [callback]);
+  return useCallback(() => latest.current(), []);
+}
+
+const NAME_FIELD_SEPARATOR = "\u0000";
+const NAME_ENTRY_SEPARATOR = "\u0001";
+
+function encodeProjectNames(
+  projectsById: ReadonlyMap<string, { name: string }>,
+): string {
+  return [...projectsById]
+    .map(([projectId, project]) => projectId + NAME_FIELD_SEPARATOR + project.name)
+    .join(NAME_ENTRY_SEPARATOR);
+}
+
+function decodeProjectNames(encoded: string): ReadonlyMap<string, string> {
+  const names = new Map<string, string>();
+  if (encoded === "") return names;
+  for (const pair of encoded.split(NAME_ENTRY_SEPARATOR)) {
+    const split = pair.indexOf(NAME_FIELD_SEPARATOR);
+    names.set(pair.slice(0, split), pair.slice(split + 1));
+  }
+  return names;
+}
+
+export function InboxList(props: PluginThreadListProps) {
+  return (
+    <InboxClockProvider>
+      <InboxListView {...props} />
+    </InboxClockProvider>
+  );
+}
+
+function InboxListView({ activeThreadId, onNavigate }: PluginThreadListProps) {
   const { status, layout, projectsById } = useInboxData();
   const icons = useProjectIcons();
   const { providers } = experimental_useProviders();
+  const navigate = useStableCallback(onNavigate);
+  const encodedNames = useMemo(
+    () => encodeProjectNames(projectsById),
+    [projectsById],
+  );
+  const projectNames = useMemo(
+    () => decodeProjectNames(encodedNames),
+    [encodedNames],
+  );
+  const providersById = useMemo(
+    () => new Map(providers.map((provider) => [provider.id, provider])),
+    [providers],
+  );
   const context = useMemo<InboxRowContext>(
     () => ({
-      activeThreadId,
-      onNavigate,
-      projectName: (projectId) => projectsById.get(projectId)?.name ?? "Project",
+      onNavigate: navigate,
+      projectName: (projectId) => projectNames.get(projectId) ?? "Project",
       projectIconUrl: (projectId) => icons[projectId] ?? null,
-      provider: (providerId) =>
-        providers.find((candidate) => candidate.id === providerId) ?? null,
+      provider: (providerId) => providersById.get(providerId) ?? null,
     }),
-    [activeThreadId, onNavigate, projectsById, icons, providers],
+    [navigate, projectNames, icons, providersById],
   );
   if (status === "loading") return null;
   const { pinned, inbox, working, snoozed, settled } = layout;
@@ -176,7 +238,11 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
             <Icon name="Pin" className="size-3" />
             Pinned
           </SectionHeader>
-          <InboxNodes nodes={pinned.nodes} context={context} />
+          <InboxNodes
+            nodes={pinned.nodes}
+            activeThreadId={activeThreadId}
+            context={context}
+          />
         </section>
       ) : null}
       <section
@@ -194,7 +260,11 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
             </span>
           </div>
         ) : (
-          <InboxNodes nodes={inbox.nodes} context={context} />
+          <InboxNodes
+            nodes={inbox.nodes}
+            activeThreadId={activeThreadId}
+            context={context}
+          />
         )}
       </section>
       <div className="mt-auto flex flex-col gap-px pt-2">
@@ -204,6 +274,7 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
             title="Working"
             nodes={working.nodes}
             threadCount={working.threadCount}
+            activeThreadId={activeThreadId}
             context={context}
           />
         ) : null}
@@ -213,6 +284,7 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
             title="Snoozed"
             nodes={snoozed.nodes}
             threadCount={snoozed.threadCount}
+            activeThreadId={activeThreadId}
             context={context}
           />
         ) : null}
@@ -222,6 +294,7 @@ export function InboxList({ activeThreadId, onNavigate }: PluginThreadListProps)
             title="Settled"
             nodes={settled.nodes}
             threadCount={settled.threadCount}
+            activeThreadId={activeThreadId}
             context={context}
           />
         ) : null}

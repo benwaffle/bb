@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { memo, useState, type CSSProperties } from "react";
 import {
   experimental_ProviderIcon as ProviderIcon,
   experimental_ThreadActionsContextMenu as ThreadActionsContextMenu,
@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/sidebar-row-classes";
 import { cn } from "@/lib/utils";
 import type { InboxThreadNode } from "../model/layout.js";
+import { activeChangeAffects, sameThreadNode } from "../model/row-equality.js";
 import { ProjectIcon } from "./ProjectIcon.js";
 import { canParkFromRow, RowActions, WakeSlot } from "./RowActions.js";
 import { GlyphIcon, RelativeTime, StatusSlot } from "./StatusGlyph.js";
@@ -24,7 +25,6 @@ import { GlyphIcon, RelativeTime, StatusSlot } from "./StatusGlyph.js";
 type ProviderInfo = PluginProvidersState["providers"][number];
 
 export interface InboxRowContext {
-  activeThreadId: string | null;
   onNavigate(): void;
   projectName(projectId: string): string;
   projectIconUrl(projectId: string): string | null;
@@ -60,15 +60,33 @@ function branchLine(thread: PluginSidebarThread): string | null {
 
 const CHILD_INDENT_PX = 14;
 
-export function InboxThreadRow({
-  node,
-  depth,
-  context,
-}: {
+interface InboxThreadRowProps {
   node: InboxThreadNode;
   depth: number;
+  activeThreadId: string | null;
   context: InboxRowContext;
-}) {
+}
+
+function sameRowProps(
+  previous: InboxThreadRowProps,
+  next: InboxThreadRowProps,
+): boolean {
+  return (
+    previous.depth === next.depth &&
+    previous.context === next.context &&
+    sameThreadNode(previous.node, next.node) &&
+    !activeChangeAffects(next.node, previous.activeThreadId, next.activeThreadId)
+  );
+}
+
+export const InboxThreadRow = memo(InboxThreadRowView, sameRowProps);
+
+function InboxThreadRowView({
+  node,
+  depth,
+  activeThreadId,
+  context,
+}: InboxThreadRowProps) {
   const [childrenOpen, setChildrenOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { entry, children, detachedFrom } = node;
@@ -76,7 +94,7 @@ export function InboxThreadRow({
   const isParkedRow = section === "settled" || section === "snoozed";
   const showActions = isParkedRow || canParkFromRow(section, status);
   const shortcut = useSidebarThreadShortcut(thread.id);
-  const isActive = context.activeThreadId === thread.id;
+  const isActive = activeThreadId === thread.id;
   const projectName = context.projectName(thread.projectId);
   const provider = context.provider(thread.providerId);
   const branch = branchLine(thread);
@@ -226,6 +244,7 @@ export function InboxThreadRow({
               key={child.entry.thread.id}
               node={child}
               depth={depth + 1}
+              activeThreadId={activeThreadId}
               context={context}
             />
           ))

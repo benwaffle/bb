@@ -1,4 +1,4 @@
-import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
+import { useState, type MouseEvent, type ReactNode } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,6 +22,7 @@ import {
 } from "../model/inbox-actions.js";
 import type { InboxSection } from "../model/layout.js";
 import type { InboxStatus } from "../model/status.js";
+import { useMinuteNow } from "./InboxClock.js";
 import { STATUS_COLORS } from "./StatusGlyph.js";
 
 type ActionGlyphName = "clock" | "check" | "alarm" | "undo";
@@ -203,17 +204,8 @@ export function RowActions({
   );
 }
 
-function useMinuteClock(): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), 30_000);
-    return () => clearInterval(timer);
-  }, []);
-  return now;
-}
-
 export function WakeSlot({ until }: { until: number }) {
-  const now = useMinuteClock();
+  const now = useMinuteNow();
   return (
     <span
       title={`Wakes ${formatWakeAt(until)}`}
