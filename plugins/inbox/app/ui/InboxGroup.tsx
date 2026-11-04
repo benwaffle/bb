@@ -1,18 +1,29 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { experimental_Icon as PluginIcon } from "@get-bb/plugin-sdk/app";
 import { Icon } from "@/components/ui/icon";
 import { SIDEBAR_ROW_INTERACTIVE_STATE_CLASS } from "@/components/ui/sidebar-row-classes";
 import { cn } from "@/lib/utils";
 import type { InboxGroupNode } from "../model/layout.js";
+import { activeChangeAffects, sameGroupNode } from "../model/row-equality.js";
 import { InboxThreadRow, type InboxRowContext } from "./InboxRow.js";
 
-export function InboxGroup({
-  node,
-  context,
-}: {
+interface InboxGroupProps {
   node: InboxGroupNode;
+  activeThreadId: string | null;
   context: InboxRowContext;
-}) {
+}
+
+function sameGroupProps(previous: InboxGroupProps, next: InboxGroupProps): boolean {
+  return (
+    previous.context === next.context &&
+    sameGroupNode(previous.node, next.node) &&
+    !activeChangeAffects(next.node, previous.activeThreadId, next.activeThreadId)
+  );
+}
+
+export const InboxGroup = memo(InboxGroupView, sameGroupProps);
+
+function InboxGroupView({ node, activeThreadId, context }: InboxGroupProps) {
   const [open, setOpen] = useState(true);
   const { group, rows, placeholders } = node;
   const projectName = context.projectName(group.projectId);
@@ -56,6 +67,7 @@ export function InboxGroup({
               key={row.entry.thread.id}
               node={row}
               depth={0}
+              activeThreadId={activeThreadId}
               context={context}
             />
           ))}

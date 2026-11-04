@@ -1,6 +1,7 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import type { InboxStatus } from "../model/status.js";
+import { useElapsedNow, useMinuteNow } from "./InboxClock.js";
 
 type GlyphStatus = Exclude<InboxStatus, "idle">;
 
@@ -122,17 +123,8 @@ export function formatRelativeTime(at: number, now: number): string {
   return formatElapsed(elapsed);
 }
 
-function useNow(intervalMs: number): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const timer = setInterval(() => setNow(Date.now()), intervalMs);
-    return () => clearInterval(timer);
-  }, [intervalMs]);
-  return now;
-}
-
 function WorkingDuration({ since }: { since: number }) {
-  const now = useNow(1000);
+  const now = useElapsedNow(since);
   return (
     <span className="inline-block min-w-[3ch] text-left font-normal tabular-nums text-muted-foreground">
       {formatElapsed(now - since)}
@@ -141,7 +133,7 @@ function WorkingDuration({ since }: { since: number }) {
 }
 
 export function RelativeTime({ at }: { at: number }) {
-  const now = useNow(30_000);
+  const now = useMinuteNow();
   return (
     <span className="tabular-nums text-muted-foreground">
       {formatRelativeTime(at, now)}
