@@ -64,13 +64,40 @@ export function findUnnamedPluginRoots(js: string): number[] {
 
 const ANONYMOUS_PLUGIN_ROOT_ARM =
   /,\s*\[data-bb-plugin-root\]:not\(\[data-bb-plugin\]\)/g;
+const COMPACT_PLUGIN_ROOT_SCOPE =
+  /:where\(\[data-bb-plugin-root\]:is\(\[data-bb-plugin=("[^"]*"|[^\]]*)\],:not\(\[data-bb-plugin\]\)\)\)/g;
 
 export function dropAnonymousPluginRootScope(css: string): string {
   return splitStatements(css)
     .map((statement) => {
       if (statement.body === null) return statement.prelude;
       const body = isUtilitiesLayer(statement.prelude)
-        ? statement.body.replace(ANONYMOUS_PLUGIN_ROOT_ARM, "")
+        ? statement.body
+            .replace(ANONYMOUS_PLUGIN_ROOT_ARM, "")
+            .replace(
+              COMPACT_PLUGIN_ROOT_SCOPE,
+              (_match, pluginId: string) =>
+                `:where([data-bb-plugin=${pluginId}])`,
+            )
+        : statement.body;
+      return `${statement.prelude}{${body}}`;
+    })
+    .join("");
+}
+
+const TWO_ARM_PLUGIN_ROOT_SCOPE =
+  /:where\(\[data-bb-plugin=("[^"]*"|[^\]]*)\],\s*\[data-bb-plugin-root\]:not\(\[data-bb-plugin\]\)\)/g;
+
+export function compactPluginRootScope(css: string): string {
+  return splitStatements(css)
+    .map((statement) => {
+      if (statement.body === null) return statement.prelude;
+      const body = isUtilitiesLayer(statement.prelude)
+        ? statement.body.replace(
+            TWO_ARM_PLUGIN_ROOT_SCOPE,
+            (_match, pluginId: string) =>
+              `:where([data-bb-plugin-root]:is([data-bb-plugin=${pluginId}],:not([data-bb-plugin])))`,
+          )
         : statement.body;
       return `${statement.prelude}{${body}}`;
     })
