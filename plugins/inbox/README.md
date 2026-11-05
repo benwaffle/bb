@@ -10,7 +10,7 @@ thread.
 Pinned and Inbox have sticky headers with a thread count; the shelves'
 headers toggle them and show their counts. Counts are the rows each section
 shows; a parent's children are behind its "N children" chip. While every shelf
-is collapsed, the shelf headers stay pinned at the bottom of the list.
+is collapsed, the shelf headers stay pinned above the usage footer.
 
 Each row has two lines: the project icon, title and status, then the
 project name, the branch (or the machine, when it is not the one most rows
@@ -131,6 +131,18 @@ Classic: a preference that names a disabled plugin leaves the sidebar on bb's
 ```sh
 bb plugin config bb--inbox set layout classic
 ```
+
+## Usage footer
+
+The bottom of the list shows the 5-hour and weekly subscription windows from
+`system.usageLimits` (Claude Code first, else the first provider reporting
+them) as two thin bars with their percent. A bar turns to the attention color
+at 80%. The footer reads them when the list mounts and then once a minute, and
+is hidden while no provider reports either window. The footer is a button that
+runs the `plugin:usage-stats/open-usage` app command whenever
+`experimental_useAppCommands().list()` reports that command available, and
+plain text otherwise, checked on each refresh. `bb settings usage` prints the
+same windows.
 
 ## Settle and snooze
 
