@@ -18,6 +18,7 @@ import { useInboxData, useProjectIcons } from "../model/use-inbox-data.js";
 import { InboxClockProvider } from "./InboxClock.js";
 import { InboxGroup } from "./InboxGroup.js";
 import { InboxThreadRow, type InboxRowContext } from "./InboxRow.js";
+import { UsageFooter } from "./UsageFooter.js";
 
 const SHELF_STORAGE_PREFIX = "bb-inbox:shelf-expanded:";
 
@@ -302,6 +303,7 @@ function InboxListView({ activeThreadId, onNavigate }: PluginThreadListProps) {
           />
         ) : null}
       </div>
+      <UsageFooter />
     </nav>
   );
 }

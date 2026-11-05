@@ -121,6 +121,21 @@ Classic: a preference that names a disabled plugin leaves the sidebar on bb's
 bb plugin config bb--inbox set layout classic
 ```
 
+## Usage footer
+
+The bottom of the list shows today's API-equivalent cost and tokens from the
+usage-stats plugin's `dashboard` RPC, and the 5-hour and weekly subscription
+windows from `system.usageLimits` (Claude Code first, else the first provider
+reporting them) as thin bars with their percent. A bar turns to the attention
+color at 80%. The footer reads both when the list mounts and then once a
+minute. Without usage-stats the cost line is left out, and without either
+source the footer is hidden. The footer is a button that runs the
+`plugin:usage-stats/open-usage` app command whenever
+`experimental_useAppCommands().list()` reports that command available, and
+plain text otherwise, checked on each refresh.
+`bb usage-stats summary --days 1` and `bb settings usage` print the same
+numbers.
+
 ## Settle and snooze
 
 Settle a thread when you are done with it for now. It leaves Inbox,
