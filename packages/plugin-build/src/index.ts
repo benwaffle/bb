@@ -33,6 +33,7 @@ export {
 
 export { copyPluginRuntime } from "./prepare-plugin-runtime.js";
 export {
+  compactPluginRootScope,
   dropAnonymousPluginRootScope,
   dropHostProvidedTailwind,
   findUnnamedPluginRoots,
