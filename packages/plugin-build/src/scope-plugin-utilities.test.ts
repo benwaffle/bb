@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  compactPluginRootScope,
   dropAnonymousPluginRootScope,
   dropHostProvidedTailwind,
   findUnnamedPluginRoots,
@@ -171,6 +172,23 @@ describe("dropAnonymousPluginRootScope", () => {
         `${scopePluginUtilities(utilities, ROOTS)}${authored}`,
       ),
     ).toBe(
+      `${scopePluginUtilities(utilities, '[data-bb-plugin="demo"]')}${authored}`,
+    );
+  });
+});
+
+describe("compactPluginRootScope", () => {
+  it("rewrites the two-arm utility scope as one compound headed by the root attribute and leaves other CSS alone", () => {
+    const utilities = "@layer utilities{.a{color:red}@media (width>=40rem){.p-2{padding:.5rem}}}";
+    const authored =
+      ":where([data-bb-plugin=demo],[data-bb-plugin-root]:not([data-bb-plugin])) .x{opacity:.5}";
+    const compact = compactPluginRootScope(
+      `${scopePluginUtilities(utilities, ROOTS)}${authored}`,
+    );
+    expect(compact).toBe(
+      `${scopePluginUtilities(utilities, '[data-bb-plugin-root]:is([data-bb-plugin="demo"],:not([data-bb-plugin]))')}${authored}`,
+    );
+    expect(dropAnonymousPluginRootScope(compact)).toBe(
       `${scopePluginUtilities(utilities, '[data-bb-plugin="demo"]')}${authored}`,
     );
   });
