@@ -7,6 +7,7 @@ import {
   assertValidPluginCompactIconSvg,
   assertValidPluginIconSvg,
   RUNTIME_SLOT_BY_SPECIFIER,
+  compactPluginRootScope,
   dropAnonymousPluginRootScope,
   dropHostProvidedTailwind,
   findUnnamedPluginRoots,
@@ -369,7 +370,9 @@ export async function loadPluginAppBundle(
   }
   let css: PluginAppAssets["css"];
   try {
-    const original = await readFile(cssPath);
+    const original = Buffer.from(
+      compactPluginRootScope((await readFile(cssPath)).toString("utf8")),
+    );
     css = {
       original,
       withoutHostTailwind: Buffer.from(
