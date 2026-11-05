@@ -19,6 +19,7 @@ import { useInboxData, useProjectIcons } from "../model/use-inbox-data.js";
 import { InboxClockProvider } from "./InboxClock.js";
 import { InboxGroup } from "./InboxGroup.js";
 import { InboxThreadRow, type InboxRowContext } from "./InboxRow.js";
+import { UsageFooter } from "./UsageFooter.js";
 
 const SHELF_STORAGE_PREFIX = "bb-inbox:shelf-expanded:";
 
@@ -110,6 +111,18 @@ function topLevelRowCount(nodes: readonly InboxNode[]): number {
   let count = 0;
   for (const node of nodes) count += node.kind === "group" ? node.rows.length : 1;
   return count;
+}
+
+function useElementHeight(): [(element: HTMLElement | null) => void, number] {
+  const [element, setElement] = useState<HTMLElement | null>(null);
+  const [height, setHeight] = useState(0);
+  useLayoutEffect(() => {
+    if (element === null) return;
+    const observer = new ResizeObserver(() => setHeight(element.offsetHeight));
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [element]);
+  return [setElement, element === null ? 0 : height];
 }
 
 function Shelf({
@@ -211,6 +224,7 @@ function InboxListView({ activeThreadId, onNavigate }: PluginThreadListProps) {
   const [workingExpanded, setWorkingExpanded] = useShelfExpanded("working");
   const [snoozedExpanded, setSnoozedExpanded] = useShelfExpanded("snoozed");
   const [settledExpanded, setSettledExpanded] = useShelfExpanded("settled");
+  const [footerRef, footerHeight] = useElementHeight();
   const icons = useProjectIcons();
   const { providers } = experimental_useProviders();
   const navigate = useStableCallback(onNavigate);
@@ -294,8 +308,9 @@ function InboxListView({ activeThreadId, onNavigate }: PluginThreadListProps) {
         className={cn(
           "mt-auto flex flex-col gap-2 pt-3",
           shelvesPinned &&
-            "sticky bottom-0 z-20 -mx-2 border-t border-sidebar-border bg-sidebar px-2 pb-1 pt-1 before:pointer-events-none before:absolute before:inset-x-0 before:-top-6 before:h-6 before:bg-linear-to-t before:from-sidebar before:to-transparent",
+            "sticky z-20 -mx-2 border-t border-sidebar-border bg-sidebar px-2 pb-1 pt-1 before:pointer-events-none before:absolute before:inset-x-0 before:-top-6 before:h-6 before:bg-linear-to-t before:from-sidebar before:to-transparent",
         )}
+        style={shelvesPinned ? { bottom: footerHeight } : undefined}
       >
         {working.nodes.length > 0 ? (
           <Shelf
@@ -334,6 +349,7 @@ function InboxListView({ activeThreadId, onNavigate }: PluginThreadListProps) {
           />
         ) : null}
       </div>
+      <UsageFooter ref={footerRef} />
     </nav>
   );
 }
