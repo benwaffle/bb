@@ -1,3 +1,4 @@
+import { compactPluginRootScope } from "@bb/plugin-build";
 import { HOST_TAILWIND_VERSION } from "@bb/plugin-build/host-tailwind-version";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -182,7 +183,9 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
 
     const legacyCss = await harness.app.request(`${BASE}${bundle.cssUrl}`);
     expect(await legacyCss.text()).toBe(
-      await readFile(join(rootDir, "dist", "app.css"), "utf8"),
+      compactPluginRootScope(
+        await readFile(join(rootDir, "dist", "app.css"), "utf8"),
+      ),
     );
 
     const css = await harness.app.request(
@@ -193,7 +196,7 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
     const cssText = await css.text();
     expect(cssText).toContain("line-clamp-2");
     const scope =
-      ":where([data-bb-plugin=appy],[data-bb-plugin-root]:not([data-bb-plugin]))";
+      ":where([data-bb-plugin-root]:is([data-bb-plugin=appy],:not([data-bb-plugin])))";
     expect(cssText).toContain(`${scope} .line-clamp-2`);
     expect(cssText).toContain(`${scope}.line-clamp-2`);
     expect(cssText).not.toMatch(/@layer utilities\{\./);
@@ -228,7 +231,9 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
         );
         const compressed = Buffer.from(await response.arrayBuffer());
         expect(gunzipSync(compressed).toString()).toBe(
-          version === HOST_TAILWIND_VERSION ? cssText : builtCss,
+          version === HOST_TAILWIND_VERSION
+            ? cssText
+            : compactPluginRootScope(builtCss),
         );
       }
     }
@@ -274,6 +279,11 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
       "",
     );
     expect(owned).toContain(":where([data-bb-plugin=owned]) .line-clamp-2");
+    const served = legacy.replaceAll(
+      /:where\(\[data-bb-plugin=owned\],\[data-bb-plugin-root\]:not\(\[data-bb-plugin\]\)\)/g,
+      ":where([data-bb-plugin-root]:is([data-bb-plugin=owned],:not([data-bb-plugin])))",
+    );
+    expect(served).not.toBe(legacy);
     await writeFile(join(rootDir, "dist", "app.css"), "changed after snapshot");
     for (const url of [
       `${BASE}${bundle.cssUrl}`,
@@ -308,13 +318,15 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
                 ? brotliDecompressSync(bytes)
                 : gunzipSync(bytes)
             ).toString();
-            const full = scope === "owned-root-v1" ? owned : legacy;
+            const full = scope === "owned-root-v1" ? owned : served;
             if (host === HOST_TAILWIND_VERSION) {
               expect(css).not.toContain("@property");
               expect(css).not.toContain(":root");
               expect(css).toContain("line-clamp-2");
               expect(
-                css.includes("[data-bb-plugin-root]:not([data-bb-plugin])"),
+                css.includes(
+                  ":where([data-bb-plugin-root]:is([data-bb-plugin=owned],:not([data-bb-plugin])))",
+                ),
               ).toBe(scope !== "owned-root-v1");
             } else {
               expect(css).toBe(full);
@@ -335,6 +347,9 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
       "[data-bb-plugin-root]:not([data-bb-plugin]) .authored{color:red}";
     const owned =
       "@layer utilities{:where([data-bb-plugin=scope]) .p-2{padding:.5rem}}" +
+      "[data-bb-plugin-root]:not([data-bb-plugin]) .authored{color:red}";
+    const served =
+      "@layer utilities{:where([data-bb-plugin-root]:is([data-bb-plugin=scope],:not([data-bb-plugin]))) .p-2{padding:.5rem}}" +
       "[data-bb-plugin-root]:not([data-bb-plugin]) .authored{color:red}";
     await writeFile(join(dist, "app.css"), legacy);
     await writeFile(
@@ -373,7 +388,7 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
         if (requested !== null) url.searchParams.set("css-scope", requested);
         const response = await harness.app.request(url.toString());
         expect(await response.text(), `${scenario.js} ${requested}`).toBe(
-          scenario.narrowed && requested === "owned-root-v1" ? owned : legacy,
+          scenario.narrowed && requested === "owned-root-v1" ? owned : served,
         );
       }
     }
