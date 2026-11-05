@@ -387,6 +387,23 @@ const EMPTY_ROW_ID_SET: ReadonlySet<string> = new Set<string>();
 const TimelineSearchExpansionContext =
   createContext<ReadonlySet<string>>(EMPTY_ROW_ID_SET);
 const TIMELINE_TERMINAL_EXPANSION_RETENTION = 24;
+const RETAINED_WINDOWING_MEASUREMENT_THREADS = 20;
+const windowingMeasurementsByThreadId = new Map<string, Map<string, number>>();
+
+function retainedWindowingMeasurements(threadId: string): Map<string, number> {
+  const measurements =
+    windowingMeasurementsByThreadId.get(threadId) ?? new Map<string, number>();
+  windowingMeasurementsByThreadId.delete(threadId);
+  windowingMeasurementsByThreadId.set(threadId, measurements);
+  while (
+    windowingMeasurementsByThreadId.size > RETAINED_WINDOWING_MEASUREMENT_THREADS
+  ) {
+    const oldestThreadId = windowingMeasurementsByThreadId.keys().next().value;
+    if (oldestThreadId === undefined) break;
+    windowingMeasurementsByThreadId.delete(oldestThreadId);
+  }
+  return measurements;
+}
 
 function useTimelineRendererStaticContext(): TimelineRendererStaticContextValue {
   const context = useContext(TimelineRendererStaticContext);
@@ -2422,7 +2439,12 @@ function ThreadTimelineRowsComponent(props: ThreadTimelineRowsProps) {
 
 function ThreadTimelineRowsForTimelineView(props: ThreadTimelineRowsProps) {
   const getViewRows = useTimelineViewRowsCache();
-  const [windowingMeasurements] = useState(() => new Map<string, number>());
+  const [windowingMeasurements] = useState(() => {
+    const ownerKey = props.threadId ?? props.timelineRows[0]?.threadId;
+    return ownerKey === undefined
+      ? new Map<string, number>()
+      : retainedWindowingMeasurements(ownerKey);
+  });
   const rows = useMemo(
     () => getViewRows(props.timelineRows),
     [getViewRows, props.timelineRows],
