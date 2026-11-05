@@ -1,3 +1,4 @@
+import { compactPluginRootScope } from "@bb/plugin-build";
 import { HOST_TAILWIND_VERSION } from "@bb/plugin-build/host-tailwind-version";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -182,7 +183,9 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
 
     const legacyCss = await harness.app.request(`${BASE}${bundle.cssUrl}`);
     expect(await legacyCss.text()).toBe(
-      await readFile(join(rootDir, "dist", "app.css"), "utf8"),
+      compactPluginRootScope(
+        await readFile(join(rootDir, "dist", "app.css"), "utf8"),
+      ),
     );
 
     const css = await harness.app.request(
@@ -193,7 +196,7 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
     const cssText = await css.text();
     expect(cssText).toContain("line-clamp-2");
     const scope =
-      ":where([data-bb-plugin=appy],[data-bb-plugin-root]:not([data-bb-plugin]))";
+      ":where([data-bb-plugin-root]:is([data-bb-plugin=appy],:not([data-bb-plugin])))";
     expect(cssText).toContain(`${scope} .line-clamp-2`);
     expect(cssText).toContain(`${scope}.line-clamp-2`);
     expect(cssText).not.toMatch(/@layer utilities\{\./);
@@ -228,7 +231,9 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
         );
         const compressed = Buffer.from(await response.arrayBuffer());
         expect(gunzipSync(compressed).toString()).toBe(
-          version === HOST_TAILWIND_VERSION ? cssText : builtCss,
+          version === HOST_TAILWIND_VERSION
+            ? cssText
+            : compactPluginRootScope(builtCss),
         );
       }
     }
@@ -281,6 +286,11 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
     expect(keyed).toContain(
       ":where([data-bb-plugin-scope-owned]) .line-clamp-2",
     );
+    const served = legacy.replaceAll(
+      /:where\(\[data-bb-plugin=owned\],\[data-bb-plugin-root\]:not\(\[data-bb-plugin\]\)\)/g,
+      ":where([data-bb-plugin-root]:is([data-bb-plugin=owned],:not([data-bb-plugin])))",
+    );
+    expect(served).not.toBe(legacy);
     await writeFile(join(rootDir, "dist", "app.css"), "changed after snapshot");
     for (const url of [
       `${BASE}${bundle.cssUrl}`,
@@ -322,13 +332,15 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
                 ? keyed
                 : scope === "owned-root-v1"
                   ? owned
-                  : legacy;
+                  : served;
             if (host === HOST_TAILWIND_VERSION) {
               expect(css).not.toContain("@property");
               expect(css).not.toContain(":root");
               expect(css).toContain("line-clamp-2");
               expect(
-                css.includes("[data-bb-plugin-root]:not([data-bb-plugin])"),
+                css.includes(
+                  ":where([data-bb-plugin-root]:is([data-bb-plugin=owned],:not([data-bb-plugin])))",
+                ),
               ).toBe(scope === null || scope === "unknown");
               expect(css.includes("[data-bb-plugin=owned]")).toBe(
                 scope !== "plugin-attribute-v1",
@@ -356,6 +368,9 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
     const keyed =
       "@layer utilities{:where([data-bb-plugin-scope-scope]) .p-2{padding:.5rem}}" +
       "[data-bb-plugin-root]:not([data-bb-plugin]) .authored{color:red}";
+    const served =
+      "@layer utilities{:where([data-bb-plugin-root]:is([data-bb-plugin=scope],:not([data-bb-plugin]))) .p-2{padding:.5rem}}" +
+      "[data-bb-plugin-root]:not([data-bb-plugin]) .authored{color:red}";
     await writeFile(join(dist, "app.css"), legacy);
     await writeFile(
       join(dist, "app.meta.json"),
@@ -382,8 +397,8 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
       },
       {
         js: 'export const p={"data-bb-plugin-root":""};',
-        owned: legacy,
-        keyed: legacy,
+        owned: served,
+        keyed: served,
       },
     ];
     for (const scenario of scenarios) {
@@ -394,8 +409,8 @@ describe("plugin app bundles (build policy, inventory, asset routes)", () => {
         .find((plugin) => plugin.id === "scope")?.app.bundle;
       if (bundle == null) throw new Error(`missing bundle: ${scenario.js}`);
       for (const [requested, expected] of [
-        [null, legacy],
-        ["unknown", legacy],
+        [null, served],
+        ["unknown", served],
         ["owned-root-v1", scenario.owned],
         ["plugin-attribute-v1", scenario.keyed],
       ] as const) {
