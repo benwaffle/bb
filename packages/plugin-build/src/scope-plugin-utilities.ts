@@ -65,22 +65,29 @@ export function findUnnamedPluginRoots(js: string): number[] {
 const ANONYMOUS_PLUGIN_ROOT_ARM =
   /,\s*\[data-bb-plugin-root\]:not\(\[data-bb-plugin\]\)/g;
 const NAMED_PLUGIN_ROOT = /\[data-bb-plugin=("?)([a-z0-9][a-z0-9-]*)\1\]/g;
+const COMPACT_PLUGIN_ROOT_SCOPE =
+  /:where\(\[data-bb-plugin-root\]:is\(\[data-bb-plugin=("[^"]*"|[^\]]*)\],:not\(\[data-bb-plugin\]\)\)\)/g;
+
+function ownedRootScope(body: string): string {
+  return body
+    .replace(ANONYMOUS_PLUGIN_ROOT_ARM, "")
+    .replace(
+      COMPACT_PLUGIN_ROOT_SCOPE,
+      (_match, pluginId: string) => `:where([data-bb-plugin=${pluginId}])`,
+    );
+}
 
 export function dropAnonymousPluginRootScope(css: string): string {
-  return rewriteUtilitiesLayers(css, (body) =>
-    body.replace(ANONYMOUS_PLUGIN_ROOT_ARM, ""),
-  );
+  return rewriteUtilitiesLayers(css, ownedRootScope);
 }
 
 export function keyPluginScopeOnAttribute(css: string): string {
   return rewriteUtilitiesLayers(css, (body) =>
-    body
-      .replace(ANONYMOUS_PLUGIN_ROOT_ARM, "")
-      .replace(
-        NAMED_PLUGIN_ROOT,
-        (_match, _quote, pluginId: string) =>
-          `[data-bb-plugin-scope-${pluginId}]`,
-      ),
+    ownedRootScope(body).replace(
+      NAMED_PLUGIN_ROOT,
+      (_match, _quote, pluginId: string) =>
+        `[data-bb-plugin-scope-${pluginId}]`,
+    ),
   );
 }
 
@@ -97,6 +104,19 @@ function rewriteUtilitiesLayers(
       return `${statement.prelude}{${body}}`;
     })
     .join("");
+}
+
+const TWO_ARM_PLUGIN_ROOT_SCOPE =
+  /:where\(\[data-bb-plugin=("[^"]*"|[^\]]*)\],\s*\[data-bb-plugin-root\]:not\(\[data-bb-plugin\]\)\)/g;
+
+export function compactPluginRootScope(css: string): string {
+  return rewriteUtilitiesLayers(css, (body) =>
+    body.replace(
+      TWO_ARM_PLUGIN_ROOT_SCOPE,
+      (_match, pluginId: string) =>
+        `:where([data-bb-plugin-root]:is([data-bb-plugin=${pluginId}],:not([data-bb-plugin])))`,
+    ),
+  );
 }
 
 interface HostProvidedTailwind {
