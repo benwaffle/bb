@@ -121,6 +121,18 @@ Classic: a preference that names a disabled plugin leaves the sidebar on bb's
 bb plugin config bb--inbox set layout classic
 ```
 
+## Usage footer
+
+The bottom of the list shows the 5-hour and weekly subscription windows from
+`system.usageLimits` (Claude Code first, else the first provider reporting
+them) as two thin bars with their percent. A bar turns to the attention color
+at 80%. The footer reads them when the list mounts and then once a minute, and
+is hidden while no provider reports either window. The footer is a button that
+runs the `plugin:usage-stats/open-usage` app command whenever
+`experimental_useAppCommands().list()` reports that command available, and
+plain text otherwise, checked on each refresh. `bb settings usage` prints the
+same windows.
+
 ## Settle and snooze
 
 Settle a thread when you are done with it for now. It leaves Inbox,
