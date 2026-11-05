@@ -14,8 +14,12 @@ import type { ScrollPositionKeeper } from "@/components/ui/scroll-position-keepe
 
 export const DEFAULT_WINDOWING_MIN_ITEM_COUNT = 20;
 const MAX_MEASUREMENTS = 2_000;
-const OVERSCAN_ITEMS = 8;
-const EDGE_MARGIN_ITEMS = 2;
+const INITIAL_OVERSCAN_ITEMS = 2;
+const TRAILING_OVERSCAN_VIEWPORTS = 1;
+const MAX_LEADING_OVERSCAN_VIEWPORTS = 1.5;
+const OVERSCAN_LOOKAHEAD_MS = 250;
+const MAX_VELOCITY_SAMPLE_GAP_MS = 120;
+const RETAINED_OVERSCAN_MULTIPLE = 3;
 const TOP_MOUNT_VIEWPORTS = 2;
 const MAX_INTERACTION_PINS = 24;
 const MAX_WINDOW_UPDATES_PER_FRAME = 8;
@@ -88,6 +92,17 @@ interface WindowState {
   heights: ReadonlyMap<string, number>;
 }
 
+interface Overscan {
+  before: number;
+  after: number;
+}
+
+interface ScrollMotionSample {
+  localTop: number;
+  time: number;
+  velocity: number;
+}
+
 const EMPTY_KEY_SET: ReadonlySet<string> = new Set();
 const WINDOW_KEY_ATTRIBUTE = "data-timeline-window-key";
 
@@ -154,19 +169,60 @@ function reachesListTop(
   );
 }
 
-function windowKeysAround(
+function keysInRange(
   itemKeys: readonly string[],
-  visible: IndexRange,
-  mountToTop: boolean,
+  start: number,
+  end: number,
 ): Set<string> {
   const keys = new Set<string>();
-  const start = mountToTop ? 0 : Math.max(0, visible.start - OVERSCAN_ITEMS);
-  const end = Math.min(itemKeys.length - 1, visible.end + OVERSCAN_ITEMS);
   for (let index = start; index <= end; index += 1) {
     const key = itemKeys[index];
     if (key !== undefined) keys.add(key);
   }
   return keys;
+}
+
+function initialWindowKeys(
+  itemKeys: readonly string[],
+  visible: IndexRange,
+  mountToTop: boolean,
+): Set<string> {
+  return keysInRange(
+    itemKeys,
+    mountToTop ? 0 : Math.max(0, visible.start - INITIAL_OVERSCAN_ITEMS),
+    Math.min(itemKeys.length - 1, visible.end + INITIAL_OVERSCAN_ITEMS),
+  );
+}
+
+function overscanFor(viewportHeight: number, velocity: number): Overscan {
+  const trailing = TRAILING_OVERSCAN_VIEWPORTS * viewportHeight;
+  const leading = Math.min(
+    MAX_LEADING_OVERSCAN_VIEWPORTS * viewportHeight,
+    Math.max(trailing, Math.abs(velocity) * OVERSCAN_LOOKAHEAD_MS),
+  );
+  return velocity < 0
+    ? { before: leading, after: trailing }
+    : velocity > 0
+      ? { before: trailing, after: leading }
+      : { before: trailing, after: trailing };
+}
+
+function windowKeysAround(
+  itemKeys: readonly string[],
+  model: LayoutModel,
+  localTop: number,
+  viewportHeight: number,
+  overscan: Overscan,
+  mountToTop: boolean,
+): Set<string> {
+  const start = mountToTop
+    ? 0
+    : indexAtOffset(model, Math.max(0, localTop - overscan.before));
+  const end = indexAtOffset(
+    model,
+    Math.max(0, localTop + viewportHeight + overscan.after),
+  );
+  return keysInRange(itemKeys, start, Math.min(itemKeys.length - 1, end));
 }
 
 function heldKeyOf(positionKeeper: ScrollPositionKeeper): string | null {
@@ -258,7 +314,7 @@ export function TimelineWindowedItems({
           : 0;
     const visible = visibleRange(model, localTop, viewportHeight);
     return {
-      keys: windowKeysAround(
+      keys: initialWindowKeys(
         itemKeys,
         visible,
         reachesListTop(model, visible, viewportHeight),
@@ -426,16 +482,47 @@ export function TimelineWindowedItems({
     budget.count += 1;
     return budget.count <= MAX_WINDOW_UPDATES_PER_FRAME;
   }, []);
+  const retryFrameRef = useRef<number | null>(null);
+  const syncWindowRef = useRef<
+    (urgent: boolean, inNextFrame: boolean) => void
+  >(() => undefined);
+  const scheduleNextFrameSync = useCallback(() => {
+    if (retryFrameRef.current !== null) return;
+    retryFrameRef.current = requestAnimationFrame(() => {
+      retryFrameRef.current = null;
+      syncWindowRef.current(true, true);
+    });
+  }, []);
   useLayoutEffect(
     () => () => {
       const frame = frameUpdatesRef.current.frame;
       if (frame !== null) cancelAnimationFrame(frame);
+      if (retryFrameRef.current !== null) {
+        cancelAnimationFrame(retryFrameRef.current);
+        retryFrameRef.current = null;
+      }
     },
     [],
   );
+  const motionRef = useRef<ScrollMotionSample | null>(null);
+  const sampleVelocity = useCallback((localTop: number): number => {
+    const now = performance.now();
+    const previous = motionRef.current;
+    let velocity = 0;
+    if (previous !== null) {
+      const elapsed = now - previous.time;
+      if (elapsed <= 0) {
+        velocity = previous.velocity;
+      } else if (elapsed <= MAX_VELOCITY_SAMPLE_GAP_MS) {
+        velocity = (localTop - previous.localTop) / elapsed;
+      }
+    }
+    motionRef.current = { localTop, time: now, velocity };
+    return velocity;
+  }, []);
 
   const syncWindow = useCallback(
-    (urgent: boolean) => {
+    (urgent: boolean, inNextFrame = false) => {
       const live = liveRef.current;
       const scrollRoot = positionKeeper?.getScrollElement() ?? null;
       if (scrollRoot !== null) {
@@ -476,6 +563,10 @@ export function TimelineWindowedItems({
           break;
         }
       }
+      const velocity = inNextFrame
+        ? (motionRef.current?.velocity ?? 0)
+        : sampleVelocity(localTop);
+      const overscan = overscanFor(viewportHeight, velocity);
       const windowIndexes: number[] = [];
       for (const key of live.windowKeys) {
         const index = live.indexByKey.get(key);
@@ -483,19 +574,41 @@ export function TimelineWindowedItems({
       }
       const first = windowIndexes.length ? Math.min(...windowIndexes) : 0;
       const last = windowIndexes.length ? Math.max(...windowIndexes) : -1;
+      const windowTop = model.offsets[first] ?? 0;
+      const windowBottom =
+        last < 0 ? 0 : (model.offsets[last] ?? 0) + (model.heights[last] ?? 0);
+      const viewportBottom = localTop + viewportHeight;
       const mountToTop = reachesListTop(model, visible, viewportHeight);
       const nearEdge =
         (mountToTop && first > 0) ||
-        (visible.start - first < EDGE_MARGIN_ITEMS && first > 0) ||
-        (last - visible.end < EDGE_MARGIN_ITEMS &&
-          last < live.itemKeys.length - 1) ||
-        (!mountToTop && visible.start - first > 3 * OVERSCAN_ITEMS) ||
-        last - visible.end > 3 * OVERSCAN_ITEMS;
+        (first > 0 && localTop - windowTop < overscan.before / 2) ||
+        (last < live.itemKeys.length - 1 &&
+          windowBottom - viewportBottom < overscan.after / 2) ||
+        (!mountToTop &&
+          localTop - windowTop >
+            RETAINED_OVERSCAN_MULTIPLE * overscan.before) ||
+        windowBottom - viewportBottom >
+          RETAINED_OVERSCAN_MULTIPLE * overscan.after;
       if (!uncovered && !nearEdge) return;
-      const keys = windowKeysAround(live.itemKeys, visible, mountToTop);
+      if (!uncovered && !inNextFrame) {
+        scheduleNextFrameSync();
+        return;
+      }
+      const keys = windowKeysAround(
+        live.itemKeys,
+        model,
+        localTop,
+        viewportHeight,
+        overscan,
+        mountToTop,
+      );
       const heldKey = heldKeyOf(positionKeeper);
       if (heldKey !== null && live.indexByKey.has(heldKey)) keys.add(heldKey);
-      if (sameKeys(keys, live.windowKeys) || !takeFrameUpdate()) return;
+      if (sameKeys(keys, live.windowKeys)) return;
+      if (!takeFrameUpdate()) {
+        scheduleNextFrameSync();
+        return;
+      }
       const heights = knownHeights(
         live.itemKeys,
         measurements,
@@ -508,8 +621,18 @@ export function TimelineWindowedItems({
         apply();
       }
     },
-    [measurements, positionKeeper, renderedModel, takeFrameUpdate],
+    [
+      measurements,
+      positionKeeper,
+      renderedModel,
+      sampleVelocity,
+      scheduleNextFrameSync,
+      takeFrameUpdate,
+    ],
   );
+  useLayoutEffect(() => {
+    syncWindowRef.current = syncWindow;
+  }, [syncWindow]);
 
   useLayoutEffect(() => {
     if (positionKeeper === null) return;

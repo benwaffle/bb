@@ -133,7 +133,57 @@ function setup({
   };
 }
 
+function manualFrames() {
+  let queue: FrameRequestCallback[] = [];
+  vi.spyOn(globalThis, "requestAnimationFrame").mockImplementation(
+    (callback) => {
+      queue.push(callback);
+      return queue.length;
+    },
+  );
+  vi.spyOn(globalThis, "cancelAnimationFrame").mockImplementation(
+    () => undefined,
+  );
+  return {
+    run() {
+      for (let pass = 0; pass < 5 && queue.length > 0; pass += 1) {
+        const batch = queue;
+        queue = [];
+        for (const callback of batch) callback(performance.now());
+      }
+    },
+  };
+}
+
 describe("TimelineWindowedItems", () => {
+  it("mounts about a viewport of rows past both edges of the viewport by the next frame, so a fast fling reveals rendered rows", () => {
+    const frames = manualFrames();
+    const harness = setup({ attached: true, heightOf: () => 60 });
+    render(harness.view(keys(1_000)), { container: harness.list });
+
+    act(() => harness.layout.userScrollTo(30_000));
+    act(() => frames.run());
+
+    const tops = harness.mounted().map((key) => harness.topOf(key));
+    expect(Math.min(...tops)).toBeLessThanOrEqual(-VIEWPORT_HEIGHT + 68);
+    expect(Math.max(...tops)).toBeGreaterThanOrEqual(2 * VIEWPORT_HEIGHT - 68);
+  });
+
+  it("renders the rows under a scroll jump that arrived after the frame's update budget ran out on the next frame", () => {
+    const frames = manualFrames();
+    const harness = setup({ attached: false, heightOf: () => 40 });
+    render(harness.view(keys(4_000)), { container: harness.list });
+
+    for (let step = 1; step <= 9; step += 1) {
+      act(() => harness.layout.userScrollTo(step * 15_000));
+    }
+    expect(harness.visibleKeys()).toEqual([]);
+
+    act(() => frames.run());
+
+    expect(harness.visibleKeys().length).toBeGreaterThan(3);
+  });
+
   it("keeps the reader's rows mounted and in place when an older page turns windowing on", () => {
     const harness = setup({ attached: false });
     const latest = keys(15);
