@@ -4,7 +4,7 @@ import {
   threadScope,
   turnScope,
 } from "@bb/domain";
-import type { ClientTurnRequestId, Thread } from "@bb/domain";
+import type { ClientTurnRequestId, Thread, ThreadEventType } from "@bb/domain";
 import {
   createProject,
   createThread,
@@ -15,7 +15,10 @@ import {
 import { createMigratedConnection } from "@bb/db/testing";
 import type { DbConnection } from "@bb/db";
 import type { TimelineRow } from "@bb/server-contract";
-import { buildThreadTimelineWithProfile } from "../../../src/services/threads/timeline.js";
+import {
+  buildThreadTimelineWithProfile,
+  buildTimelineTurnSummaryDetails,
+} from "../../../src/services/threads/timeline.js";
 
 const providerThreadId = "provider-root";
 
@@ -393,5 +396,129 @@ describe("thread timeline parented pagination", () => {
     expect(rowTexts(delegation?.childRows ?? [])).toContain(
       "SECOND_SUBAGENT_OUTPUT",
     );
+  });
+
+  it("loads a subagent command's details by the subagent turn id and its own range", () => {
+    const { db, thread } = setup();
+    const delegation = {
+      type: "delegation",
+      id: "spawn-1",
+      childRef: "provider-child",
+      label: "/root/child",
+      background: false,
+    };
+    const command = {
+      type: "commandExecution",
+      id: "child-command",
+      command: "echo CHILD_COMMAND_OUTPUT",
+      cwd: "/tmp/test",
+      approvalStatus: null,
+      parentToolCallId: "spawn-1",
+    };
+    const turnEvent = (
+      sequence: number,
+      type: ThreadEventType,
+      turnId: string,
+      fields: {
+        itemId?: string;
+        itemKind?: "commandExecution" | "delegation";
+        parentToolCallId?: string;
+        data: Record<string, unknown>;
+      },
+    ) => ({
+      threadId: thread.id,
+      sequence,
+      type,
+      scope: turnScope(turnId),
+      providerThreadId,
+      itemId: fields.itemId ?? null,
+      itemKind: fields.itemKind ?? null,
+      parentToolCallId: fields.parentToolCallId ?? null,
+      data: JSON.stringify(fields.data),
+    });
+    insertEvents(db, noopNotifier, [
+      {
+        threadId: thread.id,
+        sequence: 1,
+        type: "client/turn/requested",
+        scope: threadScope(),
+        itemId: null,
+        itemKind: null,
+        parentToolCallId: null,
+        data: JSON.stringify({
+          direction: "outbound",
+          source: "spawn",
+          initiator: "user",
+          request: { method: "thread/start", params: {} },
+          requestId: requestId(1),
+          senderThreadId: null,
+          input: [{ type: "text", text: "Spawn a child.", mentions: [] }],
+          target: { kind: "thread-start" },
+          execution,
+        }),
+      },
+      turnEvent(2, "turn/started", "parent-turn", { data: {} }),
+      turnEvent(3, "turn/input/accepted", "parent-turn", {
+        data: { clientRequestId: requestId(1) },
+      }),
+      turnEvent(4, "item/started", "parent-turn", {
+        itemId: "spawn-1",
+        itemKind: "delegation",
+        data: { item: { ...delegation, status: "pending" } },
+      }),
+      turnEvent(5, "turn/started", "child-turn", {
+        parentToolCallId: "spawn-1",
+        data: { parentToolCallId: "spawn-1" },
+      }),
+      turnEvent(6, "item/started", "child-turn", {
+        itemId: "child-command",
+        itemKind: "commandExecution",
+        parentToolCallId: "spawn-1",
+        data: { item: { ...command, status: "pending" } },
+      }),
+      turnEvent(7, "item/completed", "child-turn", {
+        itemId: "child-command",
+        itemKind: "commandExecution",
+        parentToolCallId: "spawn-1",
+        data: {
+          item: {
+            ...command,
+            status: "completed",
+            exitCode: 0,
+            aggregatedOutput: "CHILD_COMMAND_OUTPUT\n",
+          },
+        },
+      }),
+      turnEvent(8, "turn/completed", "child-turn", {
+        data: { status: "completed" },
+      }),
+      turnEvent(9, "item/completed", "parent-turn", {
+        itemId: "spawn-1",
+        itemKind: "delegation",
+        data: { item: { ...delegation, status: "completed" } },
+      }),
+      turnEvent(10, "turn/completed", "parent-turn", {
+        data: { status: "completed" },
+      }),
+    ]);
+
+    const details = buildTimelineTurnSummaryDetails(db, thread, {
+      completedTurnDisplay: "collapse",
+      deferContent: true,
+      includeDiagnosticOperations: false,
+      itemId: "child-command",
+      sourceSeqEnd: 7,
+      sourceSeqStart: 6,
+      summarizeShellCommands: true,
+      turnId: "child-turn",
+    });
+
+    expect(details.rows).toHaveLength(1);
+    expect(details.rows[0]).toMatchObject({
+      kind: "work",
+      workKind: "command",
+      callId: "child-command",
+      turnId: "child-turn",
+    });
   });
 });
