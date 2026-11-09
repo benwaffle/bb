@@ -2179,6 +2179,51 @@ function resolveTimelineTurnDetailsRange(
   };
 }
 
+function resolveTimelineTurnDetailsRootTurn(
+  db: DbConnection,
+  thread: Thread,
+  target: TimelineTurnSummarySelection,
+): TimelineTurnSummarySelection {
+  let current = target;
+  const visitedTurnIds = new Set<string>();
+  while (!visitedTurnIds.has(current.turnId)) {
+    visitedTurnIds.add(current.turnId);
+    const [started] = listStoredTurnStartedRowsByTurnIdsUpToSequence(db, {
+      threadId: thread.id,
+      sequenceCutoff: current.sourceSeqEnd,
+      turnIds: [current.turnId],
+    });
+    const parentToolCallId = started?.parentToolCallId ?? null;
+    if (parentToolCallId === null) {
+      return current;
+    }
+    const parentRows = listStoredDelegatingItemRowsByItemIds(db, {
+      itemIds: [parentToolCallId],
+      maxInlineOutputChars: DEFAULT_MAX_INLINE_OUTPUT_CHARS,
+      threadId: thread.id,
+    });
+    const parentTurnId = parentRows[0]?.turnId ?? null;
+    if (parentTurnId === null) {
+      return current;
+    }
+    const parentTurnRows = parentRows.filter(
+      (row) => row.turnId === parentTurnId,
+    );
+    current = {
+      turnId: parentTurnId,
+      sourceSeqStart: Math.min(
+        current.sourceSeqStart,
+        ...parentTurnRows.map((row) => row.sequence),
+      ),
+      sourceSeqEnd: Math.max(
+        current.sourceSeqEnd,
+        ...parentTurnRows.map((row) => row.sequence),
+      ),
+    };
+  }
+  return current;
+}
+
 export function buildTimelineTurnSummaryDetails(
   db: DbConnection,
   thread: Thread,
@@ -2187,7 +2232,10 @@ export function buildTimelineTurnSummaryDetails(
   return db.transaction(() =>
     buildTimelineTurnSummaryDetailsPage(db, thread, {
       ...options,
-      ...resolveTimelineTurnDetailsRange(db, thread, options),
+      ...resolveTimelineTurnDetailsRootTurn(db, thread, {
+        turnId: options.turnId,
+        ...resolveTimelineTurnDetailsRange(db, thread, options),
+      }),
     }),
   );
 }
