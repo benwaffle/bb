@@ -5,8 +5,10 @@ describe("resolveClaudeModelContextWindowHint", () => {
   it.each([
     "claude-fable-5",
     "claude-fable-5-1",
+    "claude-fable-5-2",
     "claude-mythos-5",
     "claude-mythos-5-1",
+    "claude-mythos-5-2",
     "fable",
     "best",
   ])("treats %s as a 1M-context model", (model) => {
