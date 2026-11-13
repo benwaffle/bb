@@ -7,7 +7,7 @@ import { attachServerUpdateControl } from "./server-update-control.js";
 import { registerServerChoiceIpc } from "./server-choice-ipc.js";
 import { randomUUID } from "node:crypto";
 import { accessSync, constants as fsConstants } from "node:fs";
-import { arch, homedir, release, type as osType } from "node:os";
+import { arch, homedir, release, totalmem, type as osType } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import {
   app,
@@ -195,6 +195,7 @@ import {
   type DesktopAboutFacts,
 } from "./desktop-about-panel.js";
 import { registerDesktopContextMenu } from "./desktop-context-menu.js";
+import { resolveRendererGpuMemoryMb } from "./desktop-gpu-memory.js";
 import {
   getDesktopVersion,
   resolveBbDesktopPlatform,
@@ -3045,6 +3046,13 @@ async function runDesktopApp(): Promise<void> {
     await hostToolchain.refresh();
     Object.assign(process.env, hostToolchain.environment());
   }
+  // Chromium otherwise fixes each renderer's GPU tile memory budget from the
+  // screen its page is created on, which is too small when a window created on
+  // a small display is used on a larger one and leaves tiles unrasterized.
+  app.commandLine.appendSwitch(
+    "force-gpu-mem-available-mb",
+    String(resolveRendererGpuMemoryMb(totalmem())),
+  );
   await app.whenReady();
   if (app.isPackaged) {
     await session.defaultSession.clearCache();
