@@ -342,7 +342,9 @@ export function BottomAnchoredScrollBody({
               ref={scrollContentRef}
               className="flex min-h-full min-w-0 flex-col"
               style={
-                contentInsetEndPx ? { paddingInlineEnd: contentInsetEndPx } : undefined
+                contentInsetEndPx
+                  ? { paddingInlineEnd: contentInsetEndPx }
+                  : undefined
               }
             >
               <div
@@ -352,6 +354,7 @@ export function BottomAnchoredScrollBody({
               />
               <div
                 ref={pageContentRef}
+                data-sidebar-centered=""
                 data-scroll-attached={isAtBottom ? "" : undefined}
                 className={cn(
                   "mx-auto flex w-full min-w-0 flex-1 flex-col px-4 pb-4 pt-2",

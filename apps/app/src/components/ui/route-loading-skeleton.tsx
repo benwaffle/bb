@@ -82,6 +82,7 @@ export function RouteLoadingSkeleton({
       ) : null}
       {isRootCompose ? (
         <div
+          data-sidebar-centered=""
           className={cn(
             "mx-auto flex min-h-0 w-full max-w-[760px] flex-1 flex-col px-4 pb-4",
             isCompactViewport ? "justify-end pt-2" : "pt-14",
@@ -95,10 +96,16 @@ export function RouteLoadingSkeleton({
         </div>
       ) : (
         <>
-          <div className="mx-auto min-h-0 w-full max-w-[760px] flex-1 overflow-hidden px-4 pt-4">
+          <div
+            data-sidebar-centered=""
+            className="mx-auto min-h-0 w-full max-w-[760px] flex-1 overflow-hidden px-4 pt-4"
+          >
             {children}
           </div>
-          <div className="mx-auto w-full max-w-[760px] shrink-0 px-4 pb-4">
+          <div
+            data-sidebar-centered=""
+            className="mx-auto w-full max-w-[760px] shrink-0 px-4 pb-4"
+          >
             {isCompactViewport ? (
               <ComposerLoadingSkeleton shape="thread-compact" />
             ) : (

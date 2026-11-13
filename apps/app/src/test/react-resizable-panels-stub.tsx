@@ -1,6 +1,7 @@
 import {
   forwardRef,
   useImperativeHandle,
+  type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
 } from "react";
@@ -24,10 +25,40 @@ export const PanelGroup = forwardRef<
 });
 PanelGroup.displayName = "MockPanelGroup";
 
-export function Panel({ children }: { children?: ReactNode }) {
-  return <div data-testid="panel">{children}</div>;
+export function Panel({
+  children,
+  className,
+  id,
+  style,
+}: {
+  children?: ReactNode;
+  className?: string;
+  id?: string;
+  style?: CSSProperties;
+}) {
+  return (
+    <div
+      data-testid="panel"
+      data-panel=""
+      data-panel-id={id}
+      className={className}
+      style={style}
+    >
+      {children}
+    </div>
+  );
 }
 
-export function PanelResizeHandle({ children }: { children?: ReactNode }) {
-  return <div>{children}</div>;
+export function PanelResizeHandle({
+  children,
+  className,
+}: {
+  children?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div data-testid="panel-resize-handle" className={className}>
+      {children}
+    </div>
+  );
 }

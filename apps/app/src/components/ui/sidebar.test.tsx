@@ -10,7 +10,7 @@ import {
 import { memo, startTransition, useState } from "react";
 import { flushSync } from "react-dom";
 import { renderToString } from "react-dom/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { CompactViewportOverrideProvider } from "@bb/shared-ui/hooks/use-compact-viewport";
 import {
   Sidebar,
@@ -287,26 +287,26 @@ describe("desktop collapsed rail", () => {
       </CompactViewportOverrideProvider>,
     );
 
-    const { root, gap, panel } = getDesktopSidebarParts();
+    const { gap, panel } = getDesktopSidebarParts();
     const probe = screen.getByTestId("collapsed-rail-probe");
-    expect(root.dataset.collapsible).toBe("");
+    expect(gap.dataset.collapsible).toBe("");
     expect(probe.dataset.keepsRail).toBe("true");
     expect(probe.dataset.showing).toBe("true");
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
 
-    expect(root.dataset.state).toBe("collapsed");
-    expect(root.dataset.collapsible).toBe("rail");
     expect(probe.dataset.showing).toBe("false");
     for (const part of [gap, panel]) {
+      expect(part.dataset.sidebarState).toBe("collapsed");
+      expect(part.dataset.collapsible).toBe("rail");
       expect(part.style.getPropertyValue("--sidebar-rail-width")).toBe("52px");
       expect(part.className).toContain(
-        "group-data-[collapsible=rail]:w-(--sidebar-rail-width)",
+        "data-[collapsible=rail]:w-(--sidebar-rail-width)",
       );
     }
   });
 
-  it("parks the body beside the rail at its expanded width and takes it out of reach", () => {
+  it("parks the body beside the rail at its expanded width and takes it out of reach without touching its rows", () => {
     render(
       <CompactViewportOverrideProvider isCompactViewport={false}>
         <SidebarProvider collapsedRailWidth="52px" width="333px" defaultOpen>
@@ -321,21 +321,31 @@ describe("desktop collapsed rail", () => {
     );
 
     const body = screen.getByTestId("body");
-    const content = screen.getByRole("button", {
-      name: "Thread row",
-    }).parentElement;
-    expect(body.hasAttribute("inert")).toBe(false);
+    const row = screen.getByRole("button", { name: "Thread row" });
+    const content = row.parentElement;
+    const shield = () =>
+      body.querySelector(':scope > [data-sidebar="collapsible-body-shield"]');
+    expect(shield()).toBeNull();
     expect(content?.style.width).toBe("calc(281px)");
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
 
-    expect(body.hasAttribute("inert")).toBe(true);
     expect(content?.style.width).toBe("calc(281px)");
-    expect(body.className).toContain("group-data-[collapsible=rail]:invisible");
+    expect(body.dataset.collapsible).toBe("rail");
+    expect(body.className).toContain(
+      "data-[collapsible=rail]:[content-visibility:hidden]",
+    );
+    expect(shield()?.className).toContain("absolute inset-0");
+    expect(shield()?.getAttribute("aria-hidden")).toBe("true");
+    expect(body.closest("[inert]")).toBeNull();
+    expect(body.querySelector("[inert]")).toBeNull();
+    expect(row.hasAttribute("inert")).toBe(false);
 
     fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
 
-    expect(body.hasAttribute("inert")).toBe(false);
+    expect(body.hasAttribute("data-collapsible")).toBe(false);
+    expect(shield()).toBeNull();
+    expect(body.querySelector("[inert]")).toBeNull();
   });
 
   it("slides fully off canvas when no rail width is configured", () => {
@@ -348,8 +358,9 @@ describe("desktop collapsed rail", () => {
       </CompactViewportOverrideProvider>,
     );
 
-    const { root, panel } = getDesktopSidebarParts();
-    expect(root.dataset.collapsible).toBe("offcanvas");
+    const { gap, panel } = getDesktopSidebarParts();
+    expect(gap.dataset.collapsible).toBe("offcanvas");
+    expect(panel.dataset.collapsible).toBe("offcanvas");
     expect(panel.style.getPropertyValue("--sidebar-rail-width")).toBe("");
     expect(screen.getByTestId("collapsed-rail-probe").dataset.keepsRail).toBe(
       "false",
@@ -371,6 +382,474 @@ describe("desktop collapsed rail", () => {
     expect(probe.dataset.showing).toBe("false");
     expect(document.querySelector('[data-sidebar="gap"]')).toBeNull();
     expect(document.querySelector('[data-collapsible="rail"]')).toBeNull();
+  });
+});
+
+function transitionDeclarations(element: HTMLElement): string[] {
+  return [...element.classList].flatMap((token) => {
+    const match = /\[transition:([^\]]+)\]$/.exec(token);
+    return match?.[1] === undefined ? [] : match[1].split(",");
+  });
+}
+
+describe("desktop sidebar slide", () => {
+  it("slides the panel off canvas on translate instead of animating its left edge", () => {
+    render(
+      <CompactViewportOverrideProvider isCompactViewport={false}>
+        <SidebarProvider defaultOpen>
+          <Sidebar>Sidebar content</Sidebar>
+          <SidebarTrigger />
+        </SidebarProvider>
+      </CompactViewportOverrideProvider>,
+    );
+    const { panel } = getDesktopSidebarParts();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+
+    expect(panel.dataset.collapsible).toBe("offcanvas");
+    expect(panel.className).toContain(
+      "data-[collapsible=offcanvas]:[translate:calc(-100%_-_var(--bb-window-frame-leading-lip,0px))_0]",
+    );
+    expect(panel.className).not.toMatch(/(^|\s)\S*left-\[calc/);
+    const animated = transitionDeclarations(panel).map(
+      (declaration) => declaration.split("_")[0],
+    );
+    expect(animated).toContain("translate");
+    expect(animated).not.toContain("left");
+    expect(animated).not.toContain("right");
+  });
+
+  it("changes the content gap width in one untransitioned step", () => {
+    render(
+      <CompactViewportOverrideProvider isCompactViewport={false}>
+        <SidebarProvider defaultOpen>
+          <Sidebar>Sidebar content</Sidebar>
+          <SidebarTrigger />
+        </SidebarProvider>
+      </CompactViewportOverrideProvider>,
+    );
+    const { gap } = getDesktopSidebarParts();
+
+    expect(transitionDeclarations(gap)).toEqual([]);
+    expect(gap.className).not.toMatch(/(^|\s)(\S*:)?(transition|duration)-/);
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    expect(gap.dataset.collapsible).toBe("offcanvas");
+    expect(gap.classList).toContain("data-[collapsible=offcanvas]:w-0");
+  });
+
+  it("keeps toggling state off the sidebar root and every group or peer so a toggle restyles only the parts that change", () => {
+    render(
+      <CompactViewportOverrideProvider isCompactViewport={false}>
+        <SidebarProvider defaultOpen collapsedRailWidth="52px">
+          <Sidebar>
+            <SidebarCollapsibleBody>
+              <button type="button">Thread row</button>
+            </SidebarCollapsibleBody>
+          </Sidebar>
+          <SidebarInset />
+          <SidebarTrigger />
+        </SidebarProvider>
+      </CompactViewportOverrideProvider>,
+    );
+    const { root } = getDesktopSidebarParts();
+    const content = document.querySelector('[data-sidebar="sidebar"]');
+    const snapshotAttributes = () =>
+      new Map(
+        [...document.querySelectorAll("*")].map((element) => [
+          element,
+          [...element.attributes]
+            .map((attribute) => `${attribute.name}=${attribute.value}`)
+            .join(" "),
+        ]),
+      );
+    const before = snapshotAttributes();
+
+    fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+
+    const after = snapshotAttributes();
+    const changed = [...after].flatMap(([element, attributes]) =>
+      before.has(element) && before.get(element) !== attributes
+        ? [element]
+        : [],
+    );
+    const added = [...after.keys()].filter((element) => !before.has(element));
+    expect(
+      changed.map((element) => element.getAttribute("data-sidebar")),
+    ).toEqual(["gap", "panel", "collapsible-body", "trigger"]);
+    expect(
+      added.map((element) => element.getAttribute("data-sidebar")),
+    ).toEqual(["collapsible-body-shield"]);
+    expect(document.querySelector("[inert]")).toBeNull();
+    for (const element of changed) {
+      expect(element.className).not.toMatch(/(^|\s)(group|peer)(\/|\s|$)/);
+    }
+    expect(changed).not.toContain(root);
+    expect(document.querySelector(".group.peer")).toBeNull();
+    expect(content?.className).toContain("[contain:layout_style]");
+  });
+});
+
+const SLIDE_VIEWPORT_WIDTH = 1600;
+const SLIDE_SIDEBAR_WIDTH = 300;
+const SLIDE_COLUMN_WIDTH = 760;
+const SLIDE_SETTLE_FRAMES = Math.ceil(200 / 16) + 4;
+const FRAMED_ROUNDED_CORNER = "before:rounded-tl-(--bb-frame-card-radius)";
+
+class FakeSlideAnimation {
+  playbackRate = 1;
+  isCancelled = false;
+  finished: Promise<FakeSlideAnimation> = Promise.resolve(this);
+  private settle: (() => void) | null = null;
+  private anchorTime = performance.now();
+  private anchorCurrentTime = 0;
+  private timer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor(
+    readonly element: HTMLElement,
+    readonly keyframes: Keyframe[],
+    readonly duration: number,
+  ) {
+    this.arm();
+  }
+
+  get currentTime(): number {
+    const time =
+      this.anchorCurrentTime +
+      (performance.now() - this.anchorTime) * this.playbackRate;
+    return Math.min(Math.max(time, 0), this.duration);
+  }
+
+  reverse(): void {
+    let current = this.currentTime;
+    this.playbackRate *= -1;
+    if (this.playbackRate < 0 && current <= 0) current = this.duration;
+    if (this.playbackRate > 0 && current >= this.duration) current = 0;
+    this.anchorCurrentTime = current;
+    this.anchorTime = performance.now();
+    this.arm();
+  }
+
+  cancel(): void {
+    this.isCancelled = true;
+    if (this.timer !== null) clearTimeout(this.timer);
+    this.settle = null;
+  }
+
+  translateX(): number | null {
+    if (this.isCancelled) return null;
+    const end = Number.parseFloat(String(this.keyframes[1]?.translate ?? 0));
+    return (end * this.currentTime) / this.duration;
+  }
+
+  private arm(): void {
+    if (this.settle === null) {
+      this.finished = new Promise((resolve) => {
+        this.settle = () => resolve(this);
+      });
+    }
+    if (this.timer !== null) clearTimeout(this.timer);
+    const remaining =
+      this.playbackRate > 0
+        ? this.duration - this.currentTime
+        : this.currentTime;
+    this.timer = setTimeout(() => {
+      const settle = this.settle;
+      this.settle = null;
+      settle?.();
+    }, remaining);
+  }
+}
+
+function stubBoundingRect(
+  element: Element,
+  rect: () => { left: number; width: number },
+) {
+  Object.defineProperty(element, "getBoundingClientRect", {
+    configurable: true,
+    value: () => {
+      const { left, width } = rect();
+      return new DOMRect(left, 0, width, 800);
+    },
+  });
+}
+
+function stubOffsetWidth(element: Element, width: () => number) {
+  Object.defineProperty(element, "offsetWidth", {
+    configurable: true,
+    get: width,
+  });
+}
+
+function renderSlidingSidebar({
+  defaultOpen,
+  insetRight = SLIDE_VIEWPORT_WIDTH,
+}: {
+  defaultOpen: boolean;
+  insetRight?: number;
+}) {
+  const animations: FakeSlideAnimation[] = [];
+  const originalAnimate = HTMLElement.prototype.animate;
+  HTMLElement.prototype.animate = function animate(
+    this: HTMLElement,
+    keyframes: Keyframe[] | PropertyIndexedKeyframes | null,
+    options?: number | KeyframeAnimationOptions,
+  ) {
+    const duration =
+      typeof options === "number" ? options : Number(options?.duration ?? 0);
+    const animation = new FakeSlideAnimation(
+      this,
+      Array.isArray(keyframes) ? keyframes : [],
+      duration,
+    );
+    animations.push(animation);
+    return animation as unknown as Animation;
+  };
+  render(
+    <CompactViewportOverrideProvider isCompactViewport={false}>
+      <SidebarProvider
+        framed
+        width={`${SLIDE_SIDEBAR_WIDTH}px`}
+        defaultOpen={defaultOpen}
+      >
+        <Sidebar>Sidebar content</Sidebar>
+        <SidebarInset data-testid="inset">
+          <div data-testid="full-width" />
+          <div data-testid="container">
+            <div data-testid="column" data-sidebar-centered="" />
+          </div>
+        </SidebarInset>
+        <SidebarTrigger />
+      </SidebarProvider>
+    </CompactViewportOverrideProvider>,
+  );
+  const { gap, panel } = getDesktopSidebarParts();
+  const probe = gap.querySelector('[data-sidebar="gap-width-probe"]');
+  if (probe === null) throw new Error("Expected the gap width probe");
+  const gapWidth = () =>
+    gap.dataset.collapsible === "" ? SLIDE_SIDEBAR_WIDTH : 0;
+  const insetLeft = gapWidth;
+  const insetWidth = () => insetRight - insetLeft();
+  const columnWidth = () => Math.min(SLIDE_COLUMN_WIDTH, insetWidth());
+  const inset = screen.getByTestId("inset");
+  const column = screen.getByTestId("column");
+  stubOffsetWidth(gap, gapWidth);
+  stubOffsetWidth(probe, () => SLIDE_SIDEBAR_WIDTH);
+  stubBoundingRect(inset, () => ({ left: insetLeft(), width: insetWidth() }));
+  stubBoundingRect(screen.getByTestId("container"), () => ({
+    left: insetLeft(),
+    width: insetWidth(),
+  }));
+  stubBoundingRect(column, () => ({
+    left: insetLeft() + (insetWidth() - columnWidth()) / 2,
+    width: columnWidth(),
+  }));
+  const shiftOf = (element: HTMLElement): number | null => {
+    const running = animations.filter(
+      (animation) => animation.element === element && !animation.isCancelled,
+    );
+    return running.length === 0 ? null : (running.at(-1)?.translateX() ?? null);
+  };
+  let frame = 0;
+  const sample = () => ({
+    frame,
+    gap: gap.dataset.collapsible,
+    panel: panel.dataset.collapsible,
+    insetRounded: inset.classList.contains(FRAMED_ROUNDED_CORNER),
+    columnShift: shiftOf(column),
+    fullWidthShift: shiftOf(screen.getByTestId("full-width")),
+  });
+  type SlideSample = ReturnType<typeof sample>;
+  const runFrames = async (count: number): Promise<SlideSample[]> => {
+    const samples: SlideSample[] = [];
+    for (let index = 0; index < count; index += 1) {
+      await act(async () => {
+        vi.advanceTimersToNextFrame();
+      });
+      frame += 1;
+      samples.push(sample());
+    }
+    return samples;
+  };
+  const toggle = async (): Promise<SlideSample> => {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Toggle Sidebar" }));
+    });
+    return sample();
+  };
+  return {
+    animations,
+    restore: () => {
+      HTMLElement.prototype.animate = originalAnimate;
+    },
+    runFrames,
+    sample,
+    toggle,
+  };
+}
+
+function gapChanges<T extends { gap: string | undefined }>(
+  samples: readonly T[],
+): T[] {
+  return samples.filter(
+    (current, index) => index > 0 && current.gap !== samples[index - 1]?.gap,
+  );
+}
+
+describe("desktop sidebar slide sequence", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({
+      toFake: [
+        "setTimeout",
+        "clearTimeout",
+        "requestAnimationFrame",
+        "cancelAnimationFrame",
+        "performance",
+      ],
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("keeps the content gap until an open slide ends, carries centred content on a translate, and drops it in the frame the layout narrows", async () => {
+    const view = renderSlidingSidebar({ defaultOpen: false });
+    try {
+      const closed = view.sample();
+      expect(closed).toMatchObject({ gap: "offcanvas", insetRounded: true });
+
+      const samples = [
+        closed,
+        await view.toggle(),
+        ...(await view.runFrames(SLIDE_SETTLE_FRAMES)),
+      ];
+
+      const [narrowed, ...laterChanges] = gapChanges(samples);
+      expect(laterChanges).toEqual([]);
+      expect(narrowed).toMatchObject({
+        gap: "",
+        insetRounded: false,
+        columnShift: null,
+      });
+      const sliding = samples.slice(1, samples.indexOf(narrowed!));
+      expect(sliding.length).toBeGreaterThanOrEqual(Math.floor(200 / 16));
+      const expectedShift =
+        (SLIDE_SIDEBAR_WIDTH * (SLIDE_VIEWPORT_WIDTH / 2)) /
+        SLIDE_VIEWPORT_WIDTH;
+      let previousShift = 0;
+      for (const current of sliding) {
+        expect(current).toMatchObject({
+          gap: "offcanvas",
+          panel: "",
+          insetRounded: true,
+          fullWidthShift: null,
+        });
+        expect(current.columnShift).not.toBeNull();
+        expect(current.columnShift!).toBeGreaterThanOrEqual(previousShift);
+        previousShift = current.columnShift!;
+      }
+      const lastShift = sliding.at(-1)?.columnShift ?? 0;
+      expect(lastShift).toBeLessThanOrEqual(expectedShift);
+      expect(lastShift).toBeGreaterThanOrEqual(expectedShift * (1 - 16 / 200));
+      for (const current of samples.slice(samples.indexOf(narrowed!))) {
+        expect(current).toMatchObject({ gap: "", columnShift: null });
+      }
+    } finally {
+      view.restore();
+    }
+  });
+
+  it("widens the gap in the first frame of a close under a matching translate, then slides the centred content back with the panel", async () => {
+    const view = renderSlidingSidebar({ defaultOpen: true });
+    try {
+      const open = view.sample();
+      expect(open).toMatchObject({ gap: "", insetRounded: false });
+
+      const toggled = await view.toggle();
+      const expectedShift =
+        (SLIDE_SIDEBAR_WIDTH * (SLIDE_VIEWPORT_WIDTH / 2)) /
+        SLIDE_VIEWPORT_WIDTH;
+      expect(toggled).toMatchObject({
+        gap: "offcanvas",
+        panel: "offcanvas",
+        insetRounded: true,
+        fullWidthShift: null,
+      });
+      expect(toggled.columnShift).toBeCloseTo(expectedShift);
+
+      const samples = [
+        open,
+        toggled,
+        ...(await view.runFrames(SLIDE_SETTLE_FRAMES)),
+      ];
+      expect(gapChanges(samples)).toEqual([toggled]);
+      const sliding = samples
+        .slice(1)
+        .filter((current) => current.columnShift !== null);
+      expect(sliding.length).toBeGreaterThanOrEqual(Math.floor(200 / 16));
+      for (let index = 1; index < sliding.length; index += 1) {
+        expect(sliding[index]!.columnShift!).toBeLessThanOrEqual(
+          sliding[index - 1]!.columnShift!,
+        );
+      }
+      expect(samples.at(-1)).toMatchObject({
+        gap: "offcanvas",
+        columnShift: null,
+      });
+    } finally {
+      view.restore();
+    }
+  });
+
+  it("reverses an interrupted open from where the content is without ever changing the layout", async () => {
+    const view = renderSlidingSidebar({ defaultOpen: false });
+    try {
+      const samples = [
+        view.sample(),
+        await view.toggle(),
+        ...(await view.runFrames(5)),
+      ];
+      const peak = samples.at(-1)!.columnShift!;
+      expect(peak).toBeGreaterThan(0);
+      const reversed = await view.toggle();
+      expect(reversed.columnShift).toBeCloseTo(peak);
+      samples.push(reversed, ...(await view.runFrames(SLIDE_SETTLE_FRAMES)));
+
+      expect(gapChanges(samples)).toEqual([]);
+      const back = samples.slice(samples.indexOf(reversed));
+      const backShifts = back.flatMap((current) =>
+        current.columnShift === null ? [] : [current.columnShift],
+      );
+      expect(backShifts.length).toBeGreaterThanOrEqual(4);
+      expect(backShifts.length).toBeLessThan(Math.floor(200 / 16));
+      expect(samples.at(-1)).toMatchObject({
+        gap: "offcanvas",
+        panel: "offcanvas",
+        columnShift: null,
+      });
+    } finally {
+      view.restore();
+    }
+  });
+
+  it("leaves a column that would narrow untransformed and still narrows the layout once the slide ends", async () => {
+    const view = renderSlidingSidebar({ defaultOpen: false, insetRight: 900 });
+    try {
+      const samples = [
+        view.sample(),
+        await view.toggle(),
+        ...(await view.runFrames(SLIDE_SETTLE_FRAMES)),
+      ];
+      expect(samples.every((current) => current.columnShift === null)).toBe(
+        true,
+      );
+      const changes = gapChanges(samples);
+      expect(changes).toHaveLength(1);
+      expect(changes[0]!.frame).toBeGreaterThanOrEqual(Math.floor(200 / 16));
+    } finally {
+      view.restore();
+    }
   });
 });
 

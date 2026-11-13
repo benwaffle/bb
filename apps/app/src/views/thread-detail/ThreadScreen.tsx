@@ -690,6 +690,7 @@ function ThreadScreenPanelShell({
         className={cn("flex min-w-0 flex-col", surfaceClassName)}
       >
         <div
+          data-sidebar-centered=""
           className={cn(
             "mx-auto flex w-full min-w-0 flex-col",
             measure === "page" ? "px-4 pb-3 pt-3" : "px-2 pb-3 pt-3",

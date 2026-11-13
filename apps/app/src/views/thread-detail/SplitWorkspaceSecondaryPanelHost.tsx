@@ -1,7 +1,6 @@
 import { preloadThreadSecondaryPanel } from "@/components/secondary-panel/lazySecondaryPanelComponents";
 import {
   useCallback,
-  useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -44,6 +43,11 @@ import {
   PANEL_COLLAPSE_TRANSITION_CLASS,
   PANEL_RESIZE_HANDLE_LAYER_CLASS,
   PANEL_RESIZE_HIT_TARGET_CLASS,
+  PANEL_SLIDE_PANEL_STYLE,
+  PanelSlideContext,
+  getPanelLayoutTransitionClassName,
+  getPanelSlideSurfaceClassName,
+  usePanelSlide,
 } from "@/components/secondary-panel/panelTransitionTokens";
 import {
   getBbDesktopInfo,
@@ -86,6 +90,11 @@ export function SplitWorkspaceSecondaryPanelHost({
 
   const [isPanelVisible, setIsPanelVisible] = useState<boolean | null>(null);
   const isOpen = isPanelVisible ?? model?.isOpen ?? false;
+  const slide = usePanelSlide(
+    isOpen && !isPaneMaximized,
+    model?.transitionsReady ?? true,
+  );
+  const isLayoutOpen = slide.isLayoutOpen;
   const lastTargetRef = useRef<{
     paneId: string;
     contentKey: string;
@@ -120,7 +129,7 @@ export function SplitWorkspaceSecondaryPanelHost({
     if (model.isOpen !== isPanelVisible) model.onToggle();
   }, [focusedPaneId, isPanelVisible, model]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const group = panelGroupRef.current;
     if (group === null) return;
     if (group.getLayout().length !== 2) return;
@@ -128,7 +137,7 @@ export function SplitWorkspaceSecondaryPanelHost({
       group.setLayout([MAIN_PANEL_OPEN_SIZE_PERCENT, 0]);
       return;
     }
-    if (!isOpen) {
+    if (!isLayoutOpen) {
       group.setLayout([MAIN_PANEL_OPEN_SIZE_PERCENT, 0]);
       return;
     }
@@ -142,7 +151,7 @@ export function SplitWorkspaceSecondaryPanelHost({
     ]);
   }, [
     focusedPaneId,
-    isOpen,
+    isLayoutOpen,
     isPaneMaximized,
     model?.isMainCollapsed,
     panelWidthPercent,
@@ -261,7 +270,7 @@ export function SplitWorkspaceSecondaryPanelHost({
                 ? MAIN_PANEL_OPEN_SIZE_PERCENT
                 : model?.isMainCollapsed
                   ? 0
-                  : isOpen
+                  : isLayoutOpen
                     ? MAIN_PANEL_OPEN_SIZE_PERCENT - panelWidthPercent
                     : MAIN_PANEL_OPEN_SIZE_PERCENT
             }
@@ -269,8 +278,8 @@ export function SplitWorkspaceSecondaryPanelHost({
             order={1}
             style={{ overflow: "clip" }}
             className={cn(
-              "min-w-0 transition-[flex-grow,flex-basis]",
-              PANEL_COLLAPSE_TRANSITION_CLASS,
+              "min-w-0",
+              getPanelLayoutTransitionClassName(slide.animatesLayout),
             )}
           >
             <div className="relative flex h-full min-h-0 min-w-0">
@@ -282,16 +291,16 @@ export function SplitWorkspaceSecondaryPanelHost({
               <>
                 <PanelResizeHandle
                   id="split-workspace-empty-secondary-panel-handle"
-                  disabled={!isOpen}
+                  disabled={!isLayoutOpen}
                   data-panel-resize-snap-handle=""
                   hitAreaMargins={{ coarse: 0, fine: 0 }}
                   tabIndex={-1}
                   className={cn(
-                    "relative shrink-0 overflow-visible transition-[width,opacity,background-color] hover:bg-ring/40 data-[dragging=true]:bg-ring/40",
+                    "relative shrink-0 overflow-visible transition-[opacity,background-color] hover:bg-ring/40 data-[dragging=true]:bg-ring/40",
                     isSidebarFramed ? "bg-border" : "bg-border-seam",
                     PANEL_RESIZE_HANDLE_LAYER_CLASS,
                     PANEL_COLLAPSE_TRANSITION_CLASS,
-                    isOpen
+                    isLayoutOpen
                       ? "w-px cursor-col-resize opacity-100"
                       : "pointer-events-none w-0 opacity-0",
                   )}
@@ -308,21 +317,39 @@ export function SplitWorkspaceSecondaryPanelHost({
                   id="split-workspace-empty-secondary-panel"
                   collapsible
                   collapsedSize={0}
-                  defaultSize={isOpen ? panelWidthPercent : 0}
+                  defaultSize={isLayoutOpen ? panelWidthPercent : 0}
                   minSize={(1 - minimumSize.max) * 100}
                   maxSize={(1 - minimumSize.min) * 100}
                   onCollapse={handleEmptyPanelCollapse}
                   onResize={handleEmptyPanelResize}
                   order={2}
-                  style={{ overflow: "clip" }}
+                  style={
+                    slide.isSliding
+                      ? PANEL_SLIDE_PANEL_STYLE
+                      : { overflow: "clip" }
+                  }
                   className={cn(
-                    "min-w-0 transition-[flex-grow,flex-basis]",
-                    PANEL_COLLAPSE_TRANSITION_CLASS,
+                    "relative min-w-0",
+                    getPanelLayoutTransitionClassName(slide.animatesLayout),
                   )}
                 >
                   <div
                     data-testid="split-workspace-empty-panel-state"
-                    className="flex h-full min-h-0 flex-col overflow-hidden bg-background p-4 pt-12"
+                    style={
+                      slide.isLayoutOpen
+                        ? undefined
+                        : { width: `${panelWidthPercent}cqw` }
+                    }
+                    className={cn(
+                      "flex h-full min-h-0 flex-col overflow-hidden bg-background p-4 pt-12",
+                      !slide.isLayoutOpen && [
+                        "absolute inset-y-0 border-l",
+                        isSidebarFramed
+                          ? "border-border"
+                          : "border-border-seam",
+                        getPanelSlideSurfaceClassName(slide),
+                      ],
+                    )}
                   >
                     <EmptyStatePanel className="flex-1 rounded-lg">
                       This pane has no right panel.
@@ -335,7 +362,9 @@ export function SplitWorkspaceSecondaryPanelHost({
                 key={focusedPaneId}
                 value={model.composerHost}
               >
-                {model.panel}
+                <PanelSlideContext.Provider value={slide}>
+                  {model.panel}
+                </PanelSlideContext.Provider>
               </PluginComposerHostProvider>
             )}
           </SecondaryPanelMinimumContext.Provider>

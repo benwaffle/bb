@@ -518,10 +518,10 @@ describe("AppLayout Back to app", () => {
 });
 
 describe("AppLayout sidebar state is scoped to this tab", () => {
-  function sidebarRoot() {
+  function sidebarGap() {
     const gap = document.querySelector('[data-sidebar="gap"]');
-    if (!gap?.parentElement) throw new Error("missing sidebar");
-    return gap.parentElement;
+    if (gap === null) throw new Error("missing sidebar");
+    return gap;
   }
 
   function dispatchCrossTabWrite(key: string, newValue: string) {
@@ -539,11 +539,11 @@ describe("AppLayout sidebar state is scoped to this tab", () => {
 
   it("keeps this tab expanded when another tab collapses the sidebar", () => {
     renderLayout();
-    expect(sidebarRoot().getAttribute("data-state")).toBe("expanded");
+    expect(sidebarGap().getAttribute("data-sidebar-state")).toBe("expanded");
 
     dispatchCrossTabWrite(SIDEBAR_OPEN_STORAGE_KEY, "false");
 
-    expect(sidebarRoot().getAttribute("data-state")).toBe("expanded");
+    expect(sidebarGap().getAttribute("data-sidebar-state")).toBe("expanded");
   });
 
   it("keeps this tab's width when another tab resizes the sidebar", () => {

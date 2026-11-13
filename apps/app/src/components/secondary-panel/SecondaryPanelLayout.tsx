@@ -29,7 +29,10 @@ import {
 import {
   getPanelCollapseTransitionStyle,
   PANEL_COLLAPSE_TRANSITION_CLASS,
+  PanelSlideContext,
+  getPanelLayoutTransitionClassName,
   usePanelCollapseTransitionsReady,
+  usePanelSlide,
 } from "./panelTransitionTokens";
 import {
   SecondaryPanelWidthPercentAtomContext,
@@ -130,6 +133,11 @@ export function SecondaryPanelLayout({
     resetKey,
     !renderAsDrawer,
   );
+  const slide = usePanelSlide(
+    open,
+    !renderAsDrawer && transitionsReady && secondaryPanelHost === null,
+  );
+  const isLayoutOpen = slide.isLayoutOpen;
   const persistedSecondaryWidthPercent = useAtomValue(widthPercentAtom);
   const isMainCollapsed = open && !renderAsDrawer && collapse?.active === true;
   const isMainPanelInFrame =
@@ -147,7 +155,7 @@ export function SecondaryPanelLayout({
       return;
     }
 
-    if (!open) {
+    if (!isLayoutOpen) {
       group.setLayout([FULL_PANEL_SIZE_PERCENT, 0]);
       return;
     }
@@ -160,7 +168,12 @@ export function SecondaryPanelLayout({
       FULL_PANEL_SIZE_PERCENT - persistedSecondaryWidthPercent,
       persistedSecondaryWidthPercent,
     ]);
-  }, [isMainCollapsed, open, persistedSecondaryWidthPercent, renderAsDrawer]);
+  }, [
+    isLayoutOpen,
+    isMainCollapsed,
+    persistedSecondaryWidthPercent,
+    renderAsDrawer,
+  ]);
 
   const [isCompactDrawerContentSettled, setIsCompactDrawerContentSettled] =
     useState(false);
@@ -368,7 +381,7 @@ export function SecondaryPanelLayout({
             defaultSize={
               isMainCollapsed
                 ? 0
-                : open && !renderAsDrawer
+                : isLayoutOpen && !renderAsDrawer
                   ? FULL_PANEL_SIZE_PERCENT - persistedSecondaryWidthPercent
                   : FULL_PANEL_SIZE_PERCENT
             }
@@ -376,15 +389,17 @@ export function SecondaryPanelLayout({
             order={1}
             style={{ overflow: "clip" }}
             className={cn(
-              "min-w-0 transition-[flex-grow,flex-basis]",
-              PANEL_COLLAPSE_TRANSITION_CLASS,
+              "min-w-0",
+              getPanelLayoutTransitionClassName(slide.animatesLayout),
               isMainPanelInFrame && FRAMED_MAIN_PANEL_FOREIGN_LAYER_CLASS,
             )}
           >
             {mainContent}
           </Panel>
           <SecondaryPanelMinimumContext.Provider value={minimumSize}>
-            {inlinePanel}
+            <PanelSlideContext.Provider value={slide}>
+              {inlinePanel}
+            </PanelSlideContext.Provider>
           </SecondaryPanelMinimumContext.Provider>
         </PanelGroup>
       </div>

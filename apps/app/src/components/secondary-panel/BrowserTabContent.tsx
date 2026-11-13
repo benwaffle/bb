@@ -53,6 +53,7 @@ import {
   type BrowserViewVisibilityCoordinator,
 } from "./browserViewVisibilityCoordinator";
 import { SECONDARY_PANEL_TOP_CHROME_BACKGROUND_CLASS } from "./panelChromeClasses";
+import { usePanelSlideContext } from "./panelTransitionTokens";
 import type { UpdateBrowserTabArgs } from "./useThreadFileTabs";
 import {
   useAppCommandHandler,
@@ -167,7 +168,11 @@ function browserViewBoundsFromElement(
 }
 
 function isPanelLayoutTransition(propertyName: string): boolean {
-  return propertyName === "flex-grow" || propertyName === "flex-basis";
+  return (
+    propertyName === "flex-grow" ||
+    propertyName === "flex-basis" ||
+    propertyName === "translate"
+  );
 }
 
 function browserViewBoundsEqual(args: BrowserViewBoundsEqualArgs): boolean {
@@ -493,6 +498,9 @@ export function BrowserTabContent({
   const pageLoadErrorText = state?.errorText ?? null;
   const hasPageLoadError = pageLoadErrorText !== null && hasPage;
   const isBrowserDimmingModalOpen = useIsBrowserDimmingModalOpen();
+  const panelSlide = usePanelSlideContext();
+  const isPanelSlideSettled =
+    panelSlide === null || panelSlide.phase === "open";
   const lastSentBoundsRef = useRef<BbDesktopBrowserViewBounds | null>(null);
 
   const readBounds = useCallback(() => {
@@ -693,6 +701,7 @@ export function BrowserTabContent({
 
   const isViewVisible =
     canShowNativeBrowserView &&
+    isPanelSlideSettled &&
     (canHandleBrowserCommands || supportsNativePaneFocus) &&
     hasPage &&
     !hasPageLoadError &&

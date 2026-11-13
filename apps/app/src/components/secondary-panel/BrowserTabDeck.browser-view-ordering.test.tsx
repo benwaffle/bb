@@ -26,6 +26,11 @@ import { sdk } from "@/lib/sdk";
 import { BrowserTabDeck } from "./BrowserTabDeck";
 import { BrowserTabLifecycleObserver } from "./BrowserTabLifecycleObserver";
 import {
+  PanelSlideContext,
+  type PanelSlide,
+  type PanelSlidePhase,
+} from "./panelTransitionTokens";
+import {
   allowBrowserViewRecreation,
   resetBrowserViewPersistence,
 } from "./browserViewVisibilityCoordinator";
@@ -379,6 +384,91 @@ describe("BrowserTabDeck native browser first-show ordering", () => {
     ).toBeNull();
   });
 
+  it("keeps the native view hidden while the right panel slides and shows it at its settled bounds", async () => {
+    const { api, calls } = createRecordingBrowserApi();
+    installDesktopBrowser(api);
+    const slide = (phase: PanelSlidePhase): PanelSlide => ({
+      phase,
+      isLayoutOpen: phase === "open" || phase === "settling",
+      isSliding:
+        phase === "opening" || phase === "uncovering" || phase === "closing",
+      animatesLayout: phase === "open",
+    });
+    const tab = makeBrowserTab("tab-url", "https://example.com");
+    const deck = (phase: PanelSlidePhase, canShowNativeBrowserView = true) => (
+      <PanelSlideContext.Provider value={slide(phase)}>
+        <BrowserTabDeck
+          browserTabs={[tab]}
+          activeBrowserTabId={tab.id}
+          environmentId="env-1"
+          canShowNativeBrowserView={canShowNativeBrowserView}
+          threadId="thread-1"
+          onUpdate={() => {}}
+          onOpenInNewTab={null}
+        />
+      </PanelSlideContext.Provider>
+    );
+    const shows = () =>
+      calls.filter(
+        (call) =>
+          (call.type === "setVisible" ||
+            call.type === "setVisibleWithoutFocus") &&
+          call.request.visible,
+      );
+    const lastVisibility = () =>
+      calls
+        .flatMap((call) =>
+          call.type === "setVisible" || call.type === "setVisibleWithoutFocus"
+            ? [call.request.visible]
+            : [],
+        )
+        .at(-1);
+
+    const view = render(deck("opening"));
+    await waitFor(() => {
+      expect(calls.some((call) => call.type === "attach")).toBe(true);
+    });
+    await act(async () => {});
+    view.rerender(deck("settling"));
+    await act(async () => {});
+    expect(shows()).toEqual([]);
+
+    const beforeShow = calls.length;
+    view.rerender(deck("open"));
+    await waitFor(() => {
+      expect(shows()).toHaveLength(1);
+    });
+    const afterShow = calls.slice(beforeShow);
+    const boundsIndex = afterShow.findIndex(
+      (call) => call.type === "setBounds",
+    );
+    const showIndex = afterShow.findIndex(
+      (call) =>
+        (call.type === "setVisible" ||
+          call.type === "setVisibleWithoutFocus") &&
+        call.request.visible,
+    );
+    expect(boundsIndex).toBeGreaterThanOrEqual(0);
+    expect(boundsIndex).toBeLessThan(showIndex);
+    expect(
+      afterShow[boundsIndex]?.type === "setBounds"
+        ? afterShow[boundsIndex].request.bounds
+        : null,
+    ).toEqual({
+      x: BROWSER_PANEL_RECT.left,
+      y: BROWSER_PANEL_RECT.top,
+      width: BROWSER_PANEL_RECT.width,
+      height: BROWSER_PANEL_RECT.height,
+    });
+
+    view.rerender(deck("uncovering", false));
+    await act(async () => {});
+    expect(lastVisibility()).toBe(false);
+    view.rerender(deck("closing", false));
+    await act(async () => {});
+    expect(shows()).toHaveLength(1);
+  });
+
   it("keeps a reopened tab visible after the server moves it to this window", async () => {
     const { api, calls } = createRecordingBrowserApi();
     api.getTarget = async () => desktopTarget;
@@ -690,9 +780,8 @@ describe("BrowserTabDeck native browser first-show ordering", () => {
     expect(restoredShowIndex).toBeGreaterThan(restoredBoundsIndex);
   });
 
-  it("follows the content box when a neighbouring panel's layout transition finishes", async () => {
-    const { api, bounds, visibilityWithoutFocus } =
-      createRecordingBrowserApi();
+  it("follows the content box when a neighbouring panel's layout or slide transition finishes", async () => {
+    const { api, bounds, visibilityWithoutFocus } = createRecordingBrowserApi();
     installDesktopBrowser(api);
     renderBrowserDeck({ canShowNativeBrowserView: true });
     await waitFor(() => {
@@ -734,6 +823,14 @@ describe("BrowserTabDeck native browser first-show ordering", () => {
     settleAt(new DOMRect(40, 24, 420, 260), "transitioncancel", "flex-basis");
     expect(bounds.at(-1)?.bounds).toEqual({
       x: 40,
+      y: 24,
+      width: 420,
+      height: 260,
+    });
+
+    settleAt(new DOMRect(64, 24, 420, 260), "transitionend", "translate");
+    expect(bounds.at(-1)?.bounds).toEqual({
+      x: 64,
       y: 24,
       width: 420,
       height: 260,

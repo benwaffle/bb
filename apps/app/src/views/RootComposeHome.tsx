@@ -142,6 +142,7 @@ export function RootComposeHome({
       <div
         ref={regionRef}
         data-testid="root-compose-compact-home"
+        data-sidebar-centered={isCompact ? undefined : ""}
         className={
           isCompact
             ? "relative min-h-0 flex-1"

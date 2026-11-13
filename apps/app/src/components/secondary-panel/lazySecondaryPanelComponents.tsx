@@ -11,7 +11,12 @@ import { cn } from "@bb/shared-ui/lib/utils";
 import { preloadTerminalModules } from "@/components/thread/terminal/terminal-modules";
 import { FilePreviewLoading } from "./FilePreviewChrome";
 import { SecondaryPanelContentSkeleton } from "./SecondaryPanelContentSkeleton";
-import { PANEL_COLLAPSE_TRANSITION_CLASS } from "./panelTransitionTokens";
+import {
+  PANEL_SLIDE_PANEL_STYLE,
+  getPanelLayoutTransitionClassName,
+  getPanelSlideSurfaceClassName,
+  usePanelSlideContext,
+} from "./panelTransitionTokens";
 import {
   CONVERSATION_COLLAPSED_PANEL_SIZE_PERCENT,
   useSecondaryPanelMinimum,
@@ -37,13 +42,16 @@ function ThreadSecondaryPanelInlinePlaceholder({
   const persistedWidthPercent = useAtomValue(
     useContext(SecondaryPanelWidthPercentAtomContext),
   );
+  const slide = usePanelSlideContext();
+  const isSlideOverlaying = slide !== null && !slide.isLayoutOpen;
+  const isLayoutSlotOpen = isOpen && !isSlideOverlaying;
   return (
     <Panel
       id={resizablePanelId}
       collapsible
       collapsedSize={0}
       defaultSize={
-        isOpen
+        isLayoutSlotOpen
           ? isConversationCollapsed
             ? CONVERSATION_COLLAPSED_PANEL_SIZE_PERCENT
             : persistedWidthPercent
@@ -52,16 +60,40 @@ function ThreadSecondaryPanelInlinePlaceholder({
       minSize={(1 - minimumSize.max) * 100}
       maxSize={isConversationCollapsed ? 100 : (1 - minimumSize.min) * 100}
       order={2}
-      style={{ overflow: "clip" }}
+      style={
+        slide?.isSliding === true
+          ? PANEL_SLIDE_PANEL_STYLE
+          : { overflow: "clip" }
+      }
       className={cn(
-        "min-w-0",
-        `relative transition-[flex-grow,flex-basis] ${PANEL_COLLAPSE_TRANSITION_CLASS}`,
-        isOpen && !isConversationCollapsed && "border-l border-border-seam",
+        "relative min-w-0",
+        getPanelLayoutTransitionClassName(slide?.animatesLayout ?? true),
+        isLayoutSlotOpen &&
+          !isConversationCollapsed &&
+          "border-l border-border-seam",
       )}
       data-testid="thread-secondary-panel-placeholder"
     >
       {isOpen ? (
-        <div className="flex h-full min-h-0 flex-col overflow-hidden bg-background pt-12">
+        <div
+          style={
+            isSlideOverlaying
+              ? {
+                  width: isConversationCollapsed
+                    ? "100cqw"
+                    : `${persistedWidthPercent}cqw`,
+                }
+              : undefined
+          }
+          className={cn(
+            "flex h-full min-h-0 flex-col overflow-hidden bg-background pt-12",
+            isSlideOverlaying && [
+              "absolute inset-y-0",
+              !isConversationCollapsed && "border-l border-border-seam",
+              getPanelSlideSurfaceClassName(slide),
+            ],
+          )}
+        >
           {children ?? <SecondaryPanelContentSkeleton />}
         </div>
       ) : null}

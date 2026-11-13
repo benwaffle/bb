@@ -4,6 +4,7 @@ import { useComposedRefs } from "@radix-ui/react-compose-refs";
 import { Slot } from "@radix-ui/react-slot";
 
 import { useIsCompactViewport } from "@bb/shared-ui/hooks/use-compact-viewport";
+import { usePrefersReducedMotion } from "@bb/shared-ui/hooks/use-media-query";
 import { cn } from "@bb/shared-ui/lib/utils";
 import { Button } from "@bb/shared-ui/button";
 import { COARSE_POINTER_HEADER_ICON_BUTTON_CLASS } from "@bb/shared-ui/coarse-pointer-sizing";
@@ -59,9 +60,10 @@ const SIDEBAR_FRAMED_INSET_EDGE_CLASS =
 const SIDEBAR_FRAMED_EXPANDED_INSET_CLASS =
   "[mask-image:var(--bb-window-card-mask-square-left)] after:pointer-events-none after:absolute after:top-0 after:left-0 after:h-(--bb-window-title-bar-height) after:w-px after:bg-border";
 const SIDEBAR_FRAMED_COLLAPSED_INSET_CLASS =
-  "[mask-image:var(--bb-window-card-mask)] [clip-path:inset(0_round_0_0_var(--bb-frame-card-radius)_var(--bb-frame-card-radius))] before:rounded-tl-(--bb-frame-card-radius) before:rounded-bl-(--bb-frame-card-radius) [transition:clip-path_0s_linear_200ms] before:[transition:border-top-left-radius_0s_linear_200ms,border-bottom-left-radius_0s_linear_200ms]";
+  "[mask-image:var(--bb-window-card-mask)] [clip-path:inset(0_round_0_0_var(--bb-frame-card-radius)_var(--bb-frame-card-radius))] before:rounded-tl-(--bb-frame-card-radius) before:rounded-bl-(--bb-frame-card-radius)";
 const SIDEBAR_FRAMED_COLLAPSED_INSET_EDGE_CLASS =
-  "rounded-tl-(--bb-frame-card-radius) rounded-bl-(--bb-frame-card-radius) [transition:border-top-left-radius_0s_linear_200ms,border-bottom-left-radius_0s_linear_200ms]";
+  "rounded-tl-(--bb-frame-card-radius) rounded-bl-(--bb-frame-card-radius)";
+const SIDEBAR_DESKTOP_SLIDE_MS = 200;
 
 type SidebarMobileWidthStyle = React.CSSProperties & {
   "--sidebar-width-mobile": string;
@@ -444,6 +446,200 @@ function useCloseMobileSidebar() {
   return closeMobileSidebar;
 }
 
+const SIDEBAR_CENTERED_SELECTOR = "[data-sidebar-centered]";
+
+interface SidebarSlideElements {
+  inset: HTMLElement | null;
+  gap: HTMLElement | null;
+  widthProbe: HTMLElement | null;
+}
+
+interface SidebarSlideRegistry {
+  elements: SidebarSlideElements;
+  setInset: (element: HTMLElement | null) => void;
+  setGap: (element: HTMLElement | null) => void;
+  setWidthProbe: (element: HTMLElement | null) => void;
+}
+
+function createSidebarSlideRegistry(): SidebarSlideRegistry {
+  const elements: SidebarSlideElements = {
+    inset: null,
+    gap: null,
+    widthProbe: null,
+  };
+  return {
+    elements,
+    setInset: (element) => {
+      elements.inset = element;
+    },
+    setGap: (element) => {
+      elements.gap = element;
+    },
+    setWidthProbe: (element) => {
+      elements.widthProbe = element;
+    },
+  };
+}
+
+interface SidebarSlideMotion {
+  animations: Animation[];
+  finishToken: object | null;
+}
+
+const SidebarLayoutOpenContext = React.createContext<boolean | null>(null);
+
+const SidebarSlideRegistryContext =
+  React.createContext<SidebarSlideRegistry | null>(null);
+
+function useSidebarLayoutOpen(): boolean {
+  const isLayoutOpen = React.useContext(SidebarLayoutOpenContext);
+  if (isLayoutOpen === null) {
+    throw new Error("Sidebar layout must be used within a SidebarProvider.");
+  }
+  return isLayoutOpen;
+}
+
+function useSidebarSlideRegistry(): SidebarSlideRegistry {
+  const registry = React.useContext(SidebarSlideRegistryContext);
+  if (registry === null) {
+    throw new Error("Sidebar slide must be used within a SidebarProvider.");
+  }
+  return registry;
+}
+
+function horizontalPadding(element: HTMLElement): number {
+  const style = window.getComputedStyle(element);
+  return (
+    (Number.parseFloat(style.paddingLeft) || 0) +
+    (Number.parseFloat(style.paddingRight) || 0)
+  );
+}
+
+function measureSidebarCenteredShifts(
+  inset: HTMLElement,
+  distance: number,
+): Map<HTMLElement, number> {
+  const shifts = new Map<HTMLElement, number>();
+  const insetRect = inset.getBoundingClientRect();
+  if (distance <= 0 || insetRect.width <= distance) return shifts;
+  const narrowedFraction = (insetRect.width - distance) / insetRect.width;
+  for (const element of inset.querySelectorAll<HTMLElement>(
+    SIDEBAR_CENTERED_SELECTOR,
+  )) {
+    const container = element.parentElement;
+    if (container === null) continue;
+    const enclosing = container.closest(SIDEBAR_CENTERED_SELECTOR);
+    if (enclosing !== null && inset.contains(enclosing)) continue;
+    const rect = element.getBoundingClientRect();
+    const narrowedContentWidth =
+      container.getBoundingClientRect().width * narrowedFraction -
+      horizontalPadding(container);
+    if (rect.width > narrowedContentWidth + 0.5) continue;
+    const center = rect.left + rect.width / 2;
+    shifts.set(
+      element,
+      (distance * (insetRect.right - center)) / insetRect.width,
+    );
+  }
+  return shifts;
+}
+
+function useSidebarLayoutSlide(
+  open: boolean,
+  enabled: boolean,
+): { isLayoutOpen: boolean; registry: SidebarSlideRegistry } {
+  const prefersReducedMotion = usePrefersReducedMotion();
+  const animates =
+    enabled &&
+    !prefersReducedMotion &&
+    typeof HTMLElement.prototype.animate === "function";
+  const [registry] = React.useState(createSidebarSlideRegistry);
+  const [settledOpen, setSettledOpen] = React.useState(open);
+  if (!open && settledOpen) {
+    setSettledOpen(false);
+  }
+  const isLayoutOpen = open && (settledOpen || !animates);
+  const motionRef = React.useRef<SidebarSlideMotion | null>(null);
+  const openRef = React.useRef(open);
+
+  const stopMotion = React.useCallback(() => {
+    const motion = motionRef.current;
+    motionRef.current = null;
+    if (motion === null) return;
+    motion.finishToken = null;
+    for (const animation of motion.animations) animation.cancel();
+  }, []);
+
+  const watchMotion = React.useCallback(
+    (motion: SidebarSlideMotion) => {
+      const finishToken = {};
+      motion.finishToken = finishToken;
+      motion.animations[0]?.finished.then(
+        () => {
+          if (motion.finishToken !== finishToken) return;
+          if (openRef.current) {
+            setSettledOpen(true);
+          } else {
+            stopMotion();
+          }
+        },
+        () => {},
+      );
+    },
+    [stopMotion],
+  );
+
+  React.useLayoutEffect(() => {
+    if (openRef.current === open) return;
+    openRef.current = open;
+    const running = motionRef.current;
+    const { inset, gap, widthProbe } = registry.elements;
+    if (!animates || inset === null || gap === null || widthProbe === null) {
+      stopMotion();
+      // oxlint-disable-next-line react/set-state-in-effect
+      if (open) setSettledOpen(true);
+      return;
+    }
+    if (running !== null) {
+      for (const animation of running.animations) animation.reverse();
+      watchMotion(running);
+      return;
+    }
+    const shifts = measureSidebarCenteredShifts(
+      inset,
+      widthProbe.offsetWidth - gap.offsetWidth,
+    );
+    const timing: KeyframeAnimationOptions = {
+      duration: SIDEBAR_DESKTOP_SLIDE_MS,
+      easing: "linear",
+      fill: "both",
+    };
+    const animations = [
+      widthProbe.animate([], timing),
+      ...[...shifts].map(([element, shift]) =>
+        element.animate(
+          [{ translate: "0 0" }, { translate: `${shift}px 0` }],
+          timing,
+        ),
+      ),
+    ];
+    if (!open) {
+      for (const animation of animations) animation.reverse();
+    }
+    const motion: SidebarSlideMotion = { animations, finishToken: null };
+    watchMotion(motion);
+    motionRef.current = motion;
+  }, [animates, open, registry, stopMotion, watchMotion]);
+
+  React.useLayoutEffect(() => {
+    if (isLayoutOpen) stopMotion();
+  }, [isLayoutOpen, stopMotion]);
+
+  React.useEffect(() => stopMotion, [stopMotion]);
+
+  return { isLayoutOpen, registry };
+}
+
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
@@ -654,59 +850,66 @@ const SidebarProvider = React.forwardRef<
       ],
     );
 
-    const isSidebarShowing = isCompactViewport ? openMobile : open;
+    const slide = useSidebarLayoutSlide(open, !isCompactViewport);
+    const isSidebarShowing = isCompactViewport
+      ? openMobile
+      : slide.isLayoutOpen;
 
     return (
       <SidebarContext.Provider value={contextValue}>
-        <SidebarShowingContext.Provider value={isSidebarShowing}>
-          <SidebarWidthContext.Provider value={width}>
-            <SidebarCollapsedRailWidthContext.Provider
-              value={desktopCollapsedRailWidth}
-            >
-              <SidebarFramedContext.Provider value={isFramed}>
-                {}
-                <div
-                  data-framed={isFramed ? "" : undefined}
-                  style={
-                    {
-                      ...sidebarMobileWidthStyle,
-                      ...(isFramed
-                        ? {
-                            "--bb-window-card-collapsed-left":
-                              desktopCollapsedRailWidth ??
-                              "var(--bb-window-frame-leading-lip)",
-                          }
-                        : {}),
-                      ...style,
-                    } as React.CSSProperties
-                  }
-                  className={cn(
-                    "group/sidebar-wrapper flex h-full min-h-0 w-full max-md:overflow-clip",
-                    isFramed && SIDEBAR_FRAME_CLASS,
-                    isFramed &&
-                      desktopCollapsedRailWidth === null &&
-                      SIDEBAR_FRAME_LEADING_LIP_CLASS,
-                    className,
-                  )}
-                  ref={ref}
-                  {...props}
+        <SidebarLayoutOpenContext.Provider value={slide.isLayoutOpen}>
+          <SidebarSlideRegistryContext.Provider value={slide.registry}>
+            <SidebarShowingContext.Provider value={isSidebarShowing}>
+              <SidebarWidthContext.Provider value={width}>
+                <SidebarCollapsedRailWidthContext.Provider
+                  value={desktopCollapsedRailWidth}
                 >
-                  {isFramed ? (
+                  <SidebarFramedContext.Provider value={isFramed}>
+                    {}
                     <div
-                      aria-hidden="true"
-                      data-testid="window-title-bar-drag-region"
+                      data-framed={isFramed ? "" : undefined}
+                      style={
+                        {
+                          ...sidebarMobileWidthStyle,
+                          ...(isFramed
+                            ? {
+                                "--bb-window-card-collapsed-left":
+                                  desktopCollapsedRailWidth ??
+                                  "var(--bb-window-frame-leading-lip)",
+                              }
+                            : {}),
+                          ...style,
+                        } as React.CSSProperties
+                      }
                       className={cn(
-                        "fixed inset-x-0 top-0 h-(--bb-window-title-bar-height)",
-                        MACOS_WINDOW_DRAG_CLASS,
+                        "group/sidebar-wrapper flex h-full min-h-0 w-full max-md:overflow-clip",
+                        isFramed && SIDEBAR_FRAME_CLASS,
+                        isFramed &&
+                          desktopCollapsedRailWidth === null &&
+                          SIDEBAR_FRAME_LEADING_LIP_CLASS,
+                        className,
                       )}
-                    />
-                  ) : null}
-                  {children}
-                </div>
-              </SidebarFramedContext.Provider>
-            </SidebarCollapsedRailWidthContext.Provider>
-          </SidebarWidthContext.Provider>
-        </SidebarShowingContext.Provider>
+                      ref={ref}
+                      {...props}
+                    >
+                      {isFramed ? (
+                        <div
+                          aria-hidden="true"
+                          data-testid="window-title-bar-drag-region"
+                          className={cn(
+                            "fixed inset-x-0 top-0 h-(--bb-window-title-bar-height)",
+                            MACOS_WINDOW_DRAG_CLASS,
+                          )}
+                        />
+                      ) : null}
+                      {children}
+                    </div>
+                  </SidebarFramedContext.Provider>
+                </SidebarCollapsedRailWidthContext.Provider>
+              </SidebarWidthContext.Provider>
+            </SidebarShowingContext.Provider>
+          </SidebarSlideRegistryContext.Provider>
+        </SidebarLayoutOpenContext.Provider>
       </SidebarContext.Provider>
     );
   },
@@ -731,6 +934,11 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
     const collapsedRailWidth = React.useContext(
       SidebarCollapsedRailWidthContext,
     );
+    const isLayoutOpen = useSidebarLayoutOpen();
+    const slideRegistry = useSidebarSlideRegistry();
+    const collapsedMode = collapsedRailWidth === null ? "offcanvas" : "rail";
+    const collapsible = state === "collapsed" ? collapsedMode : "";
+    const layoutCollapsible = isLayoutOpen ? "" : collapsedMode;
     const widthStyle = {
       "--sidebar-width": width,
       ...(collapsedRailWidth === null
@@ -790,36 +998,42 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
     return (
       <div
         ref={ref}
-        className="group peer text-sidebar-foreground"
-        data-state={state}
-        data-collapsible={
-          state === "collapsed"
-            ? collapsedRailWidth === null
-              ? "offcanvas"
-              : "rail"
-            : ""
-        }
+        data-sidebar="root"
+        className="text-sidebar-foreground"
         data-variant="sidebar"
         data-side="left"
       >
         {}
         <div
+          ref={slideRegistry.setGap}
           data-sidebar="gap"
+          data-sidebar-state={isLayoutOpen ? "expanded" : "collapsed"}
+          data-collapsible={layoutCollapsible}
           style={widthStyle}
           className={cn(
-            "relative hidden h-full w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear md:block",
-            "group-data-[collapsible=offcanvas]:w-0",
-            "group-data-[collapsible=rail]:w-(--sidebar-rail-width)",
+            "relative hidden h-full w-(--sidebar-width) bg-transparent md:block",
+            "data-[collapsible=offcanvas]:w-0",
+            "data-[collapsible=rail]:w-(--sidebar-rail-width)",
           )}
-        />
+        >
+          <div
+            ref={slideRegistry.setWidthProbe}
+            aria-hidden
+            data-sidebar="gap-width-probe"
+            style={widthStyle}
+            className="pointer-events-none absolute top-0 left-0 h-0 w-(--sidebar-width)"
+          />
+        </div>
         <div
           data-sidebar="panel"
+          data-sidebar-state={state}
+          data-collapsible={collapsible}
           className={cn(
-            "fixed inset-y-0 z-10 flex h-(--bb-shell-height) w-(--sidebar-width) select-none flex-col bg-sidebar text-sidebar-foreground [transition:left_200ms_linear,right_200ms_linear,width_200ms_linear,visibility_0s_linear_0s]",
-            "group-data-[collapsible=offcanvas]:invisible group-data-[collapsible=offcanvas]:[transition:left_200ms_linear,right_200ms_linear,width_200ms_linear,visibility_0s_linear_200ms]",
-            "left-(--bb-window-frame-leading-lip) group-data-[collapsible=offcanvas]:left-[calc(var(--sidebar-width)*-1)]",
-            "group-data-[collapsible=rail]:w-(--sidebar-rail-width)",
-            "border-border-seam group-data-[side=left]:border-r",
+            "fixed inset-y-0 z-10 flex h-(--bb-shell-height) w-(--sidebar-width) select-none flex-col bg-sidebar text-sidebar-foreground [transition:translate_200ms_linear,width_200ms_linear,content-visibility_0s_linear_0s_allow-discrete]",
+            "data-[collapsible=offcanvas]:[content-visibility:hidden] data-[collapsible=offcanvas]:[transition:translate_200ms_linear,width_200ms_linear,content-visibility_0s_linear_200ms_allow-discrete]",
+            "left-(--bb-window-frame-leading-lip) translate-none data-[collapsible=offcanvas]:[translate:calc(-100%_-_var(--bb-window-frame-leading-lip,0px))_0]",
+            "data-[collapsible=rail]:w-(--sidebar-rail-width)",
+            "border-r border-border-seam",
             SIDEBAR_FRAMED_PANEL_CLASS,
             className,
           )}
@@ -828,7 +1042,7 @@ const Sidebar = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar group-data-[framed]/sidebar-wrapper:bg-transparent pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
+            className="flex h-full w-full flex-col [contain:layout_style] bg-sidebar group-data-[framed]/sidebar-wrapper:bg-transparent pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
           >
             {children}
           </div>
@@ -847,14 +1061,15 @@ const SidebarCollapsibleBody = React.forwardRef<
   const width = React.useContext(SidebarWidthContext);
   const collapsedRailWidth = React.useContext(SidebarCollapsedRailWidthContext);
   const isFramed = useIsSidebarFramed();
+  const isCollapsedToRail = collapsedRailWidth !== null && !open;
   return (
     <div
       ref={ref}
       data-sidebar="collapsible-body"
-      inert={collapsedRailWidth !== null && !open ? true : undefined}
+      data-collapsible={isCollapsedToRail ? "rail" : undefined}
       className={cn(
-        "relative min-w-0 flex-1 [transition:visibility_0s_linear_0s]",
-        "group-data-[collapsible=rail]:invisible group-data-[collapsible=rail]:[transition:visibility_0s_linear_200ms]",
+        "relative min-w-0 flex-1 [transition:opacity_0s_linear_0s,content-visibility_0s_linear_0s_allow-discrete]",
+        "data-[collapsible=rail]:opacity-0 data-[collapsible=rail]:[content-visibility:hidden] data-[collapsible=rail]:[transition:opacity_0s_linear_200ms,content-visibility_0s_linear_200ms_allow-discrete]",
         isFramed
           ? [
               "rounded-tl-(--bb-frame-card-radius) rounded-bl-(--bb-frame-card-radius) bg-sidebar [clip-path:inset(0_-6px_0_0_round_var(--bb-frame-card-radius)_0_0_var(--bb-frame-card-radius))]",
@@ -865,6 +1080,13 @@ const SidebarCollapsibleBody = React.forwardRef<
       )}
       {...props}
     >
+      {isCollapsedToRail ? (
+        <div
+          aria-hidden
+          data-sidebar="collapsible-body-shield"
+          className="absolute inset-0 z-10"
+        />
+      ) : null}
       <div
         className={cn(
           "flex",
@@ -1112,7 +1334,7 @@ const SidebarMobilePanel = React.forwardRef<
         >
           <div
             data-sidebar="sidebar"
-            className="flex h-full w-full flex-col bg-sidebar pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
+            className="flex h-full w-full flex-col [contain:layout_style] bg-sidebar pt-[env(safe-area-inset-top)] pr-[env(safe-area-inset-right)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]"
           >
             {children}
           </div>
@@ -1160,7 +1382,6 @@ const SidebarInset = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const {
     isCompactViewport,
-    open,
     openMobile,
     setOpenMobile,
     openMobileSidebar,
@@ -1169,6 +1390,9 @@ const SidebarInset = React.forwardRef<
     setSuppressMobileCloseAnimation,
   } = useSidebar();
   const isFramed = useIsSidebarFramed();
+  const isFrameExpanded = useSidebarLayoutOpen();
+  const slideRegistry = useSidebarSlideRegistry();
+  const composedInsetRef = useComposedRefs(ref, slideRegistry.setInset);
   const swipeSessionRef = React.useRef<SidebarInsetSwipeSession | null>(null);
   const removeSwipeListenersRef = React.useRef<(() => void) | null>(null);
   const removeSwipeClickSuppressorRef = React.useRef<(() => void) | null>(null);
@@ -1461,10 +1685,7 @@ const SidebarInset = React.forwardRef<
       }
 
       const touch = event.touches.item(0);
-      if (
-        touch == null ||
-        touch.clientX < browserNavigationEdgeGuardPx()
-      ) {
+      if (touch == null || touch.clientX < browserNavigationEdgeGuardPx()) {
         return;
       }
 
@@ -1726,7 +1947,7 @@ const SidebarInset = React.forwardRef<
 
   return (
     <main
-      ref={ref}
+      ref={composedInsetRef}
       data-sidebar="inset"
       data-sidebar-shelf={shelfState}
       data-panel-shelf={panelShelfState}
@@ -1741,8 +1962,8 @@ const SidebarInset = React.forwardRef<
         "data-[sidebar-shelf=open]:translate-x-(--sidebar-width-mobile) data-[sidebar-shelf]:will-change-[translate]",
         "data-[panel-shelf=full]:-translate-x-full data-[panel-shelf]:will-change-[translate]",
         isFramed && SIDEBAR_FRAMED_INSET_CLASS,
-        isFramed && open && SIDEBAR_FRAMED_EXPANDED_INSET_CLASS,
-        isFramed && !open && SIDEBAR_FRAMED_COLLAPSED_INSET_CLASS,
+        isFramed && isFrameExpanded && SIDEBAR_FRAMED_EXPANDED_INSET_CLASS,
+        isFramed && !isFrameExpanded && SIDEBAR_FRAMED_COLLAPSED_INSET_CLASS,
         className,
       )}
       {...props}
@@ -1754,7 +1975,7 @@ const SidebarInset = React.forwardRef<
           data-sidebar="inset-edge"
           className={cn(
             SIDEBAR_FRAMED_INSET_EDGE_CLASS,
-            !open && SIDEBAR_FRAMED_COLLAPSED_INSET_EDGE_CLASS,
+            !isFrameExpanded && SIDEBAR_FRAMED_COLLAPSED_INSET_EDGE_CLASS,
           )}
         />
       ) : null}

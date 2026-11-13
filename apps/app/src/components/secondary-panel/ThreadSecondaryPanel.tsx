@@ -27,6 +27,10 @@ import {
   PANEL_COLLAPSE_TRANSITION_CLASS,
   PANEL_RESIZE_HANDLE_LAYER_CLASS,
   PANEL_RESIZE_HIT_TARGET_CLASS,
+  PANEL_SLIDE_PANEL_STYLE,
+  getPanelLayoutTransitionClassName,
+  getPanelSlideSurfaceClassName,
+  usePanelSlideContext,
 } from "./panelTransitionTokens";
 import {
   PANEL_SCROLL_SLOT_CLASS,
@@ -300,6 +304,10 @@ function ThreadSecondaryPanelContent({
           isConversationCollapsed,
           onToggleConversationCollapse,
         });
+  const hostSlide = usePanelSlideContext();
+  const slide = renderAsDrawer ? null : hostSlide;
+  const isLayoutSlotOpen = slide === null ? isOpen : slide.isLayoutOpen;
+  const isSlideOverlaying = slide !== null && !slide.isLayoutOpen;
   const {
     handleSecondaryPanelResize,
     resizeHitTargetRef,
@@ -307,7 +315,7 @@ function ThreadSecondaryPanelContent({
     secondaryPanelRef: panelRef,
     secondaryResizablePanelRef: resizablePanelRef,
   } = useSecondaryPanelResize({
-    isSecondaryPanelOpen: isOpen,
+    isSecondaryPanelOpen: isLayoutSlotOpen,
     panelId: resizablePanelId,
     renderAsDrawer,
   });
@@ -965,7 +973,9 @@ function ThreadSecondaryPanelContent({
         !renderAsDrawer && !isSecondaryPanelResizing
           ? {
               width: isConversationCollapsed
-                ? "100%"
+                ? isSlideOverlaying
+                  ? "100cqw"
+                  : "100%"
                 : `var(--secondary-swipe-width, ${persistedWidthPercent}cqw)`,
             }
           : undefined
@@ -976,13 +986,14 @@ function ThreadSecondaryPanelContent({
         isPanelInFrame && FRAMED_PANEL_SURFACE_CLASS,
         !renderAsDrawer && [
           "absolute inset-y-0 left-0",
-          hostLayout === null &&
+          (hostLayout === null || isSlideOverlaying) &&
             !isConversationCollapsed &&
             (isPanelInFrame
               ? "border-l border-border"
               : "border-l border-border-seam"),
           isSecondaryPanelResizing && "right-0",
           !isOpen && "pointer-events-none",
+          getPanelSlideSurfaceClassName(slide),
         ],
       )}
     >
@@ -1001,7 +1012,7 @@ function ThreadSecondaryPanelContent({
   return (
     <>
       <SecondaryPanelResizeHandle
-        isOpen={isOpen}
+        isOpen={isLayoutSlotOpen}
         isConversationCollapsed={isConversationCollapsed}
         matchesSplitDividers={hostLayout !== null}
         hitTargetRef={resizeHitTargetRef}
@@ -1012,7 +1023,7 @@ function ThreadSecondaryPanelContent({
         collapsible
         collapsedSize={0}
         defaultSize={
-          isLayoutOpen
+          isLayoutOpen && isLayoutSlotOpen
             ? isConversationCollapsed
               ? CONVERSATION_COLLAPSED_PANEL_SIZE_PERCENT
               : persistedWidthPercent
@@ -1023,10 +1034,14 @@ function ThreadSecondaryPanelContent({
         onCollapse={handlePanelCollapse}
         onResize={handlePanelResize}
         order={2}
-        style={SECONDARY_RESIZABLE_PANEL_STYLE}
+        style={
+          slide?.isSliding === true
+            ? PANEL_SLIDE_PANEL_STYLE
+            : SECONDARY_RESIZABLE_PANEL_STYLE
+        }
         className={cn(
-          "min-w-0",
-          `relative transition-[flex-grow,flex-basis] ${PANEL_COLLAPSE_TRANSITION_CLASS}`,
+          "relative min-w-0",
+          getPanelLayoutTransitionClassName(slide?.animatesLayout ?? true),
         )}
       >
         {asideMarkup}
@@ -1147,7 +1162,7 @@ function SecondaryPanelResizeHandle({
       hitAreaMargins={{ coarse: 0, fine: 0 }}
       tabIndex={-1}
       className={cn(
-        "group relative shrink-0 overflow-visible transition-[width,opacity,background-color]",
+        "group relative shrink-0 overflow-visible transition-[opacity,background-color]",
         PANEL_RESIZE_HANDLE_LAYER_CLASS,
         PANEL_COLLAPSE_TRANSITION_CLASS,
         isConversationCollapsed ? "cursor-default" : "cursor-col-resize",

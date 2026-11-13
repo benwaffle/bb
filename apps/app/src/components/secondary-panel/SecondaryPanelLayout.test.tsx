@@ -24,6 +24,7 @@ import {
   type SecondaryPanelRenderArgs,
 } from "./SecondaryPanelLayout";
 import { panelGroupState } from "@/test/react-resizable-panels-stub";
+import { PANEL_SLIDE_MS, usePanelSlideContext } from "./panelTransitionTokens";
 import {
   getPluginPageSecondaryPanelWidthPercentAtom,
   getThreadSecondaryPanelWidthPercentAtom,
@@ -754,6 +755,135 @@ describe("SecondaryPanelLayout", () => {
 
     expect(unmountFrames.cancelAnimationFrame).toHaveBeenCalledWith(3);
     expect(dispatchBrowserViewBoundsSync).not.toHaveBeenCalled();
+  });
+});
+
+function SlideProbe() {
+  const slide = usePanelSlideContext();
+  return <output data-testid="slide-phase">{slide?.phase ?? "none"}</output>;
+}
+
+function getMainPanel(): HTMLElement {
+  const panel = document.querySelector('[data-panel-id="test-main-panel"]');
+  if (!(panel instanceof HTMLElement)) {
+    throw new Error("Expected the main panel");
+  }
+  return panel;
+}
+
+function renderSlidingLayout() {
+  const frames = installAnimationFrameQueue();
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  const layouts: Array<{ layout: number[]; animated: boolean }> = [];
+  panelGroupState.setLayout.mockImplementation((layout: number[]) => {
+    layouts.push({
+      layout,
+      animated: !getMainPanel().classList.contains("transition-none"),
+    });
+  });
+  const view = renderLayout({
+    isCompactViewport: false,
+    open: false,
+    renderPanel: () => <SlideProbe />,
+    resetKey: "thread-slide",
+  });
+  act(() => {
+    frames.flushAll();
+    frames.flushAll();
+  });
+  layouts.length = 0;
+  const appliedLayoutChanges = () => {
+    let previous = "100,0";
+    let changes = 0;
+    for (const { layout } of layouts) {
+      const key = layout.join(",");
+      if (key !== previous) changes += 1;
+      previous = key;
+    }
+    return changes;
+  };
+  return { appliedLayoutChanges, frames, layouts, view };
+}
+
+describe("desktop right panel slide", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("slides the panel over the main pane and resizes the pane once, after the slide", () => {
+    const { appliedLayoutChanges, frames, layouts, view } =
+      renderSlidingLayout();
+    const phase = () => screen.getByTestId("slide-phase").textContent;
+
+    view.rerenderWith({ open: true });
+    expect(phase()).toBe("opening");
+    expect(layouts.every(({ layout }) => layout[1] === 0)).toBe(true);
+
+    act(() => {
+      vi.advanceTimersByTime(PANEL_SLIDE_MS - 1);
+    });
+    expect(appliedLayoutChanges()).toBe(0);
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(phase()).toBe("settling");
+    expect(layouts.at(-1)).toEqual({ layout: [60, 40], animated: false });
+    expect(appliedLayoutChanges()).toBe(1);
+
+    act(() => frames.flushAll());
+    expect(phase()).toBe("settling");
+    expect(getMainPanel().classList).toContain("transition-none");
+
+    act(() => frames.flushAll());
+    expect(phase()).toBe("open");
+    expect(getMainPanel().className).toContain("transition-[flex-grow");
+    expect(appliedLayoutChanges()).toBe(1);
+  });
+
+  it("resizes the pane once, before the panel slides off it, when closing", () => {
+    const { appliedLayoutChanges, frames, layouts, view } =
+      renderSlidingLayout();
+    view.rerenderWith({ open: true });
+    act(() => {
+      vi.advanceTimersByTime(PANEL_SLIDE_MS);
+    });
+    act(() => frames.flushAll());
+    layouts.length = 0;
+    const changesBeforeClose = appliedLayoutChanges();
+
+    view.rerenderWith({ open: false });
+    expect(screen.getByTestId("slide-phase").textContent).toBe("uncovering");
+    expect(layouts).toEqual([{ layout: [100, 0], animated: false }]);
+
+    act(() => frames.flushAll());
+    act(() => frames.flushAll());
+    expect(screen.getByTestId("slide-phase").textContent).toBe("closing");
+    expect(layouts).toHaveLength(1);
+
+    act(() => {
+      vi.advanceTimersByTime(PANEL_SLIDE_MS);
+    });
+    expect(screen.getByTestId("slide-phase").textContent).toBe("closed");
+    expect(layouts).toHaveLength(1);
+    expect(changesBeforeClose).toBe(0);
+  });
+
+  it("never applies the open layout when a close interrupts the opening slide", () => {
+    const { appliedLayoutChanges, view } = renderSlidingLayout();
+
+    view.rerenderWith({ open: true });
+    act(() => {
+      vi.advanceTimersByTime(PANEL_SLIDE_MS / 2);
+    });
+    view.rerenderWith({ open: false });
+    expect(screen.getByTestId("slide-phase").textContent).toBe("closing");
+    act(() => {
+      vi.advanceTimersByTime(PANEL_SLIDE_MS * 2);
+    });
+
+    expect(screen.getByTestId("slide-phase").textContent).toBe("closed");
+    expect(appliedLayoutChanges()).toBe(0);
   });
 });
 
