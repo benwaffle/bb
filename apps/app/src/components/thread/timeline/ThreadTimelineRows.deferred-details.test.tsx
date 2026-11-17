@@ -99,6 +99,51 @@ describe("deferred timeline details", () => {
     expect(screen.queryByText("Load earlier activity")).toBeNull();
   });
 
+  it("streams a running background delegation's children inline without a snapshot fetch", () => {
+    const running = (texts: readonly string[]): TimelineRow => ({
+      ...delegationRow({
+        callId: "agent-call",
+        childRows: texts.map((text, index) =>
+          conversationRow({
+            id: `child-message-${index}`,
+            text,
+            threadId: "thr_main",
+            turnId: "turn_1",
+          }),
+        ),
+        output: "",
+        status: "pending",
+        threadId: "thr_main",
+        turnId: "turn_1",
+      }),
+      background: true,
+    });
+    const { wrapper: Wrapper } = createQueryClientTestHarness();
+    const renderRows = (row: TimelineRow) => (
+      <MemoryRouter>
+        <Wrapper>
+          <ThreadTimelineRows
+            initialExpanded={new Set([row.id])}
+            threadId="thr_main"
+            timelineRows={[row]}
+            threadRuntimeDisplayStatus="idle"
+          />
+        </Wrapper>
+      </MemoryRouter>
+    );
+    const view = render(renderRows(running(["Reading turbo.json now."])));
+    expect(screen.getByText("Reading turbo.json now.")).toBeTruthy();
+
+    view.rerender(
+      renderRows(
+        running(["Reading turbo.json now.", "Found electron-builder config."]),
+      ),
+    );
+
+    expect(screen.getByText("Found electron-builder config.")).toBeTruthy();
+    expect(timelineTurnSummaryDetails).not.toHaveBeenCalled();
+  });
+
   it("loads earlier turn activity only when asked", async () => {
     timelineTurnSummaryDetails.mockImplementation(async (input) =>
       input.beforeCursor === undefined
