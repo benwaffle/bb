@@ -96,9 +96,9 @@ describe("tool-call shell parsing", () => {
     expect(command).toBe('grep "a|b" src/app.ts');
     expect(
       extractShellCommandFromString(
-        'bash -lc "echo \\$HOME \\`x\\` a\\b \\\\\\\\ line\\\n end\\"',
+        'bash -lc "echo \\$HOME \\`x\\` a\\b \\\\\\\\ line\\\n end"',
       ),
-    ).toBe("echo $HOME `x` a\\b \\\\ line\n end\\");
+    ).toBe("echo $HOME `x` a\\b \\\\ line\n end");
     expect(parseShellCommandIntents(command)).toEqual([
       {
         type: "search",
@@ -108,6 +108,30 @@ describe("tool-call shell parsing", () => {
       },
     ]);
   });
+
+  it.each([
+    ["bash -lc 'a; b'", "a; b"],
+    ['bash -c "echo \\"x\\""', 'echo "x"'],
+    ['bash -c "say \\"hi\\" now"', 'say "hi" now'],
+    ['bash -c "a\\" ; echo \\"b"', 'a" ; echo "b'],
+  ])(
+    "unwraps a script whose quotes enclose all of it: %s",
+    (command, script) => {
+      expect(extractShellCommandFromString(command)).toBe(script);
+    },
+  );
+
+  it.each([
+    "bash -c 'a' ; cat f | head -3; bash -c 'b && c | d'",
+    'bash -c "a" && echo "b"',
+    'bash -c "echo \\"',
+    'bash -c "echo \\"x\\"" && ls',
+  ])(
+    "keeps a wrapper whose quotes do not enclose the whole script: %s",
+    (command) => {
+      expect(extractShellCommandFromString(command)).toBe(command);
+    },
+  );
 
   it("does not promote later searches after a non-exploratory first command", () => {
     const command =
