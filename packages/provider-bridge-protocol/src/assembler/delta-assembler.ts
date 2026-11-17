@@ -1611,23 +1611,26 @@ export function createDeltaAssembler(
         const parentToolCallId = mapParentRef(state, delta.key.parentRef);
         let event: ThreadEvent;
         if (delta.snapshot?.type === "delegation") {
+          const item = withPresentation(
+            buildDelegationItem(
+              bbItemId,
+              delta.snapshot,
+              "pending",
+              parentToolCallId ?? open?.item.parentToolCallId,
+              open?.item.type === "delegation" ? open.item.summary : undefined,
+            ),
+            presentationOf(open?.item),
+          );
+          if (open?.item.type === "delegation") {
+            open.item = { ...open.item, background: delta.snapshot.background };
+            open.threadAttached = isThreadAttachedShape(delta.snapshot);
+          }
           event = {
             type: "item/delegation/progress",
             threadId: UNSTAMPED_THREAD_ID,
             providerThreadId: "",
             scope: threadScope(),
-            item: withPresentation(
-              buildDelegationItem(
-                bbItemId,
-                delta.snapshot,
-                "pending",
-                parentToolCallId ?? open?.item.parentToolCallId,
-                open?.item.type === "delegation"
-                  ? open.item.summary
-                  : undefined,
-              ),
-              presentationOf(open?.item),
-            ),
+            item,
           };
         } else if (delta.snapshot !== undefined) {
           event = {
