@@ -9,6 +9,7 @@ import { durationToCompactString, messageId } from "./format-helpers.js";
 import { eventProjectionMessageTurnScopeFields } from "./message-scope.js";
 import {
   createVisibleTextBuffer,
+  getVisibleTextBufferFullLength,
   getVisibleTextBufferFullText,
   getVisibleTextBufferText,
   type VisibleTextBuffer,
@@ -136,6 +137,14 @@ function getActiveThinkingText(
   return (buffer ? getVisibleTextBufferText(buffer) : undefined)?.trim() ?? "";
 }
 
+function getActiveThinkingTextLength(
+  state: ReasoningProjectionState,
+  messageKey: string,
+): number {
+  const buffer = state.reasoningTextBuffersByKey.get(messageKey);
+  return buffer ? getVisibleTextBufferFullLength(buffer) : 0;
+}
+
 export function buildProjectionActiveThinking(
   state: ReasoningProjectionState,
   threadStatus: BuildEventProjectionMessagesOptions["threadStatus"],
@@ -158,6 +167,7 @@ export function buildProjectionActiveThinking(
       `reasoning:${latestLifecycle.messageKey}`,
     ),
     text: getActiveThinkingText(state, latestLifecycle.messageKey),
+    textLength: getActiveThinkingTextLength(state, latestLifecycle.messageKey),
     startedAt: latestLifecycle.startedAt,
     updatedAt: latestLifecycle.updatedAt,
   };
