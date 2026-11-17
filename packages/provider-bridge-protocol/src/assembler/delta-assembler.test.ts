@@ -1824,6 +1824,54 @@ describe("delta assembler grammar v3 core kinds", () => {
     expect(itemOf(completed)).not.toHaveProperty("summary");
   });
 
+  it("keeps a delegation open across turns once progress marks it background", () => {
+    const assembler = createAssembler();
+    assemble(assembler, { kind: "turn.open" });
+    const shape: DeltaItemShape = {
+      type: "delegation",
+      childRef: "agent-8",
+      label: "Survey the build",
+      background: false,
+    };
+    const [started] = assemble(assembler, {
+      kind: "item.open",
+      key: { providerItemId: "d-async" },
+      item: shape,
+    });
+    const delegationId = itemOf(started)?.id;
+    const [progress] = assemble(assembler, {
+      kind: "item.progress",
+      key: { providerItemId: "d-async" },
+      snapshot: { ...shape, background: true },
+      flush: true,
+    });
+    expect(progress).toMatchObject({
+      type: "item/delegation/progress",
+      scope: threadScope(),
+      item: { id: delegationId, status: "pending", background: true },
+    });
+
+    const ended = assemble(assembler, { kind: "session.ended" });
+    expect(ended.map((event) => event.type)).toEqual(["turn/completed"]);
+
+    const [completed] = assemble(assembler, {
+      kind: "item.close",
+      key: { providerItemId: "d-async" },
+      status: "completed",
+      item: { ...shape, background: true, summary: "Done." },
+    });
+    expect(completed).toMatchObject({
+      type: "item/delegation/completed",
+      scope: threadScope(),
+      item: {
+        id: delegationId,
+        status: "completed",
+        background: true,
+        summary: "Done.",
+      },
+    });
+  });
+
   it("a background delegation close without an open builds the bare terminal item", () => {
     const assembler = createAssembler();
     const events = assemble(assembler, {

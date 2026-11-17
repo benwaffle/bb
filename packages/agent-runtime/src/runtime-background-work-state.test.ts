@@ -236,10 +236,52 @@ describe("RuntimeBackgroundWorkState", () => {
           taskStatus: "stopped",
         },
       },
+      {
+        type: "item/delegation/completed",
+        threadId: "t1",
+        providerThreadId: "p1",
+        scope: threadScope(),
+        item: delegation("d1", "interrupted", true),
+      },
     ]);
     expect(state.hasOpenThreadWork("t1")).toBe(false);
     expect(state.settleThread("t1")).toEqual([]);
     expect(state.hasOpenThreadWork("t2")).toBe(true);
+  });
+
+  it("settles a background delegation from its latest state but leaves foreground ones to the turn", () => {
+    const state = new RuntimeBackgroundWorkState();
+    state.observe({
+      type: "item/started",
+      threadId: "t1",
+      providerThreadId: "p1",
+      scope: turnScope("turn-1"),
+      item: delegation("foreground"),
+    });
+    state.observe({
+      type: "item/started",
+      threadId: "t1",
+      providerThreadId: "p1",
+      scope: turnScope("turn-1"),
+      item: delegation("relabelled"),
+    });
+    state.observe({
+      type: "item/delegation/progress",
+      threadId: "t1",
+      providerThreadId: "p1",
+      scope: threadScope(),
+      item: delegation("relabelled", "pending", true),
+    });
+
+    expect(state.settleThread("t1")).toEqual([
+      {
+        type: "item/delegation/completed",
+        threadId: "t1",
+        providerThreadId: "p1",
+        scope: threadScope(),
+        item: delegation("relabelled", "interrupted", true),
+      },
+    ]);
   });
 
   it("settles the open tasks of every thread", () => {

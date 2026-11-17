@@ -90,6 +90,13 @@ import {
   resolveClaudeModelContextWindowHint,
 } from "./sdk-extraction.js";
 import { claudeCodeVisibilityMetadata } from "./visibility.js";
+import {
+  isClaudeAsyncAgentLaunch,
+  launchClaudeBackgroundDelegation,
+  noteClaudeBackgroundDelegationMessage,
+  settleFinishedClaudeBackgroundDelegations,
+  type ClaudeBackgroundDelegationMap,
+} from "./background-delegation.js";
 
 export interface ClaudeDeltaTranslationContext {
   threadId?: string;
@@ -442,6 +449,7 @@ interface ClaudeThreadDialectState {
   startedTools: Map<string, ClaudeClassifiedTool>;
   heldSkillOpen: HeldSkillOpen | undefined;
   tasksById: ClaudeTaskMap;
+  backgroundDelegations: ClaudeBackgroundDelegationMap;
   taskPlan: ClaudeTaskPlanState;
   unconsumedPromptIds: Set<string>;
   promptConsumedSinceResult: boolean;
@@ -469,6 +477,7 @@ function createThreadState(): ClaudeThreadDialectState {
     startedTools: new Map(),
     heldSkillOpen: undefined,
     tasksById: new Map(),
+    backgroundDelegations: new Map(),
     taskPlan: new Map(),
     unconsumedPromptIds: new Set(),
     promptConsumedSinceResult: false,
@@ -871,7 +880,13 @@ export function createClaudeDeltaTranslator(
       readOutput: readBackgroundCommandOutput,
     });
     if (taskDeltas !== null) {
-      return withMirror(state, taskDeltas);
+      return withMirror(state, [
+        ...taskDeltas,
+        ...settleFinishedClaudeBackgroundDelegations({
+          delegations: state.backgroundDelegations,
+          tasks: state.tasksById,
+        }),
+      ]);
     }
 
     return [];
@@ -1025,6 +1040,11 @@ export function createClaudeDeltaTranslator(
 
     const text = extractAssistantText(message);
     if (text) {
+      noteClaudeBackgroundDelegationMessage({
+        delegations: state.backgroundDelegations,
+        parentToolCallId,
+        text,
+      });
       deltas.push({
         kind: "item.textClose",
         key: { channel: ASSISTANT_STREAM_KEY, ...parentRefField },
@@ -1168,6 +1188,27 @@ export function createClaudeDeltaTranslator(
         started ??
         classifyClaudeToolResultFallback(result.toolName, sessionCwd);
       const status = result.isError ? "failed" : "completed";
+      if (
+        base.shape.type === "delegation" &&
+        !result.isError &&
+        isClaudeAsyncAgentLaunch({
+          toolUseResults: [result.toolUseResult, envelopeToolUseResult],
+          outputText,
+        })
+      ) {
+        deltas.push(
+          ...launchClaudeBackgroundDelegation({
+            delegations: state.backgroundDelegations,
+            tasks: state.tasksById,
+            toolUseId: result.toolUseId,
+            parentRef: parentToolCallId,
+            shape: base.shape,
+            presentation: base.presentation,
+            launchText: outputText,
+          }),
+        );
+        continue;
+      }
       deltas.push({
         kind: "item.close",
         key: { providerItemId: result.toolUseId, ...parentRefField },
@@ -1569,12 +1610,19 @@ export function createClaudeDeltaTranslator(
   function buildSessionSettlementDeltas(threadId: string): ThreadDelta[] {
     const state = stateFor({ threadId });
     const deltas = releaseHeldSkillOpen(state, undefined);
+    const taskDeltas = buildInterruptedClaudeTaskDeltas({
+      tasks: state.tasksById,
+    });
+    deltas.push(
+      ...settleFinishedClaudeBackgroundDelegations({
+        delegations: state.backgroundDelegations,
+        tasks: state.tasksById,
+      }),
+    );
     if (state.mirror.turnOpen) {
       deltas.push(...withMirror(state, [{ kind: "session.ended" }]));
     }
-    deltas.push(
-      ...buildInterruptedClaudeTaskDeltas({ tasks: state.tasksById }),
-    );
+    deltas.push(...taskDeltas);
     return deltas;
   }
 
@@ -1582,9 +1630,16 @@ export function createClaudeDeltaTranslator(
     threadId: string,
   ): ThreadDelta[] {
     const state = statesByThreadId.get(threadId);
-    return state === undefined
-      ? []
-      : buildInterruptedClaudeTaskDeltas({ tasks: state.tasksById });
+    if (state === undefined) {
+      return [];
+    }
+    return [
+      ...buildInterruptedClaudeTaskDeltas({ tasks: state.tasksById }),
+      ...settleFinishedClaudeBackgroundDelegations({
+        delegations: state.backgroundDelegations,
+        tasks: state.tasksById,
+      }),
+    ];
   }
 
   function hasOpenTurn(threadId: string): boolean {

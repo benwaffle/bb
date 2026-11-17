@@ -207,6 +207,91 @@ describe("delegation item projection", () => {
   });
 
   it.each([
+    { background: true, settled: false, status: "pending" },
+    { background: false, settled: false, status: "interrupted" },
+    { background: true, settled: true, status: "completed" },
+  ] as const)(
+    "projects a delegation (background: $background, settled: $settled) of an idle thread as $status",
+    ({ background, settled, status }) => {
+      const event = createTimelineEventFactory({ threadId: "thread-1" });
+      const delegation = {
+        turnId: "parent-turn",
+        itemId: "call-1",
+        childRef: "call-1",
+        label: "Survey the build",
+        background,
+      };
+      const events = [
+        event.turnStarted({ turnId: "parent-turn", createdAt: 0 }),
+        event.delegationStarted({ ...delegation, createdAt: 1_000 }),
+        event.turnCompleted({
+          turnId: "parent-turn",
+          status: "failed",
+          createdAt: 2_000,
+        }),
+        event.turnStarted({ turnId: "child-turn", createdAt: 3_000 }),
+        event.assistantCompleted({
+          turnId: "child-turn",
+          parentToolCallId: "call-1",
+          itemId: "child-message",
+          text: "Reading turbo.json now.",
+          createdAt: 4_000,
+        }),
+        event.turnCompleted({ turnId: "child-turn", createdAt: 5_000 }),
+      ];
+      const completed = event.delegationCompleted({
+        ...delegation,
+        createdAt: 6_000,
+      });
+      const timeline = renderTimelineFixture({
+        events: [
+          ...events,
+          ...(settled
+            ? [
+                {
+                  ...completed,
+                  type: "item/delegation/completed" as const,
+                  scope: { kind: "thread" as const },
+                  data: {
+                    providerThreadId: completed.data.providerThreadId,
+                    item: {
+                      type: "delegation" as const,
+                      id: "call-1",
+                      childRef: "call-1",
+                      label: "Survey the build",
+                      status: "completed" as const,
+                      background,
+                      summary: "The pipeline is turbo then electron-builder.",
+                    },
+                  },
+                },
+              ]
+            : []),
+        ],
+        projectionOptions: {
+          threadStatus: "idle",
+          turnMessageDetail: "full",
+        },
+      });
+
+      const row = findDelegationRow(timeline.rows, "call-1");
+      expect(row).toEqual(
+        expect.objectContaining({
+          status,
+          ...(settled
+            ? { output: "The pipeline is turbo then electron-builder." }
+            : {}),
+        }),
+      );
+      expect(
+        (row.childRows ?? []).flatMap((child) =>
+          child.kind === "conversation" ? [child.text] : [],
+        ),
+      ).toContain("Reading turbo.json now.");
+    },
+  );
+
+  it.each([
     { lastRoundCompletes: true, status: "completed", completedAt: 21_000 },
     { lastRoundCompletes: false, status: "pending", completedAt: null },
   ] as const)(

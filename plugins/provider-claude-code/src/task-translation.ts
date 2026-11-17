@@ -156,6 +156,32 @@ export function getClaudeBackgroundTaskState(
   return task.terminal ? "settled" : "running";
 }
 
+export interface ClaudeAgentTaskSnapshot {
+  terminal: boolean;
+  taskStatus: BackgroundTaskStatus;
+  summary: string | undefined;
+}
+
+export function findClaudeAgentTaskForToolUse(
+  tasks: ClaudeTaskMap,
+  toolUseId: string,
+): ClaudeAgentTaskSnapshot | undefined {
+  for (const task of tasks.values()) {
+    if (
+      task.toolUseId === toolUseId &&
+      !task.skipTranscript &&
+      isBackgroundAgentTaskType(task.taskType)
+    ) {
+      return {
+        terminal: task.terminal,
+        taskStatus: task.taskStatus,
+        summary: task.summary,
+      };
+    }
+  }
+  return undefined;
+}
+
 export function hasCompletionBlockingClaudeTasks(
   tasks: ClaudeTaskMap,
 ): boolean {
