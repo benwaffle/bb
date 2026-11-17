@@ -4,14 +4,22 @@ import {
   threadScope,
   type ThreadEvent,
   type ThreadEventBackgroundTaskItem,
+  type ThreadEventDelegationItem,
 } from "@bb/domain";
 
 interface OpenBackgroundTask {
+  kind: "backgroundTask";
   item: ThreadEventBackgroundTaskItem;
   providerThreadId: string;
 }
 
-type OpenBackgroundWork = OpenBackgroundTask | null;
+interface OpenBackgroundDelegation {
+  kind: "delegation";
+  item: ThreadEventDelegationItem;
+  providerThreadId: string;
+}
+
+type OpenBackgroundWork = OpenBackgroundTask | OpenBackgroundDelegation | null;
 
 function stoppedBackgroundTaskItem(
   item: ThreadEventBackgroundTaskItem,
@@ -63,19 +71,31 @@ export class RuntimeBackgroundWorkState {
     if (!openWork) {
       return [];
     }
-    return [...openWork.values()].flatMap((work) =>
-      work === null
-        ? []
-        : [
-            {
-              type: "item/backgroundTask/completed" as const,
-              threadId,
-              providerThreadId: work.providerThreadId,
-              scope: threadScope(),
-              item: stoppedBackgroundTaskItem(work.item),
-            },
-          ],
-    );
+    return [...openWork.values()].flatMap((work): ThreadEvent[] => {
+      if (work === null) {
+        return [];
+      }
+      if (work.kind === "delegation") {
+        return [
+          {
+            type: "item/delegation/completed",
+            threadId,
+            providerThreadId: work.providerThreadId,
+            scope: threadScope(),
+            item: { ...work.item, status: "interrupted" },
+          },
+        ];
+      }
+      return [
+        {
+          type: "item/backgroundTask/completed",
+          threadId,
+          providerThreadId: work.providerThreadId,
+          scope: threadScope(),
+          item: stoppedBackgroundTaskItem(work.item),
+        },
+      ];
+    });
   }
 
   settleAll(): ThreadEvent[] {
@@ -88,16 +108,12 @@ export class RuntimeBackgroundWorkState {
     if (event.type === "item/started" || event.type === "item/completed") {
       if (event.item.type === "backgroundTask") {
         this.setBackgroundTask(event.threadId, {
+          kind: "backgroundTask",
           item: event.item,
           providerThreadId: event.providerThreadId,
         });
       } else if (event.item.type === "delegation") {
-        this.setWork({
-          isOpen: event.item.status === "pending",
-          taskId: event.item.id,
-          threadId: event.threadId,
-          work: null,
-        });
+        this.setDelegation(event.threadId, event.providerThreadId, event.item);
       }
       return;
     }
@@ -107,6 +123,7 @@ export class RuntimeBackgroundWorkState {
       event.type === "item/backgroundTask/completed"
     ) {
       this.setBackgroundTask(event.threadId, {
+        kind: "backgroundTask",
         item: event.item,
         providerThreadId: event.providerThreadId,
       });
@@ -117,13 +134,23 @@ export class RuntimeBackgroundWorkState {
       event.type === "item/delegation/progress" ||
       event.type === "item/delegation/completed"
     ) {
-      this.setWork({
-        isOpen: event.item.status === "pending",
-        taskId: event.item.id,
-        threadId: event.threadId,
-        work: null,
-      });
+      this.setDelegation(event.threadId, event.providerThreadId, event.item);
     }
+  }
+
+  private setDelegation(
+    threadId: string,
+    providerThreadId: string,
+    item: ThreadEventDelegationItem,
+  ): void {
+    this.setWork({
+      isOpen: item.status === "pending",
+      taskId: item.id,
+      threadId,
+      work: item.background
+        ? { kind: "delegation", item, providerThreadId }
+        : null,
+    });
   }
 
   private setBackgroundTask(threadId: string, task: OpenBackgroundTask): void {
