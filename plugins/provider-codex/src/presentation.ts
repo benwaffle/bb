@@ -10,22 +10,55 @@ import {
 const SHELL_WRAPPER_PATTERN =
   /^(?:\S*\/)?(?:sh|bash|zsh)\s+(?:-lc|-c)\s+([\s\S]+)$/;
 
+const DOUBLE_QUOTED_ESCAPABLE_CHARS = new Set(["$", "`", '"', "\\", "\n"]);
+
+function closingQuoteIndex(value: string): number {
+  const quote = value[0];
+  if (quote === "'") return value.indexOf("'", 1);
+  if (quote !== '"') return -1;
+  for (let index = 1; index < value.length; index += 1) {
+    const char = value[index];
+    if (char === "\\") index += 1;
+    else if (char === '"') return index;
+  }
+  return -1;
+}
+
+function unescapeDoubleQuoted(inner: string): string {
+  let result = "";
+  for (let index = 0; index < inner.length; index += 1) {
+    const char = inner[index]!;
+    const next = inner[index + 1];
+    if (
+      char === "\\" &&
+      next !== undefined &&
+      DOUBLE_QUOTED_ESCAPABLE_CHARS.has(next)
+    ) {
+      result += next;
+      index += 1;
+    } else {
+      result += char;
+    }
+  }
+  return result;
+}
+
 function unwrapShellCommand(command: string): string {
   const trimmed = command.trim();
   const match = SHELL_WRAPPER_PATTERN.exec(trimmed);
   if (!match?.[1]) {
     return trimmed;
   }
-  const inner = match[1].trim();
-  const quote = inner[0];
-  if (
-    inner.length >= 2 &&
-    (quote === '"' || quote === "'") &&
-    inner[inner.length - 1] === quote
-  ) {
-    return inner.slice(1, -1);
+  const script = match[1].trim();
+  const quote = script[0];
+  if (quote !== '"' && quote !== "'") {
+    return script;
   }
-  return inner;
+  if (closingQuoteIndex(script) !== script.length - 1) {
+    return trimmed;
+  }
+  const inner = script.slice(1, -1);
+  return quote === "'" ? inner : unescapeDoubleQuoted(inner);
 }
 
 export const AGENT_MESSAGE_PRESENTATION: DeltaPresentation = {
