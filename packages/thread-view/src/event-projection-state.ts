@@ -122,6 +122,7 @@ function interruptPendingToolMessages(
   state: ProjectionState,
   completedAt: number | null,
   turnId: string | null,
+  preserveBackgroundDelegations: boolean,
 ): void {
   for (const message of state.messages) {
     if (
@@ -134,6 +135,13 @@ function interruptPendingToolMessages(
       case "command":
       case "tool-call":
       case "delegation":
+        if (
+          preserveBackgroundDelegations &&
+          message.kind === "delegation" &&
+          message.background
+        ) {
+          break;
+        }
         if (message.status === "pending") {
           message.status = "interrupted";
           message.completedAt = completedAt;
@@ -182,6 +190,7 @@ function finalizePendingMessages(args: FinalizeProjectionMessagesArgs): void {
     args.state,
     args.state.threadInterruptedAt,
     null,
+    true,
   );
 
   for (const message of args.state.messages) {
@@ -293,7 +302,12 @@ function finalizeInterruptedTurnPendingMessages(state: ProjectionState): void {
   }
 
   for (const [turnId, finalization] of state.pendingFinalizationByTurnId) {
-    interruptPendingToolMessages(state, finalization.completedAt, turnId);
+    interruptPendingToolMessages(
+      state,
+      finalization.completedAt,
+      turnId,
+      false,
+    );
   }
 
   for (const message of state.messages) {

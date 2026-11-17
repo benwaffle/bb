@@ -457,6 +457,164 @@ describe("settleDanglingBackgroundTasks", () => {
   });
 });
 
+describe("settleDanglingBackgroundTasks for background subagents", () => {
+  function delegationData(args: {
+    itemId: string;
+    status: string;
+    background: boolean;
+  }): Record<string, unknown> {
+    return {
+      providerThreadId: "claude-session-1",
+      item: {
+        id: args.itemId,
+        type: "delegation",
+        childRef: `toolu-${args.itemId}`,
+        label: "Survey the build",
+        status: args.status,
+        background: args.background,
+      },
+    };
+  }
+
+  function seedSubagent(
+    harness: TestAppHarness,
+    args: {
+      threadId: string;
+      delegationId: string;
+      firstSequence: number;
+      delegationEvents: ReadonlyArray<{
+        type: "item/started" | "item/delegation/progress" | "item/completed";
+        status: string;
+        background: boolean;
+      }>;
+    },
+  ): void {
+    let sequence = args.firstSequence;
+    for (const event of args.delegationEvents) {
+      seedStoredEvent(harness.deps, {
+        threadId: args.threadId,
+        sequence: sequence++,
+        type: event.type,
+        scope:
+          event.type === "item/delegation/progress"
+            ? threadScope()
+            : turnScope("turn-1"),
+        providerThreadId: "claude-session-1",
+        itemId: args.delegationId,
+        itemKind: "delegation",
+        data: delegationData({
+          itemId: args.delegationId,
+          status: event.status,
+          background: event.background,
+        }),
+      });
+    }
+    const taskId = `task:${args.delegationId}`;
+    seedStoredEvent(harness.deps, {
+      threadId: args.threadId,
+      sequence,
+      type: "item/started",
+      scope: turnScope("turn-1"),
+      providerThreadId: "claude-session-1",
+      itemId: taskId,
+      itemKind: "backgroundTask",
+      data: {
+        providerThreadId: "claude-session-1",
+        item: {
+          id: taskId,
+          type: "backgroundTask",
+          taskType: "local_agent",
+          description: "Survey the build",
+          status: "pending",
+          taskStatus: "running",
+          skipTranscript: false,
+          foreground: false,
+          parentToolCallId: args.delegationId,
+        },
+      },
+    });
+  }
+
+  it("settles each running background subagent's delegation with its task, once", async () => {
+    await withTestHarness(async (harness) => {
+      const { host, thread } = seedOpenBackgroundTaskThread(harness);
+      seedSubagent(harness, {
+        threadId: thread.id,
+        delegationId: "launched-bg",
+        firstSequence: 10,
+        delegationEvents: [
+          { type: "item/started", status: "pending", background: true },
+        ],
+      });
+      seedSubagent(harness, {
+        threadId: thread.id,
+        delegationId: "relabelled-bg",
+        firstSequence: 20,
+        delegationEvents: [
+          { type: "item/started", status: "pending", background: false },
+          {
+            type: "item/delegation/progress",
+            status: "pending",
+            background: true,
+          },
+        ],
+      });
+      seedSubagent(harness, {
+        threadId: thread.id,
+        delegationId: "historical-bg",
+        firstSequence: 30,
+        delegationEvents: [
+          { type: "item/started", status: "pending", background: true },
+          { type: "item/completed", status: "completed", background: true },
+        ],
+      });
+      seedSubagent(harness, {
+        threadId: thread.id,
+        delegationId: "foreground",
+        firstSequence: 40,
+        delegationEvents: [
+          { type: "item/started", status: "pending", background: false },
+        ],
+      });
+
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        settleDanglingBackgroundTasks(harness.deps, {
+          hostId: host.id,
+          reason: "host-daemon-restarted",
+        });
+      }
+
+      const settled = listEvents(harness.deps.db, { threadId: thread.id })
+        .filter((row) => row.type === "item/delegation/completed")
+        .map((row) => {
+          const data = JSON.parse(row.data) as {
+            item: { id: string; status: string; background: boolean };
+          };
+          return {
+            id: data.item.id,
+            status: data.item.status,
+            background: data.item.background,
+            scope: row.scopeKind,
+          };
+        });
+      expect(settled).toEqual([
+        {
+          id: "launched-bg",
+          status: "interrupted",
+          background: true,
+          scope: "thread",
+        },
+        {
+          id: "relabelled-bg",
+          status: "interrupted",
+          background: true,
+          scope: "thread",
+        },
+      ]);
+    });
+  });
+});
+
 describe("background-task lifecycle reconciliation triggers", () => {
   afterEach(() => {
     vi.useRealTimers();

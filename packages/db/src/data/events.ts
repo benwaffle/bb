@@ -5532,6 +5532,63 @@ export function listOwnerStoppedBackgroundTaskRowsForHost(
   );
 }
 
+export function getOpenBackgroundDelegationItemRow(
+  db: DbQueryConnection,
+  args: { threadId: string; itemId: string },
+): OpenBackgroundTaskItemRow | null {
+  const openTypes = [
+    "item/started",
+    "item/delegation/progress",
+  ] satisfies ThreadEventType[];
+  const settledTypes = [
+    "item/completed",
+    "item/delegation/completed",
+  ] satisfies ThreadEventType[];
+  const row = db.get<{
+    data: string;
+    environmentId: string | null;
+    providerThreadId: string | null;
+    type: ThreadEventType;
+  }>(sql`
+    SELECT
+      item_event.data AS data,
+      ${threads.environmentId} AS environmentId,
+      item_event.provider_thread_id AS providerThreadId,
+      item_event.type AS type
+    FROM events AS item_event INDEXED BY events_delegating_item_lookup_idx
+    JOIN ${threads} ON ${threads.id} = item_event.thread_id
+    WHERE item_event.thread_id = ${args.threadId}
+      AND item_event.item_id = ${args.itemId}
+      AND item_event.item_kind IN ('toolCall', 'delegation')
+      AND item_event.item_kind = 'delegation'
+      AND item_event.type IN (${sql.join(
+        openTypes.map((type) => sql`${type}`),
+        sql`, `,
+      )})
+      AND json_extract(item_event.data, '$.item.background') = 1
+      AND NOT EXISTS (
+        SELECT 1 FROM events AS settled INDEXED BY events_delegating_item_lookup_idx
+        WHERE settled.thread_id = item_event.thread_id
+          AND settled.item_id = item_event.item_id
+          AND settled.item_kind IN ('toolCall', 'delegation')
+          AND settled.item_kind = 'delegation'
+          AND settled.type IN (${sql.join(
+            settledTypes.map((type) => sql`${type}`),
+            sql`, `,
+          )})
+      )
+    ORDER BY item_event.sequence DESC
+    LIMIT 1
+  `);
+  return row === undefined
+    ? null
+    : {
+        ...row,
+        itemId: args.itemId,
+        threadId: args.threadId,
+      };
+}
+
 export function listOpenBackgroundTaskItemRowsForThread(
   db: DbQueryConnection,
   args: ListOpenBackgroundTaskItemRowsForThreadArgs,
