@@ -231,6 +231,7 @@ export function selectItemRecordActiveThinking(
   return {
     id: messageId(latest.threadId, "op", `reasoning:${latest.textKey}`),
     text: visibleStreamingText(latest.text).trim(),
+    textLength: latest.text.length,
     startedAt: latest.start.createdAt,
     updatedAt: latest.end.createdAt,
   };

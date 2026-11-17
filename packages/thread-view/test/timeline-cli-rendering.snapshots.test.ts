@@ -1285,6 +1285,41 @@ describe("timeline CLI rendering snapshots", () => {
     expect(next?.id).not.toBe(active?.id);
   });
 
+  it("counts the streamed reasoning length including the unflushed partial line", () => {
+    const event = createTimelineEventFactory({
+      providerThreadId: "root-provider",
+      threadId: "thread-1",
+      turnId: "turn-1",
+    });
+    const timeline = renderActiveTimeline([
+      event.turnStarted(),
+      event.reasoningDelta({ delta: "First line.\n", itemId: "thinking" }),
+      event.reasoningDelta({ delta: "Partial", itemId: "thinking" }),
+    ]);
+
+    expect(timeline.projection.state.activeThinking).toMatchObject({
+      text: "First line.",
+      textLength: "First line.\nPartial".length,
+    });
+  });
+
+  it("reports zero streamed reasoning length when no reasoning text has arrived", () => {
+    const event = createTimelineEventFactory({
+      providerThreadId: "root-provider",
+      threadId: "thread-1",
+      turnId: "turn-1",
+    });
+    const timeline = renderActiveTimeline([
+      event.turnStarted(),
+      event.reasoningStarted({ itemId: "thinking" }),
+    ]);
+
+    expect(timeline.projection.state.activeThinking).toMatchObject({
+      text: "",
+      textLength: 0,
+    });
+  });
+
   it("keeps root reasoning active when a nested reasoning lifecycle completes first", () => {
     const event = createTimelineEventFactory({
       providerThreadId: "root-provider",

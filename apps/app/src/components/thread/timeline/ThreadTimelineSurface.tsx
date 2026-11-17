@@ -259,6 +259,9 @@ export function ThreadTimelineSurface({
                 details={activeThinkingDetails}
                 reasoningId={activeThinking?.id}
                 isThinking={showActiveThinking}
+                thinkingTextLength={
+                  showActiveThinking ? (activeThinking?.textLength ?? 0) : 0
+                }
                 label={ongoingIndicatorLabel}
               />
             </HeightTransition>

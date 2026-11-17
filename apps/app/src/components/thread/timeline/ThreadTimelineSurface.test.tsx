@@ -287,3 +287,90 @@ describe("ThreadTimelineSurface working indicator", () => {
     expect(grewFromCollapsed(styleChanges.takeRecords(), wrapper)).toBe(true);
   });
 });
+
+describe("ThreadTimelineSurface thinking token count", () => {
+  const loadedRows = [
+    conversationRow({ id: "request", role: "user", seq: 1, text: "Go" }),
+  ];
+
+  function thinking(text: string, textLength: number) {
+    return { id: "thinking-1", text, textLength, startedAt: 1, updatedAt: 2 };
+  }
+
+  function surface(activeThinking: ReturnType<typeof thinking> | null) {
+    return (
+      <MemoryRouter>
+        <QueryClientProvider client={new QueryClient()}>
+          <ThreadTimelineSurface
+            activeThinking={activeThinking}
+            contextBoundarySeq={null}
+            isThreadTimelinePending={false}
+            showOngoingIndicator
+            threadId="thinking"
+            threadRuntimeDisplayStatus="active"
+            timelineError={false}
+            timelineRows={loadedRows}
+          />
+        </QueryClientProvider>
+      </MemoryRouter>
+    );
+  }
+
+  function tokenCountText(): string | null {
+    return (
+      document.querySelector("[data-thinking-token-count]")?.textContent ?? null
+    );
+  }
+
+  it("shows an approximate count estimated from the streamed thinking text", () => {
+    render(surface(thinking("Planning the change.", 3_400)));
+
+    expect(screen.getByText("Thinking…")).not.toBeNull();
+    expect(tokenCountText()).toBe("~850 summary tokens");
+  });
+
+  it("shows no count while thinking has streamed no text", () => {
+    render(surface(thinking("", 0)));
+
+    expect(screen.getByText("Thinking…")).not.toBeNull();
+    expect(tokenCountText()).toBeNull();
+  });
+
+  it("shows no count on the Working indicator", () => {
+    render(surface(null));
+
+    expect(screen.getByText("Working...")).not.toBeNull();
+    expect(tokenCountText()).toBeNull();
+  });
+
+  it("throttles count updates while thinking streams", async () => {
+    vi.useFakeTimers();
+    try {
+      const view = render(surface(thinking("", 400)));
+      expect(tokenCountText()).toBe("~100 summary tokens");
+
+      view.rerender(surface(thinking("", 4_800)));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      expect(tokenCountText()).toBe("~1.2k summary tokens");
+
+      view.rerender(surface(thinking("", 8_000)));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      view.rerender(surface(thinking("", 9_000)));
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(300);
+      });
+      expect(tokenCountText()).toBe("~1.2k summary tokens");
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(100);
+      });
+      expect(tokenCountText()).toBe("~2.2k summary tokens");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
