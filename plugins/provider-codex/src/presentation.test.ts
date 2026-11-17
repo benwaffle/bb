@@ -21,6 +21,28 @@ describe("codex presentation", () => {
     expect(commandPresentation("cargo test").title).toBe("cargo test");
   });
 
+  it.each([
+    ["bash -lc 'a; b'", "a; b"],
+    ['bash -c "echo \\"x\\""', 'echo "x"'],
+    ['bash -c "a\\" ; echo \\"b"', 'a" ; echo "b'],
+  ])(
+    "unwraps a script whose quotes enclose all of it: %s",
+    (command, title) => {
+      expect(commandPresentation(command).title).toBe(title);
+    },
+  );
+
+  it.each([
+    "bash -c 'a' ; cat f | head -3; bash -c 'b && c | d'",
+    'bash -c "a" && echo "b"',
+    'bash -c "echo \\"x\\"" && ls',
+  ])(
+    "keeps a wrapper whose quotes do not enclose the whole script: %s",
+    (command) => {
+      expect(commandPresentation(command).title).toBe(command);
+    },
+  );
+
   it("drops the headline of a blank command", () => {
     expect(commandPresentation("   ").title).toBeUndefined();
   });
