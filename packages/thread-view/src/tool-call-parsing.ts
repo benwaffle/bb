@@ -7,14 +7,22 @@ const SHELL_SEGMENT_BREAK_TOKENS = new Set(["&&", "||", "|", ";", "\n"]);
 
 const DOUBLE_QUOTED_ESCAPABLE_CHARS = new Set(["$", "`", '"', "\\", "\n"]);
 
-function unwrapQuotedShellArg(value: string): string {
-  if (value.length < 2) return value;
+function closingQuoteIndex(value: string): number {
   const quote = value[0];
-  if ((quote !== "'" && quote !== '"') || value[value.length - 1] !== quote) {
-    return value;
+  if (quote === "'") return value.indexOf("'", 1);
+  if (quote !== '"') return -1;
+  for (let index = 1; index < value.length; index += 1) {
+    const char = value[index];
+    if (char === "\\") index += 1;
+    else if (char === '"') return index;
   }
+  return -1;
+}
+
+function unwrapQuotedShellArg(value: string): string | undefined {
+  if (closingQuoteIndex(value) !== value.length - 1) return undefined;
   const inner = value.slice(1, -1);
-  if (quote === "'") return inner;
+  if (value[0] === "'") return inner;
 
   const parts: string[] = [];
   let start = 0;
@@ -54,7 +62,9 @@ export function extractShellCommandFromString(
     return trimmed;
   }
 
-  return unwrapQuotedShellArg(commandArg.trim());
+  const script = commandArg.trim();
+  if (script[0] !== "'" && script[0] !== '"') return script;
+  return unwrapQuotedShellArg(script) ?? trimmed;
 }
 
 const DOUBLE_QUOTE_ESCAPABLE = new Set(["$", "`", '"', "\\", "\n"]);
