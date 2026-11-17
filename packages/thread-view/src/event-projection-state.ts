@@ -205,6 +205,7 @@ function finalizePendingMessages(args: FinalizeProjectionMessagesArgs): void {
   flushPendingFileEditOutput(args.state);
   interruptPendingToolActivity(args.state, {
     completedAt: args.state.threadInterruptedAt,
+    preserveBackgroundDelegations: true,
   });
 
   for (const fileEdits of args.state.fileEditsByCallId.values()) {
