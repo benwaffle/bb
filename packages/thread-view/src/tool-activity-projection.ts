@@ -149,6 +149,18 @@ interface MergeCallSummaryOptions {
 interface InterruptPendingToolActivityArgs {
   completedAt: number | null;
   turnIds?: ReadonlySet<string>;
+  preserveBackgroundDelegations?: boolean;
+}
+
+function isPreservedBackgroundDelegation(
+  item: { kind: string; background?: boolean },
+  args: InterruptPendingToolActivityArgs,
+): boolean {
+  return (
+    args.preserveBackgroundDelegations === true &&
+    item.kind === "delegation" &&
+    item.background === true
+  );
 }
 
 const DEFAULT_INTERRUPT_PENDING_TOOL_ACTIVITY_ARGS: InterruptPendingToolActivityArgs =
@@ -855,7 +867,10 @@ export function interruptPendingToolActivity(
 ): void {
   const interruptedRunningCallIds: string[] = [];
   for (const call of state.toolActivity.runningCallsById.values()) {
-    if (!shouldInterruptToolScope(call.scope, args)) {
+    if (
+      !shouldInterruptToolScope(call.scope, args) ||
+      isPreservedBackgroundDelegation(call, args)
+    ) {
       continue;
     }
 
@@ -890,7 +905,8 @@ export function interruptPendingToolActivity(
 
   if (
     state.toolActivity.activeCell &&
-    shouldInterruptToolScope(state.toolActivity.activeCell.scope, args)
+    shouldInterruptToolScope(state.toolActivity.activeCell.scope, args) &&
+    !isPreservedBackgroundDelegation(state.toolActivity.activeCell, args)
   ) {
     interruptPendingToolMessage(
       state.toolActivity.activeCell,
@@ -899,7 +915,10 @@ export function interruptPendingToolActivity(
   }
 
   for (const cell of state.toolActivity.historyCells) {
-    if (shouldInterruptToolScope(cell.scope, args)) {
+    if (
+      shouldInterruptToolScope(cell.scope, args) &&
+      !isPreservedBackgroundDelegation(cell, args)
+    ) {
       interruptPendingToolMessage(cell, args.completedAt);
     }
   }
@@ -907,7 +926,8 @@ export function interruptPendingToolActivity(
   for (const message of state.messages) {
     if (
       isInterruptibleToolMessage(message) &&
-      shouldInterruptToolScope(message.scope, args)
+      shouldInterruptToolScope(message.scope, args) &&
+      !isPreservedBackgroundDelegation(message, args)
     ) {
       interruptPendingToolMessage(message, args.completedAt);
     }
