@@ -149,4 +149,156 @@ describe("background subagent delegation rows", () => {
       });
     });
   });
+
+  it("keep a running background agent as its own row in a collapsed completed turn", () => {
+    withTestThread((testThread) => {
+      const { db, thread } = testThread;
+      const windows = createThreadTimelineWindows({ ...harness.deps, db });
+      const read = (): TimelineRow[] => {
+        const response = windows.read(
+          getThread(db, thread.id) as Thread,
+          {
+            deferContent: true,
+            includeNestedRows: false,
+            page: { kind: "latest", segmentLimit: 20 },
+          },
+          undefined,
+        );
+        if (isThreadTimelineDelta(response)) {
+          throw new Error("expected a full window");
+        }
+        return response.rows;
+      };
+      const command = (id: string): RowSpec[] => {
+        const item = {
+          type: "commandExecution",
+          id,
+          command: `echo ${id}`,
+          cwd: "/tmp",
+          aggregatedOutput: id,
+          approvalStatus: null,
+          exitCode: 0,
+        };
+        return [
+          {
+            type: "item/started",
+            turnId: "turn-1",
+            itemId: id,
+            itemKind: "commandExecution",
+            data: { item: { ...item, status: "pending" } },
+          },
+          {
+            type: "item/completed",
+            turnId: "turn-1",
+            itemId: id,
+            itemKind: "commandExecution",
+            data: { item: { ...item, status: "completed" } },
+          },
+        ];
+      };
+      const topLevelKinds = () =>
+        read().map((row) =>
+          row.kind === "work" ? `${row.workKind}:${row.status}` : row.kind,
+        );
+
+      appendRows(testThread, [
+        { type: "turn/started", turnId: "turn-1" },
+        ...command("command-1"),
+        ...command("command-2"),
+        {
+          type: "item/started",
+          turnId: "turn-1",
+          itemId: DELEGATION_ID,
+          itemKind: "delegation",
+          data: {
+            item: {
+              ...delegationItem("pending"),
+              background: false,
+              presentation: {
+                label: { pending: "Running subagent", completed: "Done" },
+                icon: { glyph: "UserRound" },
+              },
+            },
+          },
+        },
+        childMessage("child-0", "Starting the survey."),
+        {
+          type: "item/started",
+          turnId: "turn-1",
+          itemId: DELEGATION_ID,
+          itemKind: "delegation",
+          data: {
+            item: {
+              ...delegationItem("pending"),
+              presentation: {
+                label: {
+                  pending: "Running background subagent",
+                  completed: "Background subagent finished",
+                },
+                icon: { glyph: "UserRound" },
+              },
+            },
+          },
+        },
+        {
+          type: "item/delegation/progress",
+          providerThreadId: PROVIDER_THREAD_ID,
+          itemId: DELEGATION_ID,
+          itemKind: "delegation",
+          data: {
+            providerThreadId: PROVIDER_THREAD_ID,
+            item: delegationItem("pending"),
+          },
+        },
+        ...command("command-3"),
+        {
+          type: "item/completed",
+          turnId: "turn-1",
+          itemId: "assistant-1",
+          itemKind: "agentMessage",
+          data: {
+            item: {
+              type: "agentMessage",
+              id: "assistant-1",
+              text: "The agent keeps surveying in the background.",
+            },
+          },
+        },
+        childMessage("child-1", "Reading turbo.json now."),
+        {
+          type: "turn/completed",
+          turnId: "turn-1",
+          data: { status: "completed" },
+        },
+      ]);
+      expect(topLevelKinds()).toEqual([
+        "turn",
+        "delegation:pending",
+        "turn",
+        "conversation",
+      ]);
+      expect(findDelegation(read())).toMatchObject({
+        background: true,
+        presentation: { label: { pending: "Running background subagent" } },
+        childRows: [
+          { kind: "conversation", text: "Starting the survey." },
+          { kind: "conversation", text: "Reading turbo.json now." },
+        ],
+      });
+
+      appendRows(testThread, [
+        {
+          type: "item/delegation/completed",
+          providerThreadId: PROVIDER_THREAD_ID,
+          itemId: DELEGATION_ID,
+          itemKind: "delegation",
+          data: {
+            providerThreadId: PROVIDER_THREAD_ID,
+            item: { ...delegationItem("completed"), summary: "Done." },
+          },
+        },
+      ]);
+      expect(topLevelKinds()).toEqual(["turn", "conversation"]);
+    });
+  });
 });
