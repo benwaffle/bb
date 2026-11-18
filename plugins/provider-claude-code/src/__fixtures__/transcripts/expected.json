@@ -3,13 +3,13 @@
     "items": {
       "backgroundTask": 3,
       "commandExecution": 116,
-      "delegation": 3
+      "delegation": 6
     },
     "tools": {},
     "presented": {
       "backgroundTask": 3,
       "commandExecution": 116,
-      "delegation": 3
+      "delegation": 6
     },
     "planSnapshots": 0,
     "unhandled": 6,

@@ -730,6 +730,17 @@ function summarizeRange(
   };
 }
 
+export function isRunningBackgroundDelegationRow(
+  row: ThreadTimelineViewRow,
+): row is TimelineViewDelegationWorkRow {
+  return (
+    row.kind === "work" &&
+    row.workKind === "delegation" &&
+    row.background &&
+    row.status === "pending"
+  );
+}
+
 function isSummarizableActivityRow(
   row: ThreadTimelineViewRow,
 ): row is TimelineWorkSummaryChild {
@@ -872,6 +883,15 @@ function buildBundleSummaryRow(
 }
 
 function closeOpenStepAtBoundary(
+  openStep: TimelineWorkSummaryChild[],
+): ThreadTimelineViewRow[] {
+  const running = openStep.filter(isRunningBackgroundDelegationRow);
+  if (running.length === 0) return closeStepWork(openStep);
+  const work = openStep.filter((row) => !isRunningBackgroundDelegationRow(row));
+  return [...closeStepWork(work), ...running];
+}
+
+function closeStepWork(
   work: TimelineWorkSummaryChild[],
 ): ThreadTimelineViewRow[] {
   if (work.length === 0) return [];
@@ -890,36 +910,42 @@ function flushOpenStepAsBundles(
   if (work.length === 0) return [];
 
   interface Group {
-    concept: TimelineWorkSummaryCategory;
+    concept: TimelineWorkSummaryCategory | null;
     rows: TimelineWorkSummaryChild[];
   }
 
   const groups: Group[] = [];
-  const leadingThoughts: TimelineWorkSummaryChild[] = [];
+  let pendingThoughts: TimelineWorkSummaryChild[] = [];
   for (const row of work) {
+    const last = groups[groups.length - 1];
     if (row.kind === "system") {
-      const last = groups[groups.length - 1];
-      if (last) last.rows.push(row);
-      else leadingThoughts.push(row);
+      if (last && last.concept !== null) last.rows.push(row);
+      else pendingThoughts.push(row);
+      continue;
+    }
+    if (isRunningBackgroundDelegationRow(row)) {
+      groups.push({ concept: null, rows: [...pendingThoughts, row] });
+      pendingThoughts = [];
       continue;
     }
     const concept = rowConcept(row);
-    const last = groups[groups.length - 1];
     if (last && last.concept === concept) {
       last.rows.push(row);
     } else {
-      groups.push({ concept, rows: [...leadingThoughts.splice(0), row] });
+      groups.push({ concept, rows: [...pendingThoughts, row] });
     }
+    pendingThoughts = [];
   }
 
-  const out: ThreadTimelineViewRow[] = [...leadingThoughts];
+  const out: ThreadTimelineViewRow[] = [];
   for (const group of groups) {
-    if (group.rows.length === 1) {
-      out.push(group.rows[0]!);
+    if (group.concept === null || group.rows.length === 1) {
+      out.push(...group.rows);
     } else {
       out.push(buildBundleSummaryRow(group.rows));
     }
   }
+  out.push(...pendingThoughts);
   return out;
 }
 

@@ -12,6 +12,10 @@ const THREAD = "bb-thread-1";
 const CONTEXT = { threadId: THREAD };
 const TOOL_USE_ID = "toolu_bg_agent";
 const TASK_ID = "agent-task-1";
+const backgroundSubagentLabel = {
+  pending: "Running background subagent",
+  completed: "Background subagent finished",
+};
 
 function sdkMessage(message: Record<string, unknown>) {
   return {
@@ -225,12 +229,27 @@ describe("background Claude subagent delegations", () => {
     ]);
     expect(delegationEvents(launched)).toEqual([
       expect.objectContaining({
+        type: "item/started",
+        scope: turnScope(TURN_1),
+        item: expect.objectContaining({
+          id: harness.itemId(TOOL_USE_ID, THREAD),
+          status: "pending",
+          background: true,
+          presentation: expect.objectContaining({
+            label: backgroundSubagentLabel,
+          }),
+        }),
+      }),
+      expect.objectContaining({
         type: "item/delegation/progress",
         scope: threadScope(),
         item: expect.objectContaining({
           id: harness.itemId(TOOL_USE_ID, THREAD),
           status: "pending",
           background: true,
+          presentation: expect.objectContaining({
+            label: backgroundSubagentLabel,
+          }),
         }),
       }),
     ]);
@@ -243,6 +262,9 @@ describe("background Claude subagent delegations", () => {
         item: expect.objectContaining({
           status: "completed",
           background: true,
+          presentation: expect.objectContaining({
+            label: backgroundSubagentLabel,
+          }),
         }),
       }),
     ]);
