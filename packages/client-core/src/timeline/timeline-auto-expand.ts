@@ -1,6 +1,7 @@
 import {
   assertNever,
   findTimelineFrontierRow,
+  isRunningBackgroundDelegationRow,
   type ThreadTimelineViewRow,
   type TimelineViewWorkRow,
   type TimelineWorkSummaryChild,
@@ -164,30 +165,38 @@ function visitForTerminalFrontierAutoExpand(
 //      auto-expanded when newer agent/system/work output supersedes them.
 //
 // Active containers are the timeline's top-level row list (when the thread
-// is active) and the childRows of pending delegations *inside an active
-// container*. A completed delegation closes its scope, so a pending
-// sub-delegation buried inside a completed parent does NOT auto-expand —
-// the active scope must propagate from the top-level thread runtime down
-// through every enclosing container.
+// is active), the childRows of pending delegations *inside an active
+// container*, and the childRows of every running background delegation,
+// which also stays open itself wherever it sits because its agent keeps
+// working after its turn and thread go idle. A completed delegation closes
+// its scope, so a pending sub-delegation buried inside a completed parent
+// does NOT auto-expand — the active scope must propagate from the top-level
+// thread runtime down through every enclosing container.
 function visitForLiveFrontierAutoExpand(
   rows: readonly ThreadTimelineViewRow[],
   scopeActive: boolean,
   ids: Set<string>,
 ): void {
-  if (!scopeActive) {
-    return;
-  }
-  const frontier = findTimelineFrontierRow(rows);
-  if (frontier && shouldAutoExpandLiveFrontierRow(frontier)) {
-    ids.add(frontier.id);
+  if (scopeActive) {
+    const frontier = findTimelineFrontierRow(rows);
+    if (frontier && shouldAutoExpandLiveFrontierRow(frontier)) {
+      ids.add(frontier.id);
+    }
   }
   for (const row of rows) {
     if (
-      row.kind === "work" &&
-      row.workKind === "delegation" &&
-      row.status === "pending" &&
-      row.childRows !== null
+      row.kind !== "work" ||
+      row.workKind !== "delegation" ||
+      row.status !== "pending" ||
+      row.childRows === null
     ) {
+      continue;
+    }
+    const runningInBackground = isRunningBackgroundDelegationRow(row);
+    if (runningInBackground && isRowExpandable(row)) {
+      ids.add(row.id);
+    }
+    if (scopeActive || runningInBackground) {
       visitForLiveFrontierAutoExpand(row.childRows, true, ids);
     }
   }
