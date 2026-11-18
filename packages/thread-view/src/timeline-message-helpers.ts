@@ -29,6 +29,9 @@ export function isTimelineUngroupableMessage(
   if (message.kind === "command") {
     return parseSentThreadMessage(message) !== null;
   }
+  if (message.kind === "delegation") {
+    return message.background && message.status === "pending";
+  }
   return false;
 }
 

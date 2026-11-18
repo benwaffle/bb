@@ -497,7 +497,11 @@ function applyItem(
   if (started) {
     record.hasStartedEvent = true;
   }
-  if (record.firstPresentation === undefined && "presentation" in item) {
+  if (
+    "presentation" in item &&
+    (record.firstPresentation === undefined ||
+      (started && item.presentation !== undefined))
+  ) {
     record.firstPresentation = item.presentation;
   }
   if (
