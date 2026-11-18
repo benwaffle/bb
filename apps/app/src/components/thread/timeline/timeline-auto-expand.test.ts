@@ -493,4 +493,119 @@ describe("collectTimelineAutoExpansionRowIds", () => {
     expect(ids.has("active-pending-delegation")).toBe(true);
     expect(ids.has("nested-pending-command")).toBe(false);
   });
+
+  describe("running background delegations", () => {
+    function backgroundAgent(id: string, seq: number) {
+      return delegationRow({
+        id,
+        background: true,
+        status: "pending",
+        output: "",
+        seq,
+        childRows: [
+          commandRow({
+            id: `${id}-done`,
+            command: "pnpm test",
+            seq: seq + 100,
+          }),
+          commandRow({
+            id: `${id}-running`,
+            command: "pnpm test",
+            seq: seq + 101,
+            status: "pending",
+          }),
+        ],
+      });
+    }
+
+    const activeTurnRows = () =>
+      buildTimelineViewRows([
+        commandRow({ id: "command-1", command: "pnpm test", seq: 1 }),
+        commandRow({ id: "command-2", command: "pnpm test", seq: 2 }),
+        backgroundAgent("agent-1", 3),
+        commandRow({ id: "command-3", command: "pnpm test", seq: 4 }),
+        backgroundAgent("agent-2", 5),
+        conversationRow({
+          id: "assistant",
+          role: "assistant",
+          seq: 6,
+          text: "Still surveying.",
+        }),
+        commandRow({
+          id: "command-4",
+          command: "pnpm test",
+          seq: 7,
+          status: "pending",
+        }),
+      ]);
+
+    it.each([true, false])(
+      "keeps every running background agent open when the scope active is %s",
+      (scopeActive) => {
+        const { liveExpandedRowIds } = collectTimelineAutoExpansionRowIds({
+          rows: activeTurnRows(),
+          scopeActive,
+        });
+
+        expect(liveExpandedRowIds.has("agent-1")).toBe(true);
+        expect(liveExpandedRowIds.has("agent-2")).toBe(true);
+      },
+    );
+
+    it("treats a running background agent's child rows as an active scope on an idle thread", () => {
+      const rows = buildTimelineViewRows([
+        delegationRow({
+          id: "agent",
+          background: true,
+          status: "pending",
+          output: "",
+          childRows: [
+            delegationRow({
+              id: "nested-agent",
+              status: "pending",
+              output: "",
+              seq: 20,
+              childRows: [
+                commandRow({
+                  id: "nested-command",
+                  command: "pnpm test",
+                  seq: 21,
+                }),
+              ],
+            }),
+          ],
+        }),
+      ]);
+
+      const { liveExpandedRowIds } = collectTimelineAutoExpansionRowIds({
+        rows,
+        scopeActive: false,
+      });
+
+      expect([...liveExpandedRowIds].sort()).toEqual(["agent", "nested-agent"]);
+    });
+
+    it("stops holding a background agent open once it settles", () => {
+      const rows = buildTimelineViewRows([
+        delegationRow({
+          id: "agent",
+          background: true,
+          status: "completed",
+        }),
+        conversationRow({
+          id: "assistant",
+          role: "assistant",
+          seq: 9,
+          text: "Still surveying.",
+        }),
+      ]);
+
+      const { liveExpandedRowIds } = collectTimelineAutoExpansionRowIds({
+        rows,
+        scopeActive: false,
+      });
+
+      expect(liveExpandedRowIds.size).toBe(0);
+    });
+  });
 });

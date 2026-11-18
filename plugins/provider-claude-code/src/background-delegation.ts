@@ -5,7 +5,10 @@ import {
   backgroundTaskItemStatus,
   toOptionalRecord,
 } from "@get-bb/plugin-sdk/provider-bridge";
-import { LAUNCHED_SUBAGENT_LABEL } from "./presentation.js";
+import {
+  BACKGROUND_SUBAGENT_LABEL,
+  LAUNCHED_SUBAGENT_LABEL,
+} from "./presentation.js";
 import {
   findClaudeAgentTaskForToolUse,
   type ClaudeTaskMap,
@@ -89,11 +92,15 @@ export function launchClaudeBackgroundDelegation(args: {
 }): ThreadDelta[] {
   const shape: DeltaDelegationShape = { ...args.shape, background: true };
   const task = findClaudeAgentTaskForToolUse(args.tasks, args.toolUseId);
+  const presentation =
+    args.presentation === undefined || args.shape.background
+      ? args.presentation
+      : { ...args.presentation, label: BACKGROUND_SUBAGENT_LABEL };
   const delegation: ClaudeBackgroundDelegation = {
     toolUseId: args.toolUseId,
     parentRef: args.parentRef,
     shape,
-    presentation: args.presentation,
+    presentation,
     lastMessage: undefined,
   };
   if (task === undefined || task.terminal) {
@@ -120,6 +127,16 @@ export function launchClaudeBackgroundDelegation(args: {
     return [];
   }
   return [
+    ...(presentation === undefined
+      ? []
+      : [
+          {
+            kind: "item.open" as const,
+            key: delegationKey(delegation),
+            item: shape,
+            presentation,
+          },
+        ]),
     {
       kind: "item.progress",
       key: delegationKey(delegation),
