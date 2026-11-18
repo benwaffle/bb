@@ -211,11 +211,13 @@ function toolRow({
 }
 
 interface DelegationRowOverrides extends WorkRowOverrides {
+  background?: boolean;
   callId?: string;
   childRows?: TimelineDelegationWorkRow["childRows"];
 }
 
 function delegationRow({
+  background = false,
   callId = "delegation-call-1",
   childRows = [],
   id = "delegation-1",
@@ -230,7 +232,7 @@ function delegationRow({
     callId,
     toolName: "spawnAgent",
     childRef: null,
-    background: false,
+    background,
     subagentType: "reviewer",
     description: "Review timeline grouping",
     output: "",
@@ -833,5 +835,147 @@ describe("reasoning within activity groups", () => {
       "work",
     ]);
     expect(rows[1]?.id).toBe("warning");
+  });
+});
+
+describe("running background delegations", () => {
+  function seqCommand(id: string, seq: number): TimelineCommandWorkRow {
+    return commandRow({
+      id,
+      callId: `${id}-call`,
+      sourceSeqStart: seq,
+      sourceSeqEnd: seq,
+      startedAt: seq,
+      createdAt: seq,
+    });
+  }
+
+  function backgroundDelegation(
+    id: string,
+    seq: number,
+    status: TimelineRowStatus = "pending",
+  ): TimelineDelegationWorkRow {
+    return delegationRow({
+      id,
+      callId: `${id}-call`,
+      background: true,
+      status,
+      sourceSeqStart: seq,
+      sourceSeqEnd: seq,
+      startedAt: seq,
+      createdAt: seq,
+      childRows: [seqCommand(`${id}-child`, seq + 100)],
+    });
+  }
+
+  function rowIds(rows: readonly ThreadTimelineViewRow[]): string[] {
+    return rows.map((row) =>
+      row.kind === "step-summary" || row.kind === "bundle-summary"
+        ? `${row.kind}[${row.children.map((child) => child.id).join(",")}]`
+        : row.id,
+    );
+  }
+
+  const stepAroundDelegation = (status: TimelineRowStatus) => [
+    seqCommand("command-1", 1),
+    seqCommand("command-2", 2),
+    backgroundDelegation("agent", 3, status),
+    seqCommand("command-3", 4),
+    assistantRow({ id: "assistant", sourceSeqStart: 5, sourceSeqEnd: 5 }),
+  ];
+
+  it("keeps a running background delegation out of the step that the next message closes", () => {
+    const rows = buildTimelineViewRows(stepAroundDelegation("pending"));
+
+    expect(rowIds(rows)).toEqual([
+      "step-summary[command-1,command-2,command-3]",
+      "agent",
+      "assistant",
+    ]);
+    expect(expectStepSummaryRow(rows[0]).status).toBe("completed");
+    expect(expectDelegationWorkRow(rows[1]).childRows).toHaveLength(1);
+  });
+
+  it("folds the delegation back into its step once its agent settles", () => {
+    const rows = buildTimelineViewRows(stepAroundDelegation("completed"));
+
+    expect(rowIds(rows)).toEqual([
+      "step-summary[command-1,command-2,agent,command-3]",
+      "assistant",
+    ]);
+    expect(rows[0]?.id).toBe(
+      buildTimelineViewRows(stepAroundDelegation("pending"))[0]?.id,
+    );
+  });
+
+  it("hoists running background delegations out of a closed scope's step", () => {
+    const rows = buildTimelineViewRows(
+      [
+        seqCommand("command-1", 1),
+        backgroundDelegation("agent-1", 2),
+        seqCommand("command-2", 3),
+        backgroundDelegation("agent-2", 4),
+      ],
+      { closedScope: true },
+    );
+
+    expect(rowIds(rows)).toEqual([
+      "step-summary[command-1,command-2]",
+      "agent-1",
+      "agent-2",
+    ]);
+  });
+
+  it("never bundles concurrent background delegations in a live step", () => {
+    const rows = buildTimelineViewRows([
+      backgroundDelegation("agent-1", 1),
+      backgroundDelegation("agent-2", 2),
+      delegationRow({
+        id: "foreground-1",
+        callId: "foreground-1-call",
+        status: "pending",
+        sourceSeqStart: 3,
+        sourceSeqEnd: 3,
+      }),
+      delegationRow({
+        id: "foreground-2",
+        callId: "foreground-2-call",
+        status: "pending",
+        sourceSeqStart: 4,
+        sourceSeqEnd: 4,
+      }),
+    ]);
+
+    expect(rowIds(rows)).toEqual([
+      "agent-1",
+      "agent-2",
+      "bundle-summary[foreground-1,foreground-2]",
+    ]);
+  });
+
+  it("does not let a following thought wrap a live background delegation into a bundle", () => {
+    const thoughtRow: TimelineSystemRow = {
+      ...baseRow("thought", { sourceSeqStart: 3, sourceSeqEnd: 3 }),
+      kind: "system",
+      systemKind: "operation",
+      operationKind: "reasoning",
+      status: "completed",
+      title: "Thought",
+      detail: "Wait for the agent.",
+      completedAt: 4,
+    };
+    const rows = buildTimelineViewRows([
+      seqCommand("command-1", 1),
+      backgroundDelegation("agent", 2),
+      thoughtRow,
+      seqCommand("command-2", 4),
+      seqCommand("command-3", 5),
+    ]);
+
+    expect(rowIds(rows)).toEqual([
+      "command-1",
+      "agent",
+      "bundle-summary[thought,command-2,command-3]",
+    ]);
   });
 });
