@@ -314,6 +314,7 @@ interface SystemRowBase extends TimelineRowBase {
 }
 
 interface DelegationRowArgs extends RowBaseOverrideArgs {
+  background?: boolean;
   callId?: string;
   childRows?: TimelineRow[] | null;
   description?: string | null;
@@ -1245,6 +1246,7 @@ export function systemRow({
 }
 
 export function delegationRow({
+  background = false,
   callId,
   childRows = [
     commandRow({
@@ -1286,7 +1288,7 @@ export function delegationRow({
     callId: callId ?? id,
     toolName,
     childRef: null,
-    background: false,
+    background,
     subagentType,
     description,
     output,

@@ -61,6 +61,11 @@ export const LAUNCHED_SUBAGENT_LABEL = {
   completed: "Launched subagent",
 } as const;
 
+export const BACKGROUND_SUBAGENT_LABEL = {
+  pending: "Running background subagent",
+  completed: "Background subagent finished",
+} as const;
+
 export function delegationPresentation(args: {
   description: string;
   subagentType: string | null;
@@ -70,10 +75,7 @@ export function delegationPresentation(args: {
   const presentation: DeltaPresentation = withTitle(
     {
       label: args.background
-        ? {
-            pending: "Running background subagent",
-            completed: "Background subagent finished",
-          }
+        ? BACKGROUND_SUBAGENT_LABEL
         : { pending: "Running subagent", completed: "Subagent finished" },
       icon: { glyph: "UserRound" },
     },
