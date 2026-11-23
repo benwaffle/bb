@@ -5,21 +5,25 @@ import {
   HOT_PERCENT,
   OPEN_USAGE_COMMAND_ID,
   USAGE_REFRESH_MS,
-  selectMeters,
+  selectUsage,
+  type FooterUsage,
+  type UsageCredits,
   type UsageMeter,
 } from "../model/usage-footer.js";
 
-function useUsageMeters(): UsageMeter[] | null {
+const NO_USAGE: FooterUsage = { meters: [], credits: null };
+
+function useFooterUsage(): FooterUsage | null {
   const sdk = useSdk();
-  const [meters, setMeters] = useState<UsageMeter[] | null>(null);
+  const [usage, setUsage] = useState<FooterUsage | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     const load = async () => {
-      const limits = await sdk.system
+      const next = await sdk.system
         .usageLimits({ signal: controller.signal })
-        .then(selectMeters, () => []);
+        .then(selectUsage, () => NO_USAGE);
       if (controller.signal.aborted) return;
-      setMeters(limits);
+      setUsage(next);
     };
     void load();
     const timer = setInterval(() => void load(), USAGE_REFRESH_MS);
@@ -28,23 +32,50 @@ function useUsageMeters(): UsageMeter[] | null {
       clearInterval(timer);
     };
   }, [sdk]);
-  return meters;
+  return usage;
+}
+
+function Bar({ usedPercent }: { usedPercent: number }) {
+  return (
+    <span className="h-1 overflow-hidden rounded-sm bg-[color-mix(in_oklch,var(--ink)_12%,var(--canvas))]">
+      <span
+        className={cn(
+          "block h-full rounded-sm",
+          usedPercent >= HOT_PERCENT ? "bg-attention" : "bg-muted-foreground",
+        )}
+        style={{ width: `${usedPercent}%` }}
+      />
+    </span>
+  );
 }
 
 function Meter({ meter }: { meter: UsageMeter }) {
   return (
     <div data-usage-meter={meter.label} className="contents">
       <span className="truncate text-subtle-foreground">{meter.label}</span>
-      <span className="h-1 overflow-hidden rounded-sm bg-[color-mix(in_oklch,var(--ink)_12%,var(--canvas))]">
-        <span
-          className={cn(
-            "block h-full rounded-sm",
-            meter.usedPercent >= HOT_PERCENT ? "bg-attention" : "bg-muted-foreground",
-          )}
-          style={{ width: `${meter.usedPercent}%` }}
-        />
-      </span>
+      <Bar usedPercent={meter.usedPercent} />
       <span className="text-right text-muted-foreground">{meter.usedPercent}%</span>
+    </div>
+  );
+}
+
+function CreditsMeter({ credits }: { credits: UsageCredits }) {
+  return (
+    <div data-usage-credits="" className="contents">
+      <span className="truncate text-subtle-foreground">Credits</span>
+      {credits.usedPercent === null || credits.limit === null ? (
+        <span className="col-span-2 truncate text-right text-muted-foreground">
+          {credits.used}
+        </span>
+      ) : (
+        <>
+          <Bar usedPercent={credits.usedPercent} />
+          <span className="text-right text-muted-foreground">{credits.usedPercent}%</span>
+          <span className="col-span-2 col-start-2 truncate text-muted-foreground">
+            {credits.used} / {credits.limit}
+          </span>
+        </>
+      )}
     </div>
   );
 }
@@ -53,19 +84,30 @@ const METERS_CLASS =
   "grid w-full grid-cols-[auto_minmax(0,1fr)_2.25rem] items-center gap-x-2 gap-y-1 px-4.5 py-1.5 text-left text-2xs leading-none tabular-nums";
 
 function UsageFooterView({
-  meters,
+  usage,
   onOpen,
   ref,
 }: {
-  meters: UsageMeter[];
+  usage: FooterUsage;
   onOpen: (() => void) | null;
   ref?: RefCallback<HTMLDivElement>;
 }) {
-  const content = meters.map((meter) => <Meter key={meter.label} meter={meter} />);
+  const content = (
+    <>
+      {usage.meters.map((meter) => (
+        <Meter key={meter.label} meter={meter} />
+      ))}
+      {usage.credits === null ? null : <CreditsMeter credits={usage.credits} />}
+    </>
+  );
+  const title = [usage.credits?.detail, onOpen === null ? null : "Open Usage"]
+    .filter((line) => line != null)
+    .join("\n");
   return (
     <div
       ref={ref}
       data-inbox-usage-footer=""
+      title={title === "" ? undefined : title}
       className="sticky bottom-0 z-30 -mx-2 mt-2 -mb-2 border-t border-border-hairline bg-sidebar"
     >
       {onOpen === null ? (
@@ -73,7 +115,6 @@ function UsageFooterView({
       ) : (
         <button
           type="button"
-          title="Open Usage"
           onClick={onOpen}
           className={cn(
             METERS_CLASS,
@@ -88,16 +129,16 @@ function UsageFooterView({
 }
 
 export function UsageFooter({ ref }: { ref?: RefCallback<HTMLDivElement> }) {
-  const meters = useUsageMeters();
+  const usage = useFooterUsage();
   const commands = experimental_useAppCommands();
-  if (meters === null || meters.length === 0) return null;
+  if (usage === null || (usage.meters.length === 0 && usage.credits === null)) return null;
   const canOpen = commands
     .list()
     .some((command) => command.id === OPEN_USAGE_COMMAND_ID && command.available);
   return (
     <UsageFooterView
       ref={ref}
-      meters={meters}
+      usage={usage}
       onOpen={canOpen ? () => void commands.execute(OPEN_USAGE_COMMAND_ID) : null}
     />
   );

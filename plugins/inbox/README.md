@@ -135,11 +135,22 @@ all-model windows, then one bar per model-specific window, such as `Fable 7d`,
 at most four bars. A bar turns to the attention color at 80%. The footer has
 an opaque background above the rows, and when it opens Usage the whole footer
 takes the hover background. The footer reads them when the list mounts and
-then once a minute, and is hidden while no provider reports either window. The footer is a button that
+then once a minute, and is hidden while that provider reports neither windows
+nor credits. The footer is a button that
 runs the `plugin:usage-stats/open-usage` app command whenever
 `experimental_useAppCommands().list()` reports that command available, and
 plain text otherwise, checked on each refresh. `bb settings usage` prints the
 same windows.
+
+When the same provider reports `credits` (Claude Code's pay-as-you-go extra
+usage, read from `extra_usage` in Claude Code's usage response), a `Credits` row
+follows the bars. With a monthly limit it shows a bar and percent like the
+other rows, with the amount spent and the limit on a line beneath, such as
+`$2,105 / $3,500`. Without a limit it shows only the amount spent. Amounts arrive
+in minor currency units and are formatted in the reported currency, with whole
+units at $100 and above. The footer's tooltip gives the exact figures, for
+example `Usage credits this month: $2,104.98 of $3,500.00 (60%)`. The row is
+absent when extra usage is disabled or not reported.
 
 ## Settle and snooze
 
