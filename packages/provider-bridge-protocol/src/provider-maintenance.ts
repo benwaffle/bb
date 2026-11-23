@@ -72,6 +72,17 @@ export const providerUsageWindowSchema = z
 
 export type ProviderUsageWindow = z.infer<typeof providerUsageWindowSchema>;
 
+const providerUsageCreditsSchema = z
+  .object({
+    currency: z.string().regex(/^[A-Z]{3}$/),
+    decimalPlaces: z.number().int().min(0).max(4),
+    usedMinor: z.number().int().nonnegative(),
+    limitMinor: z.number().int().positive().nullable(),
+  })
+  .describe(
+    "Pay-as-you-go credits enabled on the account this billing month, in minor currency units (amount = minor / 10^decimalPlaces). limitMinor is null when the account reports no monthly limit. Absent when the provider reports no enabled credits.",
+  );
+
 export const providerUsageSchema = z.discriminatedUnion("status", [
   z
     .object({
@@ -79,6 +90,7 @@ export const providerUsageSchema = z.discriminatedUnion("status", [
       accountEmail: z.string().email().nullable(),
       planLabel: z.string().min(1).nullable(),
       windows: z.array(providerUsageWindowSchema),
+      credits: providerUsageCreditsSchema.optional(),
     })
     .passthrough(),
   z.object({ status: z.literal("not_installed") }).passthrough(),

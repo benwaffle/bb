@@ -94,6 +94,52 @@ describe("UsageFooter", () => {
   });
 
   it.each([
+    [
+      "a monthly limit",
+      { currency: "USD", decimalPlaces: 2, usedMinor: 1240, limitMinor: 5000 },
+      "Credits25%$12.40 / $50",
+      "Usage credits this month: $12.40 of $50.00 (25%)",
+    ],
+    [
+      "no monthly limit",
+      { currency: "USD", decimalPlaces: 2, usedMinor: 1240, limitMinor: null },
+      "Credits$12.40",
+      "Usage credits this month: $12.40, no monthly limit",
+    ],
+  ])("shows usage credits with %s next to the plan bars", async (_case, credits, row, detail) => {
+    const execute = vi.fn(() => true);
+    const { slot } = renderFooter({
+      limits: async () => ({
+        "claude-code": { ...claudeLimits["claude-code"], credits },
+      }),
+      appCommands: commandsWithOpenUsage(execute, true),
+    });
+
+    await waitFor(() =>
+      expect(slot.container.querySelector("[data-usage-credits]")).not.toBeNull(),
+    );
+    expect(meterTexts(slot.container)).toEqual(["5h42%", "7d81%", "Fable 7d23%"]);
+    const creditsRow = slot.container.querySelector("[data-usage-credits]");
+    expect(creditsRow?.textContent).toBe(row);
+    expect(
+      slot.container.querySelector("[data-inbox-usage-footer]")?.getAttribute("title"),
+    ).toBe(`${detail}\nOpen Usage`);
+    expect(creditsRow?.querySelectorAll("[style]")).toHaveLength(
+      credits.limitMinor === null ? 0 : 1,
+    );
+  });
+
+  it("hides the credits row when the provider reports no credits", async () => {
+    const { slot } = renderFooter({ limits: async () => claudeLimits });
+
+    await waitFor(() => expect(meterTexts(slot.container)).toHaveLength(3));
+    expect(slot.container.querySelector("[data-usage-credits]")).toBeNull();
+    expect(
+      slot.container.querySelector("[data-inbox-usage-footer]")?.hasAttribute("title"),
+    ).toBe(false);
+  });
+
+  it.each([
     ["no provider reports windows", async () => ({
       codex: { status: "ok", planLabel: null, accountEmail: null, windows: [] },
     })],
