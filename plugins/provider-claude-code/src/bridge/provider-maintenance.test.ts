@@ -64,6 +64,103 @@ describe("Claude Code provider maintenance", () => {
     });
   });
 
+  describe("extra usage credits", () => {
+    const account = {
+      email: "claude@example.com",
+      subscriptionType: "Claude Max",
+      apiProvider: "firstParty" as const,
+    };
+    const observedExtraUsage = {
+      is_enabled: true,
+      monthly_limit: 350000,
+      used_credits: 210498,
+      utilization: 60.14228571428571,
+      currency: "USD",
+      decimal_places: 2,
+      disabled_reason: null,
+      user_disabled: false,
+      spend_limit_reached: false,
+    };
+    const credits = (extraUsage: unknown) => {
+      const usage = __testing.normalizeUsage(
+        { five_hour: { utilization: 10, resets_at: null }, extra_usage: extraUsage },
+        account,
+      );
+      if (usage.status !== "ok") throw new Error(`usage was ${usage.status}`);
+      return usage.credits;
+    };
+
+    it("reports enabled credits and their monthly limit in minor units", () => {
+      expect(credits(observedExtraUsage)).toEqual({
+        currency: "USD",
+        decimalPlaces: 2,
+        usedMinor: 210498,
+        limitMinor: 350000,
+      });
+    });
+
+    it("reports a null limit when the account has no monthly limit", () => {
+      expect(
+        credits({ ...observedExtraUsage, monthly_limit: null, utilization: null }),
+      ).toEqual({
+        currency: "USD",
+        decimalPlaces: 2,
+        usedMinor: 210498,
+        limitMinor: null,
+      });
+      expect(credits({ ...observedExtraUsage, monthly_limit: 0 })).toMatchObject({
+        limitMinor: null,
+      });
+    });
+
+    it("keeps zero spend as a real amount", () => {
+      expect(
+        credits({ ...observedExtraUsage, used_credits: 0, utilization: 0 }),
+      ).toMatchObject({ usedMinor: 0, limitMinor: 350000 });
+    });
+
+    it("omits credits when extra usage is disabled, absent, or unmeasured", () => {
+      expect(
+        credits({ ...observedExtraUsage, is_enabled: false, user_disabled: true }),
+      ).toBeUndefined();
+      expect(credits(null)).toBeUndefined();
+      expect(credits(undefined)).toBeUndefined();
+      expect(credits({ ...observedExtraUsage, used_credits: null })).toBeUndefined();
+    });
+
+    it("falls back to USD cents when currency fields are missing or invalid", () => {
+      expect(
+        credits({
+          is_enabled: true,
+          monthly_limit: 5000,
+          used_credits: 1240,
+          utilization: 24.8,
+          currency: "dollars",
+        }),
+      ).toEqual({
+        currency: "USD",
+        decimalPlaces: 2,
+        usedMinor: 1240,
+        limitMinor: 5000,
+      });
+    });
+
+    it("keeps plan windows when the extra usage object is malformed", () => {
+      const usage = __testing.normalizeUsage(
+        {
+          five_hour: { utilization: 10, resets_at: null },
+          extra_usage: { is_enabled: "yes" },
+        },
+        account,
+      );
+      expect(usage).toMatchObject({
+        status: "ok",
+        windows: [{ label: "Current session", usedPercent: 10 }],
+      });
+      expect(usage).not.toHaveProperty("credits");
+    });
+  });
+
   it("keeps the native installer plan private behind the run method", () => {
     const run = __testing.buildProviderInstallationRun(
       missingInstallationStatus(),
