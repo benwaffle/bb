@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { selectMeters } from "./usage-footer.js";
+import { selectUsage } from "./usage-footer.js";
+
+const selectMeters = (limits: unknown) => selectUsage(limits).meters;
 
 describe("selectMeters", () => {
   const claude = {
@@ -68,5 +70,68 @@ describe("selectMeters", () => {
       }),
     ).toEqual([]);
     expect(selectMeters(null)).toEqual([]);
+  });
+});
+
+describe("selectUsage credits", () => {
+  const windows = [
+    { label: "Current session", usedPercent: 35, resetsAt: null, kind: "five-hour" },
+  ];
+  const observedCredits = {
+    currency: "USD",
+    decimalPlaces: 2,
+    usedMinor: 210498,
+    limitMinor: 350000,
+  };
+  const creditsFor = (credits: unknown) =>
+    selectUsage({ "claude-code": { status: "ok", windows, credits } }).credits;
+
+  it("converts minor units to dollars with a compact row and an exact tooltip", () => {
+    expect(creditsFor(observedCredits)).toEqual({
+      used: "$2,105",
+      limit: "$3,500",
+      usedPercent: 60,
+      detail: "Usage credits this month: $2,104.98 of $3,500.00 (60%)",
+    });
+    expect(creditsFor({ ...observedCredits, usedMinor: 1240, limitMinor: 5000 })).toEqual({
+      used: "$12.40",
+      limit: "$50",
+      usedPercent: 25,
+      detail: "Usage credits this month: $12.40 of $50.00 (25%)",
+    });
+  });
+
+  it("shows only the amount spent when no monthly limit is reported", () => {
+    expect(creditsFor({ ...observedCredits, usedMinor: 1240, limitMinor: null })).toEqual({
+      used: "$12.40",
+      limit: null,
+      usedPercent: null,
+      detail: "Usage credits this month: $12.40, no monthly limit",
+    });
+  });
+
+  it("keeps zero spend visible and caps overspend at a full bar", () => {
+    expect(creditsFor({ ...observedCredits, usedMinor: 0 })).toMatchObject({
+      used: "$0",
+      usedPercent: 0,
+    });
+    expect(creditsFor({ ...observedCredits, usedMinor: 400000 })).toMatchObject({
+      usedPercent: 100,
+    });
+  });
+
+  it("has no credits when the provider reports none or a malformed object", () => {
+    expect(creditsFor(undefined)).toBeNull();
+    expect(creditsFor({ ...observedCredits, usedMinor: -1 })).toBeNull();
+    expect(
+      selectUsage({ "claude-code": { status: "ok", windows, credits: { usedMinor: "x" } } })
+        .meters,
+    ).toEqual([{ label: "5h", usedPercent: 35 }]);
+  });
+
+  it("keeps the footer when a provider reports credits but no plan windows", () => {
+    expect(
+      selectUsage({ "claude-code": { status: "ok", windows: [], credits: observedCredits } }),
+    ).toMatchObject({ meters: [], credits: { used: "$2,105" } });
   });
 });

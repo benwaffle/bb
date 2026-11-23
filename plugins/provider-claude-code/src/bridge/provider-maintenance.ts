@@ -384,10 +384,28 @@ const claudeScopedUsageLimitSchema = z
   })
   .passthrough();
 
+const CLAUDE_CREDIT_DEFAULT_CURRENCY = "USD";
+const CLAUDE_CREDIT_DEFAULT_DECIMAL_PLACES = 2;
+
+const claudeExtraUsageSchema = z
+  .object({
+    is_enabled: z.boolean(),
+    monthly_limit: z.number().nonnegative().nullish(),
+    used_credits: z.number().nonnegative().nullish(),
+    currency: z
+      .string()
+      .regex(/^[A-Z]{3}$/)
+      .nullish()
+      .catch(null),
+    decimal_places: z.number().int().min(0).max(4).nullish().catch(null),
+  })
+  .passthrough();
+
 const claudeUsageResponseSchema = z
   .object({
     five_hour: claudeUsageWindowSchema.nullish(),
     seven_day: claudeUsageWindowSchema.nullish(),
+    extra_usage: claudeExtraUsageSchema.nullish().catch(null),
     limits: z
       .array(claudeScopedUsageLimitSchema.nullable().catch(null))
       .nullish()
@@ -446,6 +464,23 @@ function scopedWindows(
   return windows;
 }
 
+type ProviderUsageCredits = NonNullable<
+  Extract<ProviderUsage, { status: "ok" }>["credits"]
+>;
+
+function usageCredits(
+  value: z.infer<typeof claudeExtraUsageSchema> | null | undefined,
+): ProviderUsageCredits | null {
+  if (!value?.is_enabled || value.used_credits == null) return null;
+  const limit = value.monthly_limit ?? null;
+  return {
+    currency: value.currency ?? CLAUDE_CREDIT_DEFAULT_CURRENCY,
+    decimalPlaces: value.decimal_places ?? CLAUDE_CREDIT_DEFAULT_DECIMAL_PLACES,
+    usedMinor: Math.round(value.used_credits),
+    limitMinor: limit === null || limit <= 0 ? null : Math.round(limit),
+  };
+}
+
 function normalizeUsage(raw: unknown, account: AccountInfo): ProviderUsage {
   const parsed = claudeUsageResponseSchema.safeParse(raw);
   if (!parsed.success) {
@@ -461,12 +496,14 @@ function normalizeUsage(raw: unknown, account: AccountInfo): ProviderUsage {
     ...scopedWindows(parsed.data.limits),
   ].filter((window): window is ProviderUsageWindow => window !== null);
   const plan = claudePlan(account);
+  const credits = usageCredits(parsed.data.extra_usage);
   return {
     status: "ok",
     accountEmail: account.email ?? null,
     planLabel: plan?.label ?? null,
     plan: plan ? { id: plan.id, multiplier: null } : null,
     windows,
+    ...(credits === null ? {} : { credits }),
   };
 }
 

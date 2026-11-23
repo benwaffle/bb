@@ -12,14 +12,39 @@ export interface UsageMeter {
   usedPercent: number;
 }
 
+export interface UsageCredits {
+  used: string;
+  limit: string | null;
+  usedPercent: number | null;
+  detail: string;
+}
+
+export interface FooterUsage {
+  meters: UsageMeter[];
+  credits: UsageCredits | null;
+}
+
+const COMPACT_WHOLE_AMOUNT = 100;
+
 const windowSchema = z.object({
   usedPercent: z.number(),
   kind: z.string().optional(),
   model: z.string().nullable().optional(),
 });
 
+const creditsSchema = z.object({
+  currency: z.string().regex(/^[A-Z]{3}$/),
+  decimalPlaces: z.number().int().min(0).max(4),
+  usedMinor: z.number().int().nonnegative(),
+  limitMinor: z.number().int().positive().nullable(),
+});
+
 const providerUsageSchema = z.union([
-  z.object({ status: z.literal("ok"), windows: z.array(windowSchema) }),
+  z.object({
+    status: z.literal("ok"),
+    windows: z.array(windowSchema),
+    credits: creditsSchema.optional().catch(undefined),
+  }),
   z.object({ status: z.string() }),
 ]);
 
@@ -58,9 +83,49 @@ function providerMeters(windows: readonly z.infer<typeof windowSchema>[]): Usage
   return [...overall, ...perModel].slice(0, MAX_METERS);
 }
 
-export function selectMeters(limits: unknown): UsageMeter[] {
+function formatMoney(
+  amount: number,
+  currency: string,
+  fractionDigits: number,
+): string {
+  return new Intl.NumberFormat(undefined, {
+    style: "currency",
+    currency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(amount);
+}
+
+function compactMoney(amount: number, currency: string, decimalPlaces: number): string {
+  const whole = amount >= COMPACT_WHOLE_AMOUNT || Number.isInteger(amount);
+  return formatMoney(amount, currency, whole ? 0 : decimalPlaces);
+}
+
+function footerCredits(credits: z.infer<typeof creditsSchema>): UsageCredits {
+  const scale = 10 ** credits.decimalPlaces;
+  const used = credits.usedMinor / scale;
+  const limit = credits.limitMinor === null ? null : credits.limitMinor / scale;
+  const exact = (amount: number) =>
+    formatMoney(amount, credits.currency, credits.decimalPlaces);
+  const usedPercent =
+    credits.limitMinor === null
+      ? null
+      : clampPercent((credits.usedMinor / credits.limitMinor) * 100);
+  return {
+    used: compactMoney(used, credits.currency, credits.decimalPlaces),
+    limit:
+      limit === null ? null : compactMoney(limit, credits.currency, credits.decimalPlaces),
+    usedPercent,
+    detail:
+      limit === null
+        ? `Usage credits this month: ${exact(used)}, no monthly limit`
+        : `Usage credits this month: ${exact(used)} of ${exact(limit)} (${usedPercent}%)`,
+  };
+}
+
+export function selectUsage(limits: unknown): FooterUsage {
   const parsed = usageLimitsSchema.safeParse(limits);
-  if (!parsed.success) return [];
+  if (!parsed.success) return { meters: [], credits: null };
   const providers = Object.entries(parsed.data).sort(
     ([left], [right]) =>
       Number(right === PREFERRED_PROVIDER_ID) - Number(left === PREFERRED_PROVIDER_ID),
@@ -68,7 +133,8 @@ export function selectMeters(limits: unknown): UsageMeter[] {
   for (const [, usage] of providers) {
     if (!("windows" in usage)) continue;
     const meters = providerMeters(usage.windows);
-    if (meters.length > 0) return meters;
+    const credits = usage.credits === undefined ? null : footerCredits(usage.credits);
+    if (meters.length > 0 || credits !== null) return { meters, credits };
   }
-  return [];
+  return { meters: [], credits: null };
 }
