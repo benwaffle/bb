@@ -140,6 +140,12 @@ const shop: FakePage = {
   url: "https://shop.test/cart",
   title: "Cart",
 };
+const extension: FakePage = {
+  targetId: "extension",
+  type: "page",
+  url: "chrome-extension://abcdefghijklmnop/welcome.html",
+  title: "Welcome",
+};
 const timing = {
   frameIntervalMs: 5,
   idleMs: 60,
@@ -312,5 +318,74 @@ describe("live preview", () => {
       "stopped",
     );
     expect(browser.live()).toHaveLength(0);
+  });
+
+  it("keeps the agent page when an extension opens a tab after it", async () => {
+    const browser = createFakeBrowser([blank, shop]);
+    const preview = createPreview("ws://127.0.0.1:1/x", timing, browser.open);
+    const first = await preview.next(0, 1_000, never, "thumbnail");
+    expect(first).toMatchObject({ url: shop.url });
+    browser.update(extension, "Target.targetCreated");
+    expect(
+      await preview.next(first!.sequence, 50, never, "thumbnail"),
+    ).toBeNull();
+    expect(browser.castTargets()).toEqual(["shop"]);
+    browser.frame("shop");
+    const next = await preview.next(first!.sequence, 1_000, never, "thumbnail");
+    expect(next).toMatchObject({ url: shop.url });
+    expect(browser.casts.map((cast) => cast.targetId)).toEqual(["shop"]);
+    preview.close();
+  });
+
+  it("previews the blank page rather than an extension page that is the only other page", async () => {
+    const browser = createFakeBrowser([blank, extension]);
+    const preview = createPreview("ws://127.0.0.1:1/x", timing, browser.open);
+    const first = await preview.next(0, 1_000, never, "thumbnail");
+    expect(first).toMatchObject({ url: "about:blank" });
+    expect(browser.castTargets()).toEqual(["blank"]);
+    preview.close();
+  });
+
+  it("falls back to the previous page when the previewed page navigates to an extension page", async () => {
+    const popup: FakePage = {
+      targetId: "popup",
+      type: "page",
+      url: "https://pay.test/start",
+      title: "Pay",
+    };
+    const browser = createFakeBrowser([blank, shop]);
+    const preview = createPreview("ws://127.0.0.1:1/x", timing, browser.open);
+    await preview.next(0, 1_000, never, "thumbnail");
+    browser.update(popup, "Target.targetCreated");
+    await vi.waitFor(() => expect(browser.castTargets()).toEqual(["popup"]));
+    browser.update({ ...popup, url: extension.url, title: extension.title });
+    await vi.waitFor(() => expect(browser.castTargets()).toEqual(["shop"]));
+    browser.frame("popup");
+    browser.frame("shop");
+    let frame = await preview.next(0, 1_000, never, "thumbnail");
+    while (frame!.url !== shop.url)
+      frame = await preview.next(frame!.sequence, 1_000, never, "thumbnail");
+    expect(frame).toMatchObject({ url: shop.url, title: "Cart" });
+    preview.close();
+  });
+
+  it("switches to a normal popup opened after the agent page", async () => {
+    const popup: FakePage = {
+      targetId: "popup",
+      type: "page",
+      url: "https://pay.test/start",
+      title: "Pay",
+    };
+    const browser = createFakeBrowser([blank, shop]);
+    const preview = createPreview("ws://127.0.0.1:1/x", timing, browser.open);
+    const first = await preview.next(0, 1_000, never, "thumbnail");
+    expect(first).toMatchObject({ url: shop.url });
+    browser.update(popup, "Target.targetCreated");
+    let next = await preview.next(first!.sequence, 1_000, never, "thumbnail");
+    while (next!.url !== popup.url)
+      next = await preview.next(next!.sequence, 1_000, never, "thumbnail");
+    expect(next).toMatchObject({ url: popup.url, title: "Pay" });
+    expect(browser.castTargets()).toEqual(["popup"]);
+    preview.close();
   });
 });

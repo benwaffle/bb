@@ -33,6 +33,10 @@ const maxFrameChars = 700_000;
 const frameEdge: Record<PreviewSize, number> = { thumbnail: 800, full: 1280 };
 const blankUrls = new Set(["", "about:blank"]);
 
+function isExtensionPage(url: string): boolean {
+  return url.startsWith("chrome-extension:");
+}
+
 const socketOpen = 1;
 
 export interface PreviewSocket {
@@ -198,6 +202,10 @@ export function createPreview(
     info: z.infer<typeof targetInfoSchema>,
   ) {
     if (info.type !== "page") return;
+    if (isExtensionPage(info.url)) {
+      if (targets.delete(info.targetId)) select(connection);
+      return;
+    }
     const known = targets.get(info.targetId);
     if (known && known.url === info.url && known.title === info.title) return;
     targets.set(info.targetId, {
@@ -248,15 +256,15 @@ export function createPreview(
       if (sessionId === undefined || sessionId !== cast?.sessionId) return;
       const frame = screencastFrameSchema.parse(message.params);
       const target = targets.get(cast.targetId);
-      if (frame.data.length <= maxFrameChars) {
+      if (target && frame.data.length <= maxFrameChars) {
         latest = {
           sequence: ++sequence,
           mimeType: "image/jpeg",
           data: frame.data,
           width: frame.metadata.deviceWidth,
           height: frame.metadata.deviceHeight,
-          url: (target?.url ?? "").slice(0, 2_000),
-          title: sliceUtf16Head(target?.title ?? "", 300),
+          url: target.url.slice(0, 2_000),
+          title: sliceUtf16Head(target.title, 300),
         };
         for (const waiter of [...waiters]) waiter.check();
       }
