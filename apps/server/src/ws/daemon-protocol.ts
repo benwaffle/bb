@@ -227,6 +227,19 @@ export function createDaemonSocketEvents(
 
 const HEARTBEAT_ACK_PAYLOAD = JSON.stringify({ type: "heartbeat-ack" });
 const LEASE_RENEWAL_INTERVAL_MS = LEASE_TIMEOUT_MS - 2 * HEARTBEAT_INTERVAL_MS;
+const RETIRED_DAEMON_MESSAGE_TYPES: ReadonlySet<string> = new Set([
+  "process-memory.sample",
+]);
+
+function isRetiredDaemonMessage(message: unknown): boolean {
+  return (
+    typeof message === "object" &&
+    message !== null &&
+    "type" in message &&
+    typeof message.type === "string" &&
+    RETIRED_DAEMON_MESSAGE_TYPES.has(message.type)
+  );
+}
 
 export const SERVER_MOVE_FENCED_DAEMON_MESSAGE_TYPES: ReadonlySet<
   HostDaemonDaemonWsMessage["type"]
@@ -293,6 +306,9 @@ export function onDaemonSocketMessage(
   serverMove?: Pick<ServerMoveCoordinator, "handleProgress">,
 ): void {
   deps.hub.recordDaemonActivity(args.sessionId);
+  if (isRetiredDaemonMessage(args.message)) {
+    return;
+  }
   const message = parseSocketValue(
     args.socket,
     args.message,
