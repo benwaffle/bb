@@ -373,6 +373,45 @@ describe("internal environment change websocket hints", () => {
     });
   });
 
+  it("ignores process memory samples from daemons built before memory tracking was removed", async () => {
+    await withTestHarness(async (harness) => {
+      const { host, session } = seedHostSession(harness.deps, {
+        id: "host-retired-memory-sample",
+      });
+      const socket = createTestDaemonSocket();
+
+      onDaemonSocketMessage(harness.deps, {
+        hostId: host.id,
+        sessionId: session.id,
+        socket,
+        message: {
+          type: "process-memory.sample",
+          sampledAt: 1_700_000_000_000,
+          processes: [
+            {
+              environmentId: "env-1",
+              providerId: "codex",
+              pid: 4242,
+              rssBytes: 1024,
+              processCount: 1,
+              threads: [
+                {
+                  threadId: "thread-1",
+                  pid: null,
+                  rssBytes: null,
+                  processCount: null,
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(socket.close).not.toHaveBeenCalled();
+      expect(socket.send).not.toHaveBeenCalled();
+    });
+  });
+
   it("closes the daemon websocket for invalid environment change kinds", async () => {
     await withTestHarness(async (harness) => {
       const { host, session } = seedHostSession(harness.deps, {
